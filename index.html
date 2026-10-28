@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grades Tracker and Forecaster</title>
+<meta name="theme-color" content="#7c3aed">
+<meta name="description" content="Track grades, forecast finals and plan your GWA.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Grades">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);min-height:100%}
+body{margin:0;min-height:100vh;font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:#1e1b3a;overflow-x:hidden;
+ background:radial-gradient(60rem 40rem at 0% 0%,#e9ddff 0,transparent 60%),radial-gradient(50rem 40rem at 100% 10%,#cdf3ff 0,transparent 60%),radial-gradient(50rem 40rem at 50% 100%,#ffe7d1 0,transparent 60%),#f7f5ff;background-attachment:fixed}
+@media (prefers-color-scheme:dark){body{color:#ece9ff;background:radial-gradient(60rem 40rem at 0% 0%,#2a1b5c 0,transparent 60%),radial-gradient(50rem 40rem at 100% 10%,#0e3a4d 0,transparent 60%),#0f0c1f;background-attachment:fixed}}
+.tot{border-bottom:4px double currentColor}
+input{font-variant-numeric:tabular-nums}
+input[type=range]{accent-color:#7c3aed;height:1.75rem}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
