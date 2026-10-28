@@ -1,6 +1,6 @@
 // Service worker: caches the app for offline use.
 // When you change any app file, bump CACHE (e.g. gtf-v2) so devices pick up the update.
-const CACHE = 'gtf-v4';
+const CACHE = 'gtf-v5';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 // Third-party files the page needs (cached too, so it works with no internet)
 const CDN = [

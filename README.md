@@ -1,14 +1,13 @@
 # Grades Tracker and Forecaster (PWA with cloud sync)
 
 ## What's new in this version
-- **Home screen:** a welcome header, profile cards with your own photo, and **groups** (default *General*) to filter and sort profiles. Cloud profiles you sign in to stay on the home screen, and **Add cloud profile** sits right in the grid.
-- **Themes:** White & Yellow (default), Dark, Monochrome and Lavender. Open **⚙ Settings → Appearance** (or **🎨 Theme** on the home screen).
-- **Accordions:** tap a subject to expand it in the Tracker and the Forecaster. Use *Expand all* / *Collapse all* if you prefer.
-- **Flexible grading:** **⚙ Settings → Grading system** lets each profile use a 1.0, 4.0 or 100 scale, set its own Dean's List target and passing mark, and edit the percent-to-grade table.
-- **Summary:** a text-only GWA and target summary, a **Share / export as image** button, and a *Last synced* time next to the sync chip.
-
-
-Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL goes here**), `manifest.json`, `sw.js` (offline cache), `icons/`, `src/app.jsx` (readable source).
+- **Back to Home:** a button that stays at the top of every profile.
+- **One subject at a time:** the Tracker shows a single subject card. Swipe left or right (or use the tab bar, the arrows, or your keyboard's arrow keys) to change subject. Right below it sits the **Manual Automatic Calculator**, a scratchpad that never changes or syncs your saved data.
+- **Dynamic grading:** set your own period weights (40 / 60, 50 / 50, or add more periods) in **⚙ Settings → Grading periods**. Every period has its own activities. Use **＋ Add Extra Activity** for participation, recitation, projects and so on, and give each a weight.
+- **Base:** each period has a default Base, and any subject can override it. Transmuted grade = (Raw ÷ 100) × (100 − Base) + Base. The Forecaster runs the same formula backwards to tell you the score you need.
+- **Summary:** text-only **Current Prelims GWA**, **Final / Projected GWA** and your **Dean's List target**, plus **Share / export as image** and a **Last synced** time.
+- **Also included:** profile photos and groups, four themes, accordions in the Forecaster, a highest-grade setting (1.0, 4.0 or 100) with an editable grade table.
+- **Your old data is upgraded automatically** the first time the new version opens. Update all your devices to this version so they speak the same format.
 
 ## Part 1: Create the free database (about 5 minutes)
 
@@ -89,5 +88,5 @@ The chip at the top of the app shows **☁ Synced**, **☁ Syncing…** or **�
 1. Edit `src/app.jsx`, then run
    `npm install esbuild react react-dom`
    `npx esbuild src/app.jsx --bundle --minify --loader:.jsx=jsx --define:process.env.NODE_ENV='"production"' --target=es2018 --outfile=app.js`
-2. In `sw.js` change `const CACHE = 'gtf-v4'` to `'gtf-v5'` (and so on).
+2. In `sw.js` change `const CACHE = 'gtf-v5'` to `'gtf-v6'` (and so on).
 3. Upload the changed files.

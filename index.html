@@ -54,6 +54,10 @@ input{font-variant-numeric:tabular-nums}
 .anim-rise{animation:rise .55s cubic-bezier(.2,.8,.2,1) backwards}
 .anim-fade{animation:fade .3s ease both}
 .anim-sheet{animation:sheet .45s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes slideR{from{opacity:0;transform:translateX(56px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes slideL{from{opacity:0;transform:translateX(-56px) scale(.985)}to{opacity:1;transform:none}}
+.slide-r{animation:slideR .5s cubic-bezier(.2,.8,.2,1) backwards}
+.slide-l{animation:slideL .5s cubic-bezier(.2,.8,.2,1) backwards}
 .lift{transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .3s,background-color .3s}
 .lift:hover{transform:translateY(-4px)}
 .lift:active{transform:translateY(-1px) scale(.99)}
