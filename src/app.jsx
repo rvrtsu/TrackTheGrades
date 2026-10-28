@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
 const CAN_FILE=true;
+const CFG=window.GTF_CONFIG||{},DB=String(CFG.databaseURL||'').trim().replace(/\/+$/,''),CLOUD=/^https?:\/\/[^\s]+$/.test(DB)&&!/YOUR[-_]/i.test(DB);
 const ADAPT={remote(){},init(){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}};
 const {useState,useRef,useEffect}=React;
 const K='gtf-v1',uid=()=>Math.random().toString(36).slice(2,9);
@@ -21,6 +22,13 @@ const loadBook=()=>{let b=null;try{b=normBook(JSON.parse(localStorage.getItem(BK
 const saveBook=b=>{try{localStorage.setItem(BK,JSON.stringify(b))}catch(e){}ADAPT.remote(b)};
 const blank=pre=>{if(pre)return seed();const y=uid(),s=uid();return{y,s,tg:{p:'75',s:'75'},years:[{id:y,name:'1st Year',sems:[{id:s,name:'1st Semester',subs:[]}]}]}};
 const EMO=['🎓','😎','🦊','🐼','🌸','⚡','🔥','🌈'];
+// ---- cloud helpers (Firebase Realtime Database over REST, no SDK needed) ----
+const sha=async x=>{const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(x));return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')};
+const ckey=(n,pw)=>sha('gtf1|'+n.trim().toLowerCase()+'|'+pw);
+const curl=k=>DB+'/sync/'+k+'.json';
+const cget=async k=>{const r=await fetch(curl(k),{cache:'no-store'});if(!r.ok)throw new Error('get '+r.status);return r.json()};
+const cput=async(k,o)=>{const r=await fetch(curl(k),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});if(!r.ok)throw new Error('put '+r.status)};
+const validDoc=r=>!!r&&typeof r.d==='string'&&typeof r.t==='number';
 const pc=c=>{if(!c||c.s===''||c.s==null)return null;const m=c.m===''||c.m==null?100:+c.m;return m>0?+c.s/m*100:null};
 const cvb=s=>Math.min(99,Math.max(0,+(s.cv&&s.cv.b)||0)),cvx=s=>+(s.cv&&s.cv.x)||0,isp=k=>k==='pp'||k==='fp';
 const lin=(s,L,k,w)=>{const b=L===FIN&&!isp(k)?cvb(s):0;return[w*b/100,w*(100-b)/10000]};
@@ -53,10 +61,13 @@ const Dark=({l,v,r,rl,foot})=><div className="rounded-2xl bg-gradient-to-br from
 
 const Seg=({v,on,opts,cls=''})=><div className={'inline-grid grid-flow-col auto-cols-fr gap-1 rounded-2xl bg-slate-100 dark:bg-white/10 p-1 '+cls}>{opts.map(([k,l])=><button key={k} onClick={()=>on(k)} className={'rounded-xl px-4 py-1.5 text-sm font-bold transition '+(v===k?'bg-violet-600 text-white shadow':'opacity-70')}>{l}</button>)}</div>;
 
-function App({init,acct,guest,onSave,onSwitch,onKeep}){
+function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser}){
  const [st,setSt]=useState(()=>init),[tab,setTab]=useState('t'),[tv,setTv]=useState({}),[tvAll,setTvAll]=useState('p'),[gf,setGf]=useState({name:'',units:'3',pre:''}),[gadd,setGadd]=useState(false),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sub,setSub]=useState('p'),[adding,setAdding]=useState(false),[mg,setMg]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3'});
  const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0});
  const commit=n=>{ref.current=n;setSt(n);onSave(n)};
+ const e0=useRef(ext&&ext.n);
+ useEffect(()=>{if(ext&&ext.data&&ext.n!==e0.current){e0.current=ext.n;ref.current=ext.data;setSt(ext.data);past.current=[];fut.current=[];last.current={k:'',t:0}}},[ext&&ext.n]);
+ const restoreLoser=()=>{try{set(()=>JSON.parse(loser.d))}catch(e){}onLoser()};
  const set=(fn,key)=>{const cur=ref.current,nx=fn(cur),now=Date.now();if(!(key&&last.current.k===key&&now-last.current.t<1200)){past.current.push(cur);if(past.current.length>100)past.current.shift()}last.current={k:key||'',t:now};fut.current=[];commit(nx)};
  const undo=()=>{if(!past.current.length)return;fut.current.push(ref.current);last.current={k:'',t:0};commit(past.current.pop())};
  const redo=()=>{if(!fut.current.length)return;past.current.push(ref.current);last.current={k:'',t:0};commit(fut.current.pop())};
@@ -92,10 +103,12 @@ function App({init,acct,guest,onSave,onSwitch,onKeep}){
   <div className="flex flex-wrap items-center gap-3">
    <div className="mr-auto"><h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Grades Tracker <span className="text-violet-600 dark:text-violet-300">&amp; Forecaster</span></h1><p className="text-sm opacity-60">Saved on this device ✨</p></div>
    <button className={BTN} onClick={onSwitch}>{acct.emoji} {acct.name} · Switch</button>
+   <button className={BTN} onClick={cloud.sync} disabled={!cloud.on} title={cloud.on?'Tap to sync now':''}>{cloud.label}</button>
    <button className={BTN} onClick={undo} disabled={!past.current.length}>↶ Undo</button>
    <button className={BTN} onClick={redo} disabled={!fut.current.length}>↷ Redo</button>
    <button className={BTN} onClick={()=>setMg(!mg)}>{mg?'Close':'⚙ Manage'}</button>
   </div>
+  {loser&&<div className="rounded-2xl bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-100 p-3 text-sm flex flex-wrap items-center gap-3"><span className="font-semibold flex-1 min-w-[14rem]">Edits from two devices clashed. The newest version was kept.</span><button className={BTN+' !py-2'} onClick={restoreLoser}>Restore the other version</button><button className={BTN+' !py-2'} onClick={onLoser}>Dismiss</button></div>}
   {guest&&<div className="rounded-2xl bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100 p-3 text-sm flex flex-wrap items-center gap-3"><span className="font-semibold">Guest mode: nothing is saved when you leave.</span><input value={kn} onChange={e=>setKn(e.target.value)} placeholder="Account name" className={INP+' h-10 w-40 !text-left px-3'}/><button className={BTN+' !py-2'} onClick={()=>kn.trim()&&onKeep(kn.trim())}>Save as account</button></div>}
   <div className="flex flex-wrap gap-3">
    <select value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id} className="text-black">{y.name}</option>)}</select>
@@ -231,9 +244,15 @@ function App({init,acct,guest,onSave,onSwitch,onKeep}){
 const Av=e=><div className="h-14 w-14 shrink-0 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 grid place-items-center text-3xl shadow-lg shadow-violet-500/30">{e}</div>;
 const Pick=(v,on)=><div className="flex flex-wrap gap-2">{EMO.map(e=><button key={e} onClick={()=>on(e)} className={'h-11 w-11 rounded-xl text-2xl '+(v===e?'bg-violet-600/20 ring-2 ring-violet-500':'bg-slate-100 dark:bg-white/10')}>{e}</button>)}</div>;
 
-function Start({book,onOpen,onGuest,onCreate,onRename,onDelete,onImport}){
- const [nw,setNw]=useState(false),[f,setF]=useState({name:'',emoji:'🎓',pre:false}),[ed,setEd]=useState(null),[arm,setArm]=useState(null),[msg,setMsg]=useState('');
+function Start({book,onOpen,onGuest,onCreate,onRename,onDelete,onImport,onEnable,onDisable,onSignIn}){
+ const [nw,setNw]=useState(false),[f,setF]=useState({name:'',emoji:'🎓',pre:false}),[ed,setEd]=useState(null),[arm,setArm]=useState(null),[msg,setMsg]=useState(''),[cs,setCs]=useState(null),[cf,setCf]=useState({name:'',pass:''}),[cm,setCm]=useState(''),[cb,setCb]=useState(false);
  const pick=e=>{const fl=e.target.files&&e.target.files[0];e.target.value='';if(!fl)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result),d=j&&j.data?j.data:j;if(!okState(d))throw new Error('bad');onImport(j.account||'Imported account',d);setMsg('Backup added as a new account ✓')}catch(x){setMsg('That file is not a valid backup.')}};r.onerror=()=>setMsg('Could not read that file.');r.readAsText(fl)};
+ const go=async fn=>{setCb(true);setCm('');try{const r=await fn();if(r==='ok'||String(r).startsWith('ok:')){setCs(null);setCf({name:'',pass:''});if(String(r).startsWith('ok:'))onOpen(String(r).slice(3))}else setCm(r)}catch(e){setCm('Something went wrong. Try again.')}setCb(false)};
+ const cloudForm=(label,fn)=><div className="flex flex-col gap-2">
+   <input value={cf.name} onChange={e=>setCf({...cf,name:e.target.value})} placeholder="Sync name (e.g. Roever)" autoComplete="off" className={INP+' h-12 w-full !text-left px-3'}/>
+   <input type="password" value={cf.pass} onChange={e=>setCf({...cf,pass:e.target.value})} placeholder="Passcode (6+ characters)" autoComplete="off" className={INP+' h-12 w-full !text-left px-3'}/>
+   {cm&&<p className="text-xs font-semibold text-red-600 dark:text-red-400">{cm}</p>}
+   <div className="flex gap-2"><button disabled={cb} className={BTN+' flex-1 !bg-violet-600 !text-white'} onClick={()=>go(fn)}>{cb?'Working…':label}</button><button className={BTN} onClick={()=>{setCs(null);setCm('')}}>Cancel</button></div></div>;
  return <div className="mx-auto max-w-4xl px-4 sm:px-8 py-10 sm:py-16 flex flex-col gap-8">
   <div className="text-center"><div className="text-6xl mb-3">📒</div><h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Grades Tracker <span className="text-violet-600 dark:text-violet-300">&amp; Forecaster</span></h1><p className="mt-2 opacity-70">Choose an account to continue</p></div>
   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-start">
@@ -241,10 +260,13 @@ function Start({book,onOpen,onGuest,onCreate,onRename,onDelete,onImport}){
     {ed===a.id?<>
      <input value={a.name} onChange={e=>onRename(a.id,{name:e.target.value})} placeholder="Account name" className={INP+' h-12 w-full !text-left px-3'}/>
      {Pick(a.emoji,e=>onRename(a.id,{emoji:e}))}
-     <div className="flex gap-2"><button className={BTN+' flex-1'} onClick={()=>{setEd(null);setArm(null)}}>Done</button>
+     {CLOUD&&(a.cloud?<div className="rounded-2xl bg-slate-100 dark:bg-white/10 p-3 text-sm flex flex-col gap-2"><span>☁ Syncing as <b>{a.cloud.sn}</b></span><button className={BTN} onClick={()=>onDisable(a.id)}>Turn off sync (keeps this copy)</button></div>
+      :cs===a.id?cloudForm('Turn on sync',()=>onEnable(a.id,cf.name,cf.pass))
+      :<button className={BTN} onClick={()=>{setCs(a.id);setCf({name:a.name,pass:''});setCm('')}}>☁ Turn on cloud sync</button>)}
+     <div className="flex gap-2"><button className={BTN+' flex-1'} onClick={()=>{setEd(null);setArm(null);setCs(null)}}>Done</button>
       <button className={BTN+' flex-1 !text-red-600 dark:!text-red-400'} onClick={()=>{if(arm===a.id){onDelete(a.id);setEd(null);setArm(null)}else{setArm(a.id);setTimeout(()=>setArm(x=>x===a.id?null:x),4000)}}}>{arm===a.id?'Tap again to delete':'Delete'}</button></div>
-     {arm===a.id&&<p className="text-xs text-red-600 dark:text-red-400">This permanently deletes every grade in this account.</p>}</>
-    :<><button onClick={()=>onOpen(a.id)} className="flex items-center gap-4 text-left">{Av(a.emoji)}<div className="min-w-0"><div className="text-lg font-extrabold truncate">{a.name||'Untitled'}</div><div className="text-sm opacity-60">Tap to open</div></div></button>
+     {arm===a.id&&<p className="text-xs text-red-600 dark:text-red-400">This removes the account from this device.{a.cloud?' The cloud copy stays, so you can sign in again later.':' It cannot be undone.'}</p>}</>
+    :<><button onClick={()=>onOpen(a.id)} className="flex items-center gap-4 text-left">{Av(a.emoji)}<div className="min-w-0"><div className="text-lg font-extrabold truncate">{a.name||'Untitled'}</div><div className="text-sm opacity-60">{a.cloud?(a.sy&&a.sy.dirty?'☁ Waiting to sync':'☁ Synced'):'Tap to open'}</div></div></button>
      <button onClick={()=>setEd(a.id)} className="self-end text-xs font-semibold opacity-60 hover:opacity-100">✏️ Edit</button></>}
    </div>)}
    {nw?<div className={CARD+' p-5 flex flex-col gap-3'}>
@@ -257,29 +279,65 @@ function Start({book,onOpen,onGuest,onCreate,onRename,onDelete,onImport}){
    <button onClick={onGuest} className={CARD+' p-5 flex items-center gap-4 text-left hover:bg-white dark:hover:bg-white/10'}>{Av('👤')}<div><div className="text-lg font-extrabold">Guest</div><div className="text-sm opacity-60">Try it out. Nothing is saved.</div></div></button>
   </div>
   <div className="flex flex-col items-center gap-3 text-center">
+   {CLOUD&&(cs==='in'?<div className={CARD+' p-5 w-full max-w-sm text-left'}><h3 className="font-extrabold mb-3">Sign in to a cloud account</h3>{cloudForm('Sign in',()=>onSignIn(cf.name,cf.pass))}</div>
+    :<button className={BTN} onClick={()=>{setCs('in');setCf({name:'',pass:''});setCm('')}}>☁ Sign in to a cloud account</button>)}
    {CAN_FILE&&<label className={BTN+' cursor-pointer'}>⬆ Import a backup as a new account<input type="file" accept="application/json,.json" onChange={pick} className="hidden"/></label>}
    {msg&&<p className="text-sm font-semibold">{msg}</p>}
-   <p className="text-xs opacity-60 max-w-md">Accounts are stored on this device. There is no password, so anyone who opens this app can pick any account.</p></div>
+   {!CLOUD&&<p className="text-xs opacity-60 max-w-md">Cloud sync is off. Add your database URL in config.js to sync between devices.</p>}
+   <p className="text-xs opacity-60 max-w-md">Accounts without cloud sync stay on this device. Anyone who opens this app can pick a local account, so use a strong passcode for cloud accounts.</p></div>
  </div>;
 }
 
 function Root(){
  const bk=useRef(null);if(!bk.current)bk.current=loadBook();
- const [cur,setCur]=useState(null),[ver,setVer]=useState(0),[,tick]=useState(0),gd=useRef(null);
+ const [cur,setCur]=useState(null),[ver,setVer]=useState(0),[,tick]=useState(0),[stat,setStat]=useState('synced'),[ext,setExt]=useState({n:0,data:null}),gd=useRef(null),curR=useRef(null),tm=useRef({}),busy=useRef({});
+ curR.current=cur;
  const save=()=>{saveBook(bk.current);tick(x=>x+1)};
+ const acc=id=>bk.current.list.find(a=>a.id===id);
+ const fail=e=>setStat(navigator.onLine&&/^(get|put) [45]/.test(String(e&&e.message))?'error':'offline');
+ const apply=(id,r)=>{const a=acc(id);if(!a)return;let d;try{d=JSON.parse(r.d)}catch(e){return}if(!okState(d))return;bk.current.data[id]=d;a.sy={t:r.t,base:r.t,dirty:false};saveBook(bk.current);if(curR.current&&curR.current.id===id)setExt(x=>({n:x.n+1,data:d}));tick(x=>x+1)};
+ const push=async id=>{const a=acc(id);if(!a||!a.cloud||busy.current['p'+id])return;busy.current['p'+id]=1;const t=(a.sy&&a.sy.t)||Date.now();let again=false;setStat('syncing');try{await cput(a.cloud.k,{t,d:JSON.stringify(bk.current.data[id]),n:a.name,e:a.emoji});const b=acc(id);if(b){b.sy={...b.sy,t:b.sy&&b.sy.t||t,base:t,dirty:!!(b.sy&&b.sy.t!==t)};again=b.sy.dirty;saveBook(bk.current)}setStat('synced');tick(x=>x+1)}catch(e){fail(e)}busy.current['p'+id]=0;if(again)push(id)};
+ const sync=async id=>{const a=acc(id);if(!a||!a.cloud||busy.current['s'+id])return;if(!navigator.onLine){setStat('offline');return}busy.current['s'+id]=1;
+  try{const r=await cget(a.cloud.k),sy=a.sy||{t:0,base:0,dirty:false};
+   if(!validDoc(r)){a.sy={...sy,t:sy.t||Date.now(),dirty:true};await push(id)}
+   else if(r.t===sy.t){a.sy={...sy,base:r.t,dirty:false};saveBook(bk.current);setStat('synced')}
+   else if(r.t>(sy.base||0)){
+    if(sy.dirty){if(r.t>sy.t){a.loser={t:sy.t,d:JSON.stringify(bk.current.data[id])};apply(id,r)}else{a.loser={t:r.t,d:r.d};saveBook(bk.current);await push(id)}}
+    else apply(id,r);
+    setStat('synced')}
+   else if(sy.dirty)await push(id);
+   else setStat('synced');
+   tick(x=>x+1)}catch(e){fail(e)}
+  busy.current['s'+id]=0};
+ const later=id=>{clearTimeout(tm.current[id]);tm.current[id]=setTimeout(()=>navigator.onLine?push(id):setStat('offline'),700)};
  useEffect(()=>{ADAPT.init(b=>{const nb=normBook(b);if(nb){bk.current=nb;try{localStorage.setItem(BK,JSON.stringify(nb))}catch(e){}setCur(c=>c&&!c.guest&&!nb.data[c.id]?null:c);setVer(v=>v+1)}},()=>bk.current)},[]);
- const open=id=>setCur({id});
- const addAcc=(name,emoji,d)=>{const id=uid();bk.current.list=[...bk.current.list,{id,name:(name||'').trim()||'New account',emoji}];bk.current.data[id]=d;return id};
+ useEffect(()=>{if(!CLOUD)return;const all=()=>bk.current.list.forEach(a=>a.cloud&&sync(a.id));all();window.addEventListener('online',all);return()=>window.removeEventListener('online',all)},[]);
+ const ca=cur&&!cur.guest?acc(cur.id):null,ck=ca&&ca.cloud?ca.cloud.k:null,cid=cur&&cur.id;
+ useEffect(()=>{if(!CLOUD||!ck)return;const id=cid;let es=null,dt=null;
+  const kick=()=>{clearTimeout(dt);dt=setTimeout(()=>sync(id),250)};
+  try{es=new EventSource(curl(ck));es.addEventListener('put',kick);es.addEventListener('patch',kick);es.onerror=()=>{if(!navigator.onLine)setStat('offline')}}catch(e){}
+  const vis=()=>{if(!document.hidden)sync(id)},off=()=>setStat('offline'),on=()=>sync(id),poll=setInterval(vis,30000);
+  window.addEventListener('online',on);window.addEventListener('offline',off);document.addEventListener('visibilitychange',vis);sync(id);
+  return()=>{es&&es.close();clearInterval(poll);clearTimeout(dt);window.removeEventListener('online',on);window.removeEventListener('offline',off);document.removeEventListener('visibilitychange',vis)}},[cid,ck]);
+ const open=id=>{setStat(navigator.onLine?'synced':'offline');setCur({id})};
+ const addAcc=(name,emoji,d,extra)=>{const id=uid();bk.current.list=[...bk.current.list,{id,name:(name||'').trim()||'New account',emoji,...(extra||{})}];bk.current.data[id]=d;return id};
  const create=(name,emoji,pre)=>{const id=addAcc(name,emoji,blank(pre));save();open(id)};
  const guest=()=>{gd.current=blank(false);setCur({guest:true})};
  const keep=name=>{const id=addAcc(name,'🎓',gd.current);save();open(id)};
- const rename=(id,p)=>{bk.current.list=bk.current.list.map(a=>a.id===id?{...a,...p}:a);save()};
+ const rename=(id,p)=>{bk.current.list=bk.current.list.map(a=>a.id===id?{...a,...p}:a);const a=acc(id);if(a&&a.cloud){a.sy={...(a.sy||{}),t:Date.now(),dirty:true};later(id)}save()};
  const del=id=>{bk.current.list=bk.current.list.filter(a=>a.id!==id);delete bk.current.data[id];save()};
  const imp=(name,d)=>{addAcc(name,'📥',d);save()};
- if(!cur)return <Start book={bk.current} onOpen={open} onGuest={guest} onCreate={create} onRename={rename} onDelete={del} onImport={imp}/>;
- const a=cur.guest?{name:'Guest',emoji:'👤'}:bk.current.list.find(x=>x.id===cur.id);
+ const enable=async(id,sn,pw)=>{const a=acc(id);if(!a)return'Account not found.';if(!sn.trim()||pw.length<6)return'Enter a sync name and a passcode of at least 6 characters.';if(!navigator.onLine)return'You need an internet connection to turn on sync.';try{const k=await ckey(sn,pw),ex=await cget(k);if(validDoc(ex))return'A cloud account with that name and passcode already exists. Use “Sign in to a cloud account”, or choose a different passcode.';const t=Date.now();await cput(k,{t,d:JSON.stringify(bk.current.data[id]),n:a.name,e:a.emoji});a.cloud={k,sn:sn.trim()};a.sy={t,base:t,dirty:false};save();return'ok'}catch(e){return'Could not reach the cloud database. Check config.js, your database rules and your internet.'}};
+ const signIn=async(sn,pw)=>{if(!sn.trim()||pw.length<6)return'Enter your sync name and passcode (6+ characters).';if(!navigator.onLine)return'You need an internet connection to sign in.';try{const k=await ckey(sn,pw),r=await cget(k);if(!validDoc(r))return'No cloud account found with that name and passcode. Check the spelling, or turn on sync on your main device first.';let d;try{d=JSON.parse(r.d)}catch(e){d=null}if(!okState(d))return'That cloud account has unreadable data.';const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex)return'ok:'+ex.id;const id=addAcc(r.n||sn,r.e||'☁',d,{cloud:{k,sn:sn.trim()},sy:{t:r.t,base:r.t,dirty:false}});save();return'ok:'+id}catch(e){return'Could not reach the cloud database. Check config.js and your internet.'}};
+ const disable=id=>{const a=acc(id);if(a){delete a.cloud;delete a.sy;delete a.loser;save()}};
+ const leave=()=>{const id=cur&&cur.id,a=id&&acc(id);if(a&&a.cloud){clearTimeout(tm.current[id]);if(a.sy&&a.sy.dirty&&navigator.onLine)push(id)}setCur(null)};
+ if(!cur)return <Start book={bk.current} onOpen={open} onGuest={guest} onCreate={create} onRename={rename} onDelete={del} onImport={imp} onEnable={enable} onDisable={disable} onSignIn={signIn}/>;
+ const a=cur.guest?{name:'Guest',emoji:'👤'}:acc(cur.id);
  if(!a){setTimeout(()=>setCur(null),0);return null}
- return <App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={n=>{if(cur.guest)gd.current=n;else{bk.current.data[cur.id]=n;saveBook(bk.current)}}} onSwitch={()=>setCur(null)} onKeep={keep}/>;
+ const lbl=stat==='synced'?'☁ Synced':stat==='syncing'?'☁ Syncing…':stat==='offline'?'📴 Offline · saved here':'⚠ Sync error · tap to retry';
+ const cl=a.cloud?{on:true,label:lbl,sync:()=>sync(cur.id)}:{on:false,label:cur.guest?'👤 Not saved':'💾 This device only',sync:()=>{}};
+ const onSave=n=>{if(cur.guest){gd.current=n;return}const x=acc(cur.id);bk.current.data[cur.id]=n;if(x&&x.cloud){x.sy={...(x.sy||{}),t:Date.now(),dirty:true};setStat(navigator.onLine?'syncing':'offline');later(cur.id)}saveBook(bk.current)};
+ return <App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}}/>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
