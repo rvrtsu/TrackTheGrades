@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="sun">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Grades Tracker and Forecaster</title>
-<meta name="theme-color" content="#7c3aed">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="description" content="Track grades, forecast finals and plan your GWA.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -13,17 +13,56 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Grades">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>
+// apply the saved theme before the first paint (no flash)
+try{var t=localStorage.getItem('gtf-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
+</script>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+// Tailwind colours point at the CSS theme tokens below, so every theme restyles the whole app
+window.tailwind&&(tailwind.config={theme:{extend:{colors:{
+  bg:'rgb(var(--bg)/<alpha-value>)',surface:'rgb(var(--surface)/<alpha-value>)',surface2:'rgb(var(--surface2)/<alpha-value>)',
+  ink:'rgb(var(--ink)/<alpha-value>)',muted:'rgb(var(--muted)/<alpha-value>)',line:'rgb(var(--line)/<alpha-value>)',
+  accent:'rgb(var(--accent)/<alpha-value>)','accent-ink':'rgb(var(--accent-ink)/<alpha-value>)','accent-text':'rgb(var(--accent-text)/<alpha-value>)',
+  good:'rgb(var(--good)/<alpha-value>)',bad:'rgb(var(--bad)/<alpha-value>)',sa:'rgb(var(--sa)/<alpha-value>)'}}}});
+</script>
 <style>
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light dark}
-html{scroll-padding-top:env(safe-area-inset-top,0px);min-height:100%}
-body{margin:0;min-height:100vh;font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:#1e1b3a;overflow-x:hidden;
- background:radial-gradient(60rem 40rem at 0% 0%,#e9ddff 0,transparent 60%),radial-gradient(50rem 40rem at 100% 10%,#cdf3ff 0,transparent 60%),radial-gradient(50rem 40rem at 50% 100%,#ffe7d1 0,transparent 60%),#f7f5ff;background-attachment:fixed}
-@media (prefers-color-scheme:dark){body{color:#ece9ff;background:radial-gradient(60rem 40rem at 0% 0%,#2a1b5c 0,transparent 60%),radial-gradient(50rem 40rem at 100% 10%,#0e3a4d 0,transparent 60%),#0f0c1f;background-attachment:fixed}}
+/* ---------- theme tokens (R G B triplets) ---------- */
+:root,[data-theme=sun]{--bg:255 255 255;--surface:255 255 255;--surface2:248 247 241;--ink:28 27 24;--muted:118 114 104;--line:233 230 218;--accent:250 204 21;--accent-ink:42 34 4;--accent-text:161 98 7;--good:22 150 74;--bad:220 38 38;--glow:.2;color-scheme:light}
+[data-theme=dark]{--bg:14 14 17;--surface:28 28 33;--surface2:40 40 47;--ink:246 246 248;--muted:152 152 165;--line:56 56 66;--accent:251 191 36;--accent-ink:30 22 2;--accent-text:252 211 77;--good:74 222 128;--bad:248 113 113;--glow:.12;color-scheme:dark}
+[data-theme=mono]{--bg:250 250 250;--surface:255 255 255;--surface2:242 242 242;--ink:17 17 17;--muted:115 115 115;--line:226 226 226;--accent:17 17 17;--accent-ink:255 255 255;--accent-text:17 17 17;--good:17 17 17;--bad:120 120 120;--glow:.05;color-scheme:light}
+[data-theme=lav]{--bg:247 245 255;--surface:255 255 255;--surface2:240 236 255;--ink:30 27 58;--muted:112 106 148;--line:226 220 248;--accent:124 58 237;--accent-ink:255 255 255;--accent-text:109 40 217;--good:5 150 105;--bad:225 29 72;--glow:.16;color-scheme:light}
+/* per-subject accent (themes can override) */
+.sa-0{--sa:245 158 11}.sa-1{--sa:16 185 129}.sa-2{--sa:99 102 241}.sa-3{--sa:244 63 94}.sa-4{--sa:14 165 233}.sa-5{--sa:168 85 247}
+[data-theme=mono] .sa-0,[data-theme=mono] .sa-1,[data-theme=mono] .sa-2,[data-theme=mono] .sa-3,[data-theme=mono] .sa-4,[data-theme=mono] .sa-5{--sa:60 60 60}
+/* ---------- base ---------- */
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 4.5rem);min-height:100%;-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:rgb(var(--ink));background:rgb(var(--bg));overflow-x:hidden;-webkit-font-smoothing:antialiased;transition:background-color .45s ease,color .3s ease}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(42rem 28rem at 6% -6%,rgb(var(--accent)/var(--glow)),transparent 62%),radial-gradient(36rem 26rem at 100% 2%,rgb(var(--accent)/calc(var(--glow)*.55)),transparent 62%)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:rgb(var(--bg)/.85);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);z-index:40}
+button,input,select{font-family:inherit}
+input[type=range]{accent-color:rgb(var(--accent));height:1.75rem}
+select{color-scheme:inherit}select option{background:rgb(var(--surface));color:rgb(var(--ink))}
 .tot{border-bottom:4px double currentColor}
 input{font-variant-numeric:tabular-nums}
-input[type=range]{accent-color:#7c3aed;height:1.75rem}
+/* ---------- motion ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes sheet{from{opacity:0;transform:translateY(32px) scale(.97)}to{opacity:1;transform:none}}
+.anim-rise{animation:rise .55s cubic-bezier(.2,.8,.2,1) backwards}
+.anim-fade{animation:fade .3s ease both}
+.anim-sheet{animation:sheet .45s cubic-bezier(.2,.8,.2,1) backwards}
+.lift{transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .3s,background-color .3s}
+.lift:hover{transform:translateY(-4px)}
+.lift:active{transform:translateY(-1px) scale(.99)}
+.stagger>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) backwards}
+.stagger>*:nth-child(2){animation-delay:.05s}.stagger>*:nth-child(3){animation-delay:.1s}.stagger>*:nth-child(4){animation-delay:.15s}.stagger>*:nth-child(5){animation-delay:.2s}.stagger>*:nth-child(6){animation-delay:.25s}.stagger>*:nth-child(n+7){animation-delay:.3s}
+.acc{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .4s cubic-bezier(.2,.8,.2,1),opacity .3s ease}
+.acc.open{grid-template-rows:1fr;opacity:1}
+.acc>div{overflow:hidden;min-height:0}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
