@@ -1,21 +1,18 @@
-# Grades Tracker and Forecaster (PWA with cloud sync)
+# Grades Tracker and Forecaster (PWA)
 
-## What's new in this version
-- **Back to Home:** a button that stays at the top of every profile.
-- **One subject at a time:** the Tracker shows a single subject card. Swipe left or right (or use the tab bar, the arrows, or your keyboard's arrow keys) to change subject. Right below it sits the **Manual Automatic Calculator**, a scratchpad that never changes or syncs your saved data.
-- **Dynamic grading:** set your own period weights (40 / 60, 50 / 50, or add more periods) in **⚙ Settings → Grading periods**. Every period has its own activities. Use **＋ Add Extra Activity** for participation, recitation, projects and so on, and give each a weight.
-- **Base:** each period has a default Base, and any subject can override it. Transmuted grade = (Raw ÷ 100) × (100 − Base) + Base. The Forecaster runs the same formula backwards to tell you the score you need.
-- **Summary:** text-only **Current Prelims GWA**, **Final / Projected GWA** and your **Dean's List target**, plus **Share / export as image** and a **Last synced** time.
-- **Also included:** profile photos and groups, four themes, accordions in the Forecaster, a highest-grade setting (1.0, 4.0 or 100) with an editable grade table.
-- **Your old data is upgraded automatically** the first time the new version opens. Update all your devices to this version so they speak the same format.
+Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
+
+## What's new
+- **Groups first.** The home screen shows only **group cards** (each with an icon or picture). Tap a group to see its **account cards** (picture, name, bio). **＋ Create New Group** is on the home screen. Inside a group, **＋ New Account** creates a **cloud** account; a local-only account is the small secondary link beneath it.
+- **Auto-fetch.** Every time you open the app (and when you return to the home screen) it pulls your cloud groups and accounts.
+- **One subject card at a time**, with the subject tab bar inside the card header. Swipe the card left or right. The **Manual Automatic Calculator** sits below it and never resets when you change subject.
+- **Reverse calculator** (per period): enter the released Prelims or Finals grade and the blank scores are worked out through your Base. They are labelled **Possible score**.
+- **Tiger logo** and new home-screen icons.
 
 ## Part 1: Create the free database (about 5 minutes)
-
-1. Go to **console.firebase.google.com** and sign in with a Google account.
-2. Click **Create a project**, name it (e.g. `grades-sync`), turn **Google Analytics off**, and click **Create project**.
-3. In the left menu choose **Build → Realtime Database → Create Database**.
-4. Pick a location (**Singapore** is closest to the Philippines), then choose **Start in locked mode** and click **Enable**.
-5. Open the **Rules** tab, delete everything there, paste this, and click **Publish**:
+1. Go to **console.firebase.google.com**, click **Create a project**, turn Google Analytics off.
+2. **Build → Realtime Database → Create Database** (pick **Singapore**), start in **locked mode**.
+3. Open the **Rules** tab, replace everything with this, and click **Publish** (**the `groups` part is new**, add it even if you already have the `sync` rules):
 
 ```json
 {
@@ -31,62 +28,77 @@
         "d": { ".validate": "newData.isString() && newData.val().length < 900000" },
         "$other": { ".validate": true }
       }
+    },
+    "groups": {
+      "$key": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$key.length == 64"
+      }
     }
   }
 }
 ```
 
-6. Open the **Data** tab. At the top you will see your database URL, like
-   `https://grades-sync-default-rtdb.asia-southeast1.firebasedatabase.app`. Copy it.
-
-You do not need an API key for this app. The URL is the only thing to copy.
+4. On the **Data** tab copy the database URL (like `https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app`).
 
 ## Part 2: Put the URL in the project
+Open `config.js`, replace the placeholder URL (keep the quotes), then upload **every file in this folder** to your GitHub repository (replace the old ones, keep `icons` and `src`). Wait about a minute, then open the app twice on each device so the new version loads.
 
-1. Open `config.js` in the project (on GitHub: click the file, then the pencil icon).
-2. Replace `https://YOUR-PROJECT-default-rtdb.firebaseio.com` with your URL, keeping the quotes:
+## Part 3: Use groups and accounts
+- **Create a group:** home screen → **＋ Create New Group** → name, icon or picture, and a **group passcode** (keep "Sync this group to the cloud" on).
+- **Create an account:** open the group → **＋ New Account (cloud)** → name, bio, picture and an **account passcode**.
+- **Another device:** home screen → **Join an existing group**, enter the group name and passcode. Its accounts appear as 🔒 cards; tap one and enter that account's passcode to unlock it. After that it is on your home screen for good.
+- **Privacy:** a group only lists cards (name, bio, picture, sync name). Account grades stay behind each account's own passcode. Use long passcodes.
 
-```js
-window.GTF_CONFIG = {
-  databaseURL: "https://grades-sync-default-rtdb.asia-southeast1.firebasedatabase.app"
-};
+## Tiger logo and home-screen icon
+Files (already in `icons/`): `tiger.svg` (vector), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` (180), `favicon-32.png`.
+
+**To change or refresh the icon:**
+1. Replace the PNG files in `icons/` with your new artwork using the **same file names and sizes** (192, 512, 512 with ~20% padding for *maskable*, and 180 with no transparency for `apple-touch-icon.png`). To re-export from the SVG: `npx sharp-cli -i icons/tiger.svg -o icons/icon-512.png resize 512` or any editor.
+2. `manifest.json` already points to them, so no edit is needed unless you rename a file. If you do, update the `src` entries in the `icons` array and the matching `<link rel="apple-touch-icon">` / `<link rel="icon">` lines in `index.html`. Colours: `background_color` is `#FFFFFF`, `theme_color` is `#FACC15`.
+3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v6'` to `'gtf-v7'`) so devices download the new icons.
+4. Upload, then on each device **delete the old Home Screen icon and add it again** (iPhone/iPad: Share → Add to Home Screen; Android: Install app). iOS keeps the old icon until you re-add it.
+
+**Inline SVG for the UI** (this is the `TigerLogo` component in `src/app.jsx`; paste this anywhere in HTML and size it with CSS):
+
+```html
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="64 90 384 372"><defs><linearGradient id="tf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD84A"/><stop offset="1" stop-color="#F5B400"/></linearGradient><radialGradient id="bg" cx="30%" cy="12%" r="95%"><stop offset="0" stop-color="#FFF6CC"/><stop offset="1" stop-color="#FFFFFF"/></radialGradient></defs><g>
+  <!-- ears -->
+  <circle cx="148" cy="150" r="46" fill="url(#tf)"/>
+  <circle cx="364" cy="150" r="46" fill="url(#tf)"/>
+  <circle cx="150" cy="154" r="22" fill="#FFF3C4"/>
+  <circle cx="362" cy="154" r="22" fill="#FFF3C4"/>
+  <!-- head -->
+  <path d="M256 126C334 126 398 164 414 232C420 258 420 282 414 304L434 342L398 338C388 366 372 392 344 412C316 432 286 440 256 440C226 440 196 432 168 412C140 392 124 366 114 338L78 342L98 304C92 282 92 258 98 232C114 164 178 126 256 126Z" fill="url(#tf)" stroke="url(#tf)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- forehead stripes -->
+  <path d="M256 146L268 160L262 214L256 224L250 214L244 160Z" fill="#2A2204"/>
+  <path d="M212 158Q226 186 232 216" stroke="#2A2204" stroke-width="13" stroke-linecap="round" fill="none"/>
+  <path d="M300 158Q286 186 280 216" stroke="#2A2204" stroke-width="13" stroke-linecap="round" fill="none"/>
+  <!-- cheek stripes -->
+  <g stroke="#2A2204" stroke-width="13" stroke-linecap="round" fill="none">
+    <path d="M108 250Q142 254 168 274"/><path d="M110 292Q142 294 170 308"/><path d="M132 332Q152 332 176 342"/>
+    <path d="M404 250Q370 254 344 274"/><path d="M402 292Q370 294 342 308"/><path d="M380 332Q360 332 336 342"/>
+  </g>
+  <!-- muzzle -->
+  <path d="M256 316C292 316 324 336 324 368C324 398 292 414 256 414C220 414 188 398 188 368C188 336 220 316 256 316Z" fill="#FFFFFF"/>
+  <!-- eyes -->
+  <path d="M178 244Q212 234 244 264Q208 276 178 244Z" fill="#2A2204"/>
+  <path d="M334 244Q300 234 268 264Q304 276 334 244Z" fill="#2A2204"/>
+  <circle cx="219" cy="254" r="4.5" fill="#FFF3C4"/><circle cx="293" cy="254" r="4.5" fill="#FFF3C4"/>
+  <!-- nose + mouth -->
+  <path d="M236 332H276L256 358Z" fill="#2A2204" stroke="#2A2204" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M256 360V378M256 378Q238 394 220 384M256 378Q274 394 292 384" stroke="#2A2204" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</g>
+</svg>
 ```
 
-3. Upload or commit **every file in this folder** to your GitHub repository, replacing the old ones. Keep the `icons` and `src` folders.
-4. Wait about a minute for GitHub Pages to update.
-5. On each device, open the app, close it completely, and open it again so the new version loads.
+(The mark is an original design inspired by the UST Growling Tigers, not the official university logo.)
 
-## Part 3: Turn on syncing
-
-**On your Mac (the device that already has your grades):**
-1. On the home screen tap **✏️** on your profile, then under **☁ Cloud sync** type a sync name and passcode.
-2. Use a **passcode** of 6+ characters (longer is safer) and tap **Turn on sync**.
-
-**On your iPhone and iPad:**
-1. On the home screen tap **☁ Add cloud profile**.
-2. Enter the same sync name and passcode. Your grades appear and stay in sync.
-
-The chip at the top of the app shows **☁ Synced**, **☁ Syncing…** or **📴 Offline · saved here**.
-
-## How it works
-- Changes upload a moment after you stop typing and appear on your other devices within a couple of seconds.
-- Everything is also saved on the device, so you can view and edit offline. Offline edits upload when you are back online.
-- If two devices edit while offline, the newest edit wins. The other version is kept and a blue bar offers **Restore the other version**.
-- The sync name and passcode together form a secret address for your data. Nobody can list or browse the database, but anyone who knows both can open your account, so pick a hard-to-guess passcode and keep it private.
-- Free Firebase limits (1 GB storage, 10 GB downloads a month) are far more than this app needs.
-- Deleting an account on a device only removes that device's copy. The cloud copy stays until you delete it in the Firebase console (Data tab).
-
-## Install on your devices
-- **iPhone/iPad (Safari):** Share → **Add to Home Screen**.
-- **Android (Chrome):** ⋮ menu → **Install app**.
-- **Mac:** Safari File → **Add to Dock**, or the install icon in Chrome.
-
-## Backups
-**⚙ Manage → Export data** downloads a JSON backup of the account you are in. **Import** restores it, or use **Import a backup as a new account** on the start screen.
-
-## Updating the app yourself
-1. Edit `src/app.jsx`, then run
-   `npm install esbuild react react-dom`
+## Update the app yourself
+1. Edit `src/app.jsx`, then run `npm install esbuild react react-dom` and
    `npx esbuild src/app.jsx --bundle --minify --loader:.jsx=jsx --define:process.env.NODE_ENV='"production"' --target=es2018 --outfile=app.js`
-2. In `sw.js` change `const CACHE = 'gtf-v5'` to `'gtf-v6'` (and so on).
-3. Upload the changed files.
+2. Raise the `CACHE` number in `sw.js`, upload the changed files.
+
+## Install
+iPhone/iPad (Safari): Share → **Add to Home Screen**. Android (Chrome): menu → **Install app**. Mac: Safari File → **Add to Dock**.
