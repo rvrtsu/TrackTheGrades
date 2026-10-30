@@ -19,7 +19,7 @@ const PRESETS={
   table:[[93,4],[90,3.7],[87,3.3],[83,3],[80,2.7],[77,2.3],[73,2],[70,1.7],[67,1.3],[65,1],[60,0.7]]},
  pct:{label:'100 is highest',sub:'Percentage · 0 to 100 · higher is better',hi:100,dir:1,target:'90',pass:75,fail:0,table:null}};
 const DEFP=()=>[{id:'p1',name:'Prelims',w:'40',base:'0'},{id:'p2',name:'Finals',w:'60',base:'0'}];
-const normP=l=>(Array.isArray(l)&&l.length?l:DEFP()).map((p,i)=>({id:p.id||('p'+(i+1)),name:String(p.name||'').trim()||('Period '+(i+1)),w:Math.max(0,+p.w)||0,base:Math.min(99,Math.max(0,+p.base||0))}));
+const normP=l=>(Array.isArray(l)&&l.length?l:DEFP()).map((p,i)=>({id:p.id||('p'+(i+1)),name:String(p.name||'').trim()||('Period '+(i+1)),w:Math.max(0,+p.w)||0}));
 let CUR=null; // the scale + grading periods of the profile that is currently on screen
 const mkScale=cfg=>{
  cfg=cfg||{};const id=PRESETS[cfg.scale]?cfg.scale:'ph',P=PRESETS[id];
@@ -30,8 +30,8 @@ const mkScale=cfg=>{
  const meets=g=>g!=null&&Number.isFinite(g)&&(dir<0?g<=target+1e-9:g>=target-1e-9);
  const pg=toG(pass),bad=g=>g!=null&&Number.isFinite(g)&&(dir<0?g>pg+1e-9:g<pg-1e-9);
  let need;if(!table)need=target;else{const r=table.filter(x=>meets(x[1]));need=r.length?Math.min(...r.map(x=>x[0])):101}
- const periods=normP(cfg.periods),sumW=periods.reduce((a,p)=>a+p.w,0)||1;
- return{id,P,table,target,pass,dir,fail,hi:P.hi,toG,meets,bad,need,periods,sumW}};
+ const periods=normP(cfg.periods),sumW=periods.reduce((a,p)=>a+p.w,0)||1,base=Math.min(99,Math.max(0,num(cfg.base,0)));
+ return{id,P,table,target,pass,dir,fail,hi:P.hi,toG,meets,bad,need,periods,sumW,base}};
 CUR=mkScale(null);
 const eqv=g=>CUR.toG(g);
 const tone=g=>g==null?'':CUR.meets(g)?'text-good':CUR.bad(g)?'text-bad':'';
@@ -47,14 +47,18 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 // Activities are fully dynamic: every period has its own list of {name, weight, score, max}
 const newActs=(p,i)=>[{id:uid(),name:'Quiz '+(2*i+1),w:'20',s:'',m:''},{id:uid(),name:'Quiz '+(2*i+2),w:'20',s:'',m:''},{id:uid(),name:p.name+' Exam',w:'50',s:'',m:''},{id:uid(),name:'Participation',w:'10',s:'',m:''}];
 const mkActs=P=>{const o={};P.forEach((p,i)=>{o[p.id]=newActs(p,i)});return o};
-const mk=(code,name,units,e,P)=>({id:uid(),code,name,units:String(units),e,acts:mkActs(P||DEFP()),base:{},wi:{}});
+const mk=(code,name,units,e,P)=>({id:uid(),code,name,units:String(units),e,acts:mkActs(P||DEFP()),wi:{}});
 const seed=(P)=>{P=P||DEFP();const y=uid(),s=uid();return{y,s,tg:{},cfg:{scale:'ph',periods:P},years:[{id:y,name:'2nd Year (AY 2026–2027)',sems:[{id:s,name:'1st Semester',subs:[
  mk('STRATCOST','Strategic Cost Management',3,'📊',P),mk('FINMAN','Financial Management',3,'💰',P),mk('INTACC','Intermediate Accounting',3,'🧾',P),mk('OBLICON','Obligations and Contracts',3,'⚖️',P),mk('ITAPP','IT Applications',3,'💻',P)]}]}]}};
 const blank=(pre,P)=>{if(pre)return seed(P);P=P||DEFP();const y=uid(),s=uid();return{y,s,tg:{},cfg:{scale:'ph',periods:P},years:[{id:y,name:'1st Year',sems:[{id:s,name:'1st Semester',subs:[]}]}]}};
 // ---- upgrade data saved by older versions (fixed quizzes/exams) to the dynamic model ----
 const LEG=[['p1',[['q1','Quiz 1',20],['q2','Quiz 2',20],['pe','Prelims Exam',50],['pp','Participation',10]]],['p2',[['q3','Quiz 3',20],['q4','Quiz 4',20],['fe','Finals Exam',50],['fp','Participation',10]]]];
-const migSub=s=>{if(!s||s.acts)return s;const acts={};LEG.forEach(([pid,l])=>{acts[pid]=l.map(([k,name,w])=>({id:k,name,w:String(w),s:(s.sc&&s.sc[k]&&s.sc[k].s)||'',m:(s.sc&&s.sc[k]&&s.sc[k].m)||''}))});const base={};if(s.cv&&+s.cv.b)base.p2=String(s.cv.b);const n={...s,acts,base};delete n.sc;delete n.cv;return n};
-const mig=d=>{if(!d||!Array.isArray(d.years))return d;const cfg=d.cfg||{};return{...d,cfg:{...cfg,periods:Array.isArray(cfg.periods)&&cfg.periods.length?cfg.periods:DEFP()},years:d.years.map(y=>({...y,sems:(y.sems||[]).map(x=>({...x,subs:(x.subs||[]).map(migSub)}))}))}};
+const migSub=s=>{if(!s)return s;let n=s;
+ if(!n.acts){const acts={};LEG.forEach(([pid,l])=>{acts[pid]=l.map(([k,name,w])=>({id:k,name,w:String(w),s:(s.sc&&s.sc[k]&&s.sc[k].s)||'',m:(s.sc&&s.sc[k]&&s.sc[k].m)||''}))});const base={};if(s.cv&&+s.cv.b)base.p2=String(s.cv.b);n={...s,acts,base};delete n.sc;delete n.cv}
+ if(n.base&&typeof n.base==='object'){const v=Object.values(n.base).filter(x=>x!==''&&x!=null),m={...n};if(v.length&&m.sbase===undefined)m.sbase=String(v[v.length-1]);delete m.base;n=m}
+ return n};
+const mig=d=>{if(!d||!Array.isArray(d.years))return d;const cfg=d.cfg||{},per=Array.isArray(cfg.periods)&&cfg.periods.length?cfg.periods:DEFP(),lb=per[per.length-1]&&per[per.length-1].base;
+ return{...d,cfg:{...cfg,periods:per,base:cfg.base!==undefined?cfg.base:String(+lb||0)},years:d.years.map(y=>({...y,sems:(y.sems||[]).map(x=>({...x,subs:(x.subs||[]).map(migSub)}))}))}};
 const BK='gtf-book',EMO=['🎓','😎','🦊','🐼','🌸','⚡','🔥','🌈'],GEMO=['📁','🎓','🏫','📚','⭐','🐯','🌸','🔥'];
 const okState=d=>d&&Array.isArray(d.years)&&d.years.length&&d.years.every(y=>y&&Array.isArray(y.sems)&&y.sems.length);
 const defGroup=()=>({id:'g'+uid(),name:'General',icon:'📁'});
@@ -91,50 +95,53 @@ const premove=async k=>{const r=await fetch(curl(k),{method:'DELETE'});if(!r.ok)
 
 /* =====================================================================
    4. GRADE MATH
-   Raw grade   = weighted average of the activities in a period (0 to 100)
-   Transmuted  = (Raw / 100) * (100 - Base) + Base          <- exact formula
-   Needed raw  = (Target - Base) / (100 - Base) * 100        <- its inverse
+   Period grade     = weighted average of the activities (raw, 0 to 100)
+   Semestral raw    = weighted average of the period grades (weights can differ per subject)
+   Semestral grade  = (Raw / 100) * (100 - Base) + Base        <- the curve is applied HERE
+   Needed raw       = (Target - Base) / (100 - Base) * 100      <- its inverse, used by the Forecaster
    ===================================================================== */
 const ap=a=>{if(!a||a.s===''||a.s==null)return null;const m=a.m===''||a.m==null?100:+a.m;return m>0?+a.s/m*100:null};
 const wgt=a=>Math.max(0,+a.w)||0;
 const trans=(R,B)=>Math.min(100,(R/100)*(100-B)+B);
 const untrans=(T,B)=>(T-B)/(100-B)*100;
 const actsOf=(s,p)=>(s.acts&&s.acts[p.id])||[];
-const baseOf=(s,p)=>{const o=s.base&&s.base[p.id],v=o===undefined||o===''||!Number.isFinite(+o)?p.base:+o;return Math.min(99,Math.max(0,v))};
+const sbaseOf=s=>{const o=s.sbase,v=o===undefined||o===null||o===''||!Number.isFinite(+o)?CUR.base:+o;return Math.min(99,Math.max(0,v))};
+const wts=(s,P)=>P.map(p=>{const o=s.pw&&s.pw[p.id],v=o===undefined||o===null||o===''||!Number.isFinite(+o)?p.w:+o;return Math.max(0,v)});
 const wiv=(s,a)=>s.wi&&s.wi[a.id]!==undefined?s.wi[a.id]:'85';
 const mxs=a=>+a.m||100;
-// one grading period of one subject, using only what has been entered
-const pcalc=(s,p)=>{const acts=actsOf(s,p),live=acts.filter(a=>wgt(a)>0),B=baseOf(s,p);let W=0,K=0,Wk=0,n=0;
+// one grading period of one subject (raw), using only what has been entered
+const pcalc=(s,p)=>{const acts=actsOf(s,p),live=acts.filter(a=>wgt(a)>0);let W=0,K=0,Wk=0,n=0;
  live.forEach(a=>{const w=wgt(a),x=ap(a);W+=w;if(x!=null){K+=w*x;Wk+=w;n++}});
  const total=live.length,complete=total>0&&n===total,raw=complete&&W>0?K/W:null,soFar=Wk>0?K/Wk:null;
- return{acts,live,B,W,K,n,total,complete,raw,soFar,grade:raw==null?null:trans(raw,B),gradeSoFar:soFar==null?null:trans(soFar,B)}};
-// forecast for one period: entered scores stay fixed, missing ones use the what-if sliders.
-// T is the wanted period grade (after the base); the solver works backwards through the Base formula.
-const pproj=(s,p,T)=>{const c=pcalc(s,p),B=c.B,wi=a=>+wiv(s,a)||0,miss=c.live.filter(a=>ap(a)==null);
- const Wm=miss.reduce((t,a)=>t+wgt(a),0),Rneed=untrans(T,B),pts=Rneed*c.W-c.K;
- const uni=Wm>0?pts/Wm:null;
+ return{acts,live,W,K,n,total,complete,raw,soFar,grade:raw,gradeSoFar:soFar}};
+// forecast for one period. T is the wanted RAW period grade; entered scores stay fixed, missing ones use the what-if sliders.
+const pproj=(s,p,T)=>{const c=pcalc(s,p),wi=a=>+wiv(s,a)||0,miss=c.live.filter(a=>ap(a)==null);
+ const Wm=miss.reduce((t,a)=>t+wgt(a),0),pts=T*c.W-c.K,uni=Wm>0?pts/Wm:null;
  const alone=miss.map(a=>{const o=miss.reduce((t,x)=>x===a?t:t+wgt(x)*wi(x),0);return[a.id,(pts-o)/wgt(a)]});
  let Kp=c.K;miss.forEach(a=>{Kp+=wgt(a)*wi(a)});const Rp=c.W>0?Kp/c.W:null;
- return{...c,miss,Wm,uni,alone,Rneed,projRaw:Rp,proj:Rp==null?null:trans(Rp,B)}};
-const wavg=(vals,P)=>{let t=0,w=0;vals.forEach((v,i)=>{if(v!=null){t+=P[i].w*v;w+=P[i].w}});return w>0?t/w:null};
-// semestral grade once every period is complete
-const semActual=(s,P)=>{const cc=P.map(p=>pcalc(s,p)),act=cc.filter(c=>c.total>0);if(!act.length||act.some(c=>!c.complete))return null;return wavg(cc.map(c=>c.total>0?c.grade:null),P)};
-// semestral grade using real scores plus what-if values for anything still missing
-const semProj=(s,P)=>wavg(P.map(p=>pproj(s,p,0).proj),P);
-// grade needed in period i so the semestral grade lands on S, given the other periods' projections
-const needIn=(prj,P,i,S)=>{let o=0,Wt=P[i].w;prj.forEach((x,j)=>{if(j!==i&&x!=null){o+=P[j].w*x;Wt+=P[j].w}});return P[i].w>0?(S*Wt-o)/P[i].w:null};
+ return{...c,miss,Wm,uni,alone,Rneed:T,proj:Rp}};
+const wavg=(vals,W)=>{let t=0,w=0;vals.forEach((v,i)=>{if(v!=null){t+=W[i]*v;w+=W[i]}});return w>0?t/w:null};
+// semestral grade from real scores only (needs every period complete); the Base is applied here
+const semCalc=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),cc=P.map(p=>pcalc(s,p)),act=cc.filter(c=>c.total>0),done=act.length>0&&act.every(c=>c.complete),raw=done?wavg(cc.map(c=>c.total>0?c.raw:null),W):null;
+ return{W,B,cc,done,raw,grade:raw==null?null:trans(raw,B)}};
+const semActual=(s,P)=>semCalc(s,P).grade;
+// semestral grade using real scores plus what-if values for anything missing
+const semProjC=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),pr=P.map(p=>pproj(s,p,0)),raw=wavg(pr.map(x=>x.proj),W);return{W,B,pr,raw,grade:raw==null?null:trans(raw,B)}};
+// raw grade needed in period i so the RAW semestral grade lands on Rs, given the other periods' projections
+const needIn=(prj,W,i,Rs)=>{let o=0,Wt=W[i];prj.forEach((x,j)=>{if(j!==i&&x!=null){o+=W[j]*x;Wt+=W[j]}});return W[i]>0?(Rs*Wt-o)/W[i]:null};
 const gwa=a=>{let u=0,t=0;a.forEach(([e,n])=>{if(e!=null&&+n>0){u+=+n;t+=e*n}});return u?t/u:null};
-// gen eds: first period grade is known, the remaining periods use the expected grade
+// gen eds: the first period grade is known, the remaining periods use the expected grade (entered as released, no Base)
 const gproj=(g,P)=>{const pre=+g.pre||0,fin=+g.fin||0,W=P.reduce((a,p)=>a+p.w,0)||1,rest=W-P[0].w,sem=P.length>1?(P[0].w*pre+rest*fin)/W:pre;return{pre,fin,sem,eq:eqv(sem)}};
 const needGen=(g,P,S)=>{const W=P.reduce((a,p)=>a+p.w,0)||1,rest=W-P[0].w;return P.length>1&&rest>0?(S*W-P[0].w*(+g.pre||0))/rest:null};
-// Reverse calculator: the released (transmuted) period grade is known, some scores are not.
-// Raw needed = (T - Base) / (100 - Base) * 100, then the missing activities share the points they must have earned.
-const rvPlan=(s,p,Tstr)=>{const T=+Tstr;if(Tstr===''||Tstr==null||!Number.isFinite(T))return{ok:false,msg:'Enter the released grade first.'};
- const c=pcalc(s,p),B=c.B;if(!c.live.length)return{ok:false,msg:'Add at least one activity with a weight first.'};
+// Reverse calculator: a released period grade is known, some scores are not.
+// mode 'r': the grade is a raw period grade. mode 'b': it already includes the Base, so raw = (T - Base) / (100 - Base) * 100.
+const rvPlan=(s,p,Tstr,mode)=>{const T=+Tstr;if(Tstr===''||Tstr==null||!Number.isFinite(T))return{ok:false,msg:'Enter the released grade first.'};
+ const c=pcalc(s,p),B=sbaseOf(s);if(!c.live.length)return{ok:false,msg:'Add at least one activity with a weight first.'};
  const miss=c.live.filter(a=>ap(a)==null);if(!miss.length)return{ok:false,msg:'Every activity already has a score.'};
  if(T>100)return{ok:false,msg:'A grade above 100 is not possible.'};
- if(T<B-1e-9)return{ok:false,msg:'With Base '+f2(B)+' the lowest possible grade is '+f2(B)+'.'};
- const R=untrans(T,B),Wm=miss.reduce((t,a)=>t+wgt(a),0),x=(R*c.W-c.K)/Wm;
+ if(mode==='b'&&T<B-1e-9)return{ok:false,msg:'With Base '+f2(B)+' the lowest possible grade is '+f2(B)+'.'};
+ if(T<0)return{ok:false,msg:'A grade below 0 is not possible.'};
+ const R=mode==='b'?untrans(T,B):T,Wm=miss.reduce((t,a)=>t+wgt(a),0),x=(R*c.W-c.K)/Wm;
  if(x>100+1e-9)return{ok:false,msg:'Not possible: the missing scores would need '+f2(x)+'%, which is above 100%.'};
  if(x<-1e-9)return{ok:false,msg:'Not possible: the scores you entered already give a higher grade than '+f2(T)+'.'};
  return{ok:true,x:Math.max(0,x),miss,R,B}};
@@ -246,7 +253,7 @@ const Calc=React.memo(CalcBase);
    7. APP  (one profile: Tracker, Forecaster, Settings)
    ===================================================================== */
 function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,theme,setTheme}){
- const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('t'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[,setNow]=useState(0);
+ const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('t'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0);
  const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false});
  const commit=n=>{ref.current=n;setSt(n);onSave(n)};
  useEffect(()=>{if(ext&&ext.data&&ext.n!==e0.current){e0.current=ext.n;const d=mig(ext.data);ref.current=d;setSt(d);past.current=[];fut.current=[];last.current={k:'',t:0}}},[ext&&ext.n]);
@@ -263,10 +270,13 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const setAct=(id,p,aid,f,v)=>updSub(id,s=>({...s,acts:{...s.acts,[p]:actsOf(s,{id:p}).map(a=>a.id===aid?{...a,[f]:v,...(f==='s'||f==='m'?{est:false}:{})}:a)}}),'a'+aid+f);
  const addAct=(id,p)=>updSub(id,s=>{const l=actsOf(s,{id:p});return{...s,acts:{...s.acts,[p]:[...l,{id:uid(),name:'Activity '+(l.length+1),w:'10',s:'',m:''}]}}});
  const delAct=(id,p,aid)=>updSub(id,s=>({...s,acts:{...s.acts,[p]:actsOf(s,{id:p}).filter(a=>a.id!==aid)}}));
- const setBase=(id,p,v)=>updSub(id,s=>({...s,base:{...(s.base||{}),[p]:v}}),'b'+p);
+ const setSBase=(id,v)=>updSub(id,s=>({...s,sbase:v}),'sb');
+ const setPW=(id,i,v)=>updSub(id,s=>{const pw={...(s.pw||{})};pw[P[i].id]=v;if(P.length===2){pw[P[1-i].id]=v!==''&&Number.isFinite(+v)?String(+(100-Math.min(100,Math.max(0,+v))).toFixed(2)):''}return{...s,pw}},'pw'+i);
+ const setPWs=(id,arr)=>updSub(id,s=>({...s,pw:Object.fromEntries(P.map((p,i)=>[p.id,String(arr[i])]))}));
+ const resetPW=id=>updSub(id,s=>{const n={...s};delete n.pw;return n});
  const setWi=(id,aid,v)=>updSub(id,s=>({...s,wi:{...(s.wi||{}),[aid]:v}}),'w'+aid);
  const setRel=(id,p,v)=>updSub(id,s=>({...s,rel:{...(s.rel||{}),[p]:v}}),'rel'+p);
- const rvFill=(s,p)=>{const k=s.id+p.id,plan=rvPlan(s,p,(s.rel&&s.rel[p.id])??'');if(!plan.ok){setRvMsg({k,msg:plan.msg,bad:true});return}
+ const rvFill=(s,p)=>{const k=s.id+p.id,plan=rvPlan(s,p,(s.rel&&s.rel[p.id])??'',rvMode[s.id+p.id]||'r');if(!plan.ok){setRvMsg({k,msg:plan.msg,bad:true});return}
   const fill=a=>plan.miss.some(m=>m.id===a.id)?{...a,s:String(+(plan.x/100*mxs(a)).toFixed(2)),est:true}:a;
   updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(fill)}}));
   const ns={...s,acts:{...s.acts,[p.id]:actsOf(s,p).map(fill)}};
@@ -296,19 +306,20 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const importData=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result),d=j&&j.data?j.data:j;if(!okState(d))throw new Error('bad');set(()=>mig(d));setMsg('Backup restored ✓ (Undo brings back your previous data)')}catch(x){setMsg('That file is not a valid backup.')}};r.onerror=()=>setMsg('Could not read that file.');r.readAsText(f)};
 
  /* ---- derived numbers ---- */
- const subs=S.subs,gens=S.gens||[],gps=gens.map(g=>gproj(g,P)),last0=P.length-1;
+ const subs=S.subs,gens=S.gens||[],gps=gens.map(g=>gproj(g,P)),last0=P.length-1,Wg=P.map(p=>p.w);
  const cur=subs.find(s=>s.id===sid)||subs[0],idx=cur?subs.indexOf(cur):-1,pcur=P.find(p=>p.id===pid)||P[0];
  const fsub=sub==='g'||P.some(p=>p.id===sub)?sub:P[0].id;
- const rowsS=subs.map(s=>{const pr=P.map(p=>pproj(s,p,0)),pg=pr.map(x=>x.proj),sem=wavg(pg,P);return{s,pr,pg,sem,eq:sem==null?null:eqv(sem),act:semActual(s,P)}});
- const all=[...rowsS.map(r=>({n:r.s.code,e:r.s.e||'📘',u:r.s.units,pg:r.pg,sem:r.sem,eq:r.eq,maj:1,pr:r.pg})),...gens.map((g,i)=>({n:g.name||'Gen Ed',e:'📗',u:g.units,pg:P.map((_,j)=>j===0?gps[i].pre:gps[i].fin),sem:gps[i].sem,eq:gps[i].eq,maj:0,gen:g}))];
+ const rowsS=subs.map(s=>{const sc=semProjC(s,P);return{s,sc,pg:sc.pr.map(x=>x.proj),sem:sc.grade,eq:sc.grade==null?null:eqv(sc.grade),act:semActual(s,P)}});
+ const all=[...rowsS.map(r=>({n:r.s.code,e:r.s.e||'📘',u:r.s.units,pg:r.pg,sem:r.sem,eq:r.eq,maj:1,W:r.sc.W,B:r.sc.B})),...gens.map((g,i)=>({n:g.name||'Gen Ed',e:'📗',u:g.units,pg:P.map((_,j)=>j===0?gps[i].pre:gps[i].fin),sem:gps[i].sem,eq:gps[i].eq,maj:0,gen:g,W:Wg,B:0}))];
  const units=subs.reduce((a,s)=>a+(+s.units||0),0),uAll=units+gens.reduce((a,g)=>a+(+g.units||0),0);
- const preRows=[...subs.filter(s=>pcalc(s,P[0]).complete).map(s=>[eqv(pcalc(s,P[0]).grade),s.units]),...gens.filter(g=>g.pre!==''&&g.pre!=null).map(g=>[eqv(+g.pre),g.units])];
+ const preRows=[...subs.filter(s=>pcalc(s,P[0]).complete).map(s=>[eqv(trans(pcalc(s,P[0]).raw,sbaseOf(s))),s.units]),...gens.filter(g=>g.pre!==''&&g.pre!=null).map(g=>[eqv(+g.pre),g.units])];
  const preG=gwa(preRows),preN=preRows.length,finalG=gwa(all.map(r=>[r.eq,r.u])),finalN=rowsS.filter(r=>r.act!=null).length;
- const wl=(pg,F)=>wavg(pg.map((v,j)=>j===last0&&P.length>1?F:v),P);
- let fstar=null;if(all.length&&P.length>1)for(let i=0;i<=1000;i++){const F=i/10,g=gwa(all.map(r=>[eqv(wl(r.pg,F)),r.u]));if(g!=null&&C.meets(g)&&all.every(r=>wl(r.pg,F)>=C.pass-1e-9)){fstar=F;break}}
- const best=all.length&&P.length>1?gwa(all.map(r=>[eqv(wl(r.pg,100)),r.u])):finalG;
- const Ts=+tg.s||C.pass;
- const tFor=(s,i)=>{if(i===last0){const prj=P.map(p=>pproj(s,p,0).proj);return needIn(prj,P,i,Ts)}return +tg[P[i].id]||C.pass};
+ const rowSem=(r,F)=>{const raw=wavg(r.pg.map((v,j)=>j===last0&&P.length>1?F:v),r.W);return raw==null?null:trans(raw,r.B)};
+ let fstar=null;if(all.length&&P.length>1)for(let i=0;i<=1000;i++){const F=i/10,g=gwa(all.map(r=>[eqv(rowSem(r,F)),r.u]));if(g!=null&&C.meets(g)&&all.every(r=>{const x=rowSem(r,F);return x!=null&&x>=C.pass-1e-9})){fstar=F;break}}
+ const best=all.length&&P.length>1?gwa(all.map(r=>[eqv(rowSem(r,100)),r.u])):finalG;
+ const needFor=(r,Sx)=>r.maj?needIn(r.pg,r.W,last0,untrans(Sx,r.B)):needGen(r.gen,P,Sx);
+ const Ts=+tg.s||C.pass,chip=on=>cx('rounded-full px-3 py-1.5 transition',on?'bg-accent text-accent-ink':'bg-surface2 hover:bg-line/60');
+ const tFor=(s,i)=>{const W=wts(s,P),B=sbaseOf(s);if(i===last0){const prj=P.map(p=>pproj(s,p,0).proj);return needIn(prj,W,i,untrans(Ts,B))}return +tg[P[i].id]||Math.max(0,untrans(C.pass,B))};
 
  /* ---- subject navigation: tab bar inside the card header, arrows, keyboard, swipe ---- */
  const goTo=i=>{if(i<0||i>=subs.length||i===idx)return;setDir(i>idx?1:-1);setSid(subs[i].id);setEdit(false);setRvMsg(null)};
@@ -369,7 +380,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
 
  const Summary=()=>{const ok=C.meets(finalG);return <div className="flex flex-col gap-3 sm:gap-5">
   <div className="grid grid-cols-3 gap-3 px-1 sm:gap-8">
-   <div className="min-w-0"><div className={LBL2}>Current {P[0].name} GWA</div><div className="mt-1 text-3xl font-black tabular-nums tracking-tight sm:text-6xl">{fg(preG)}</div><div className="mt-1 hidden text-sm text-muted sm:block">{preN?`${preN} of ${subs.length+gens.length} have a ${P[0].name.toLowerCase()} grade`:'Complete a '+P[0].name.toLowerCase()+' to see it'}</div></div>
+   <div className="min-w-0"><div className={LBL2}>Current {P[0].name} GWA</div><div className="mt-1 text-3xl font-black tabular-nums tracking-tight sm:text-6xl">{fg(preG)}</div><div className="mt-1 hidden text-sm text-muted sm:block">{preN?`${preN} of ${subs.length+gens.length} have a ${P[0].name.toLowerCase()} grade (after Base)`:'Complete a '+P[0].name.toLowerCase()+' to see it'}</div></div>
    <div className="min-w-0"><div className={LBL2}>Final / Projected GWA</div><div className={cx('mt-1 text-3xl font-black tabular-nums tracking-tight sm:text-6xl',ok&&'text-good')}>{fg(finalG)}</div><div className="mt-1 hidden text-sm text-muted sm:block">{finalN} final · {subs.length-finalN+gens.length} projected</div></div>
    <div className="min-w-0"><div className={LBL2}>Dean’s List target</div><div className="mt-1 text-3xl font-black tabular-nums tracking-tight sm:text-6xl">{fg(C.target)}</div><div className="mt-1 hidden text-sm text-muted sm:block">or better · highest grade {fg(C.hi)}</div></div></div>
   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1"><span className="text-base font-extrabold sm:text-xl">{finalG==null?'Waiting for grades':ok?'On track for the Dean’s List':'Not there yet'}</span><span className="text-xs text-muted sm:text-sm">{finalG==null?'':ok?'The projection meets your target':fg(Math.abs(finalG-C.target))+' away from the target'}</span><button onClick={exportImage} className={BTN+' sm:ml-auto'}>📤 Share / export as image</button></div></div>};
@@ -391,31 +402,44 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   {subs.length>1&&<p className="mt-2 text-center text-[11px] text-muted sm:hidden">Swipe the card left or right to change subject</p>}</div>;
 
  /* ---- tracker body ---- */
- const BaseChips=(s,p)=>{const o=s.base&&s.base[p.id],has=o!==undefined&&o!=='',b=baseOf(s,p);return <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold"><span className="text-sm font-bold">Base</span>
-  <button onClick={()=>setBase(s.id,p.id,'')} className={cx('rounded-full px-3 py-1.5 transition',!has?'bg-accent text-accent-ink':'bg-surface2 hover:bg-line/60')}>Default ({f2(p.base)})</button>
-  {[0,20,50].map(x=><button key={x} onClick={()=>setBase(s.id,p.id,String(x))} className={cx('rounded-full px-3 py-1.5 transition',has&&b===x?'bg-accent text-accent-ink':'bg-surface2 hover:bg-line/60')}>{x}</button>)}
-  <Num v={has?o:''} on={v=>setBase(s.id,p.id,v)} ph="other" w="w-16"/></div>};
- const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=actsOf(s,p).some(a=>a.est);return <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line p-3">
+ const BaseChips=s=>{const o=s.sbase,has=o!==undefined&&o!=='',b=sbaseOf(s);return <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold"><span className="text-sm font-bold">Base</span>
+  <button onClick={()=>setSBase(s.id,'')} className={chip(!has)}>Default ({f2(C.base)})</button>
+  {[0,20,50].map(x=><button key={x} onClick={()=>setSBase(s.id,String(x))} className={chip(has&&b===x)}>{x}</button>)}
+  <Num v={has?o:''} on={v=>setSBase(s.id,v)} ph="other" w="w-16"/></div>};
+ const WeightsBox=s=>{const W=wts(s,P),tot=W.reduce((a,b)=>a+b,0),has=!!(s.pw&&Object.values(s.pw).some(v=>v!==''&&v!=null));return <div className="flex flex-col gap-2">
+  <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold">Period weights <span className="text-xs font-semibold text-muted">for {s.code||'this subject'}</span></span>{has&&<button className="text-xs font-semibold text-accent-text underline" onClick={()=>resetPW(s.id)}>Reset to default</button>}</div>
+  {P.length===2&&<div className="flex flex-wrap gap-1.5 text-xs font-semibold">{[[40,60],[50,50],[60,40]].map(([a,b])=><button key={a} onClick={()=>setPWs(s.id,[a,b])} className={chip(Math.abs(W[0]-a)<.005&&Math.abs(W[1]-b)<.005)}>{P[0].name} {a} / {P[1].name} {b}</button>)}</div>}
+  <div className="flex flex-wrap items-center gap-3">{P.map((p,i)=><label key={p.id} className="flex items-center gap-1.5 text-xs font-semibold text-muted">{p.name}<Num v={s.pw&&s.pw[p.id]!==undefined?s.pw[p.id]:String(p.w)} on={v=>setPW(s.id,i,v)} w="w-[4.5rem]"/>%</label>)}</div>
+  {Math.abs(tot-100)>.005&&<p className="text-xs text-bad">Weights total {f2(tot)}%. The grade is scaled to 100%.</p>}</div>};
+ const SemSetup=s=>{const sc=semCalc(s,P),pj=semProjC(s,P),B=sc.B,R=sc.raw!=null?sc.raw:pj.raw,T=R==null?null:trans(R,B);return <div className="flex flex-col gap-3 rounded-2xl border border-line/60 bg-surface2/60 p-3 sm:p-4">
+  <div className="font-bold">Semestral grade <span className="text-xs font-semibold text-muted">· the curve (Base) is applied here</span></div>
+  {WeightsBox(s)}
+  {BaseChips(s)}
+  <div className="grid grid-cols-3 gap-2 rounded-xl bg-surface/70 p-2.5 text-center sm:p-3">
+   <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Raw semestral{sc.raw==null&&R!=null?' (projected)':''}</div><div className="text-base font-black tabular-nums sm:text-lg">{R==null?'—':f2(R)}</div></div>
+   <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Base</div><div className="text-base font-black tabular-nums sm:text-lg">{f2(B)}</div></div>
+   <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">After Base</div><div className="text-base font-black tabular-nums sm:text-lg">{T==null?'—':f2(T)}</div></div></div>
+  {R!=null&&<p className="text-xs text-muted">({f2(R)} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(T)}</b>{sc.raw==null?' · uses your what-if scores for anything not entered yet':''}</p>}</div>};
+ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=actsOf(s,p).some(a=>a.est),md=rvMode[k]||'r',B=sbaseOf(s);return <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line p-3">
   <div className="text-sm font-bold">Reverse calculator <span className="text-xs font-semibold text-muted">for {p.name}</span></div>
-  <p className="text-xs text-muted">Know the released {p.name.toLowerCase()} grade but not the scores? Enter it and the blank scores are worked out through the Base formula.</p>
+  <p className="text-xs text-muted">Know the released {p.name.toLowerCase()} grade but not the scores? Enter it and the blank scores are worked out. {md==='r'?'The grade is used as a raw period grade (the curve is applied later, on the semestral grade).':'The grade already includes the Base, so raw = (grade − Base) ÷ (100 − Base) × 100.'}</p>
+  <Seg v={md} on={x=>setRvMode({...rvMode,[k]:x})} opts={[['r','Raw grade'],['b','Includes Base '+f2(B)]]} cls="w-full sm:w-auto sm:self-start"/>
   <div className="flex flex-wrap items-center gap-2"><Num v={s.rel&&s.rel[p.id]} on={v=>setRel(s.id,p.id,v)} ph={'released '+p.name.toLowerCase()+' grade'} w="w-44"/><button className={BTNP} onClick={()=>rvFill(s,p)}>Fill possible scores</button>{hasEst&&<button className={BTN} onClick={()=>rvClear(s,p)}>Clear possible scores</button>}</div>
   {m&&<p className={cx('text-xs font-semibold',m.bad?'text-bad':'text-good')}>{m.msg}</p>}</div>};
- const PeriodBlock=(s,p)=>{const c=pcalc(s,p),acts=c.acts,R=c.raw!=null?c.raw:c.soFar,Tg=c.raw!=null?c.grade:c.gradeSoFar,wsum=acts.reduce((t,a)=>t+wgt(a),0);
+ const PeriodBlock=(s,p)=>{const c=pcalc(s,p),acts=c.acts,pi=P.indexOf(p),w=wts(s,P)[pi],R=c.raw!=null?c.raw:c.soFar,wsum=acts.reduce((t,a)=>t+wgt(a),0);
   return <div className="flex flex-col gap-3 rounded-2xl border border-line/60 bg-surface2/60 p-3 sm:p-4">
-   <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{p.name} <span className="ml-1 text-xs font-semibold text-muted">{f2(p.w)}% of semestral</span></h4><button className={BTN} onClick={()=>setEdit(!edit)}>{edit?'✓ Done':'✎ Edit activities'}</button></div>
+   <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{p.name} <span className="ml-1 text-xs font-semibold text-muted">{f2(w)}% of semestral</span></h4><button className={BTN} onClick={()=>setEdit(!edit)}>{edit?'✓ Done':'✎ Edit activities'}</button></div>
    {!acts.length&&<p className="text-sm text-muted">No activities yet. Add one below.</p>}
    <div className="flex flex-col gap-2.5 sm:gap-3">{acts.map(a=>{const x=ap(a);return edit
     ?<div key={a.id} className="flex items-center gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 min-w-0 flex-1 !text-left px-3 !text-sm')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-[4.5rem]"/><span className="text-muted">%</span><button className={BTNX+' !px-2.5'} onClick={()=>delAct(s.id,p.id,a.id)} aria-label="Remove activity">✕</button></div>
     :<div key={a.id} className="flex items-center gap-2 sm:gap-3"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{a.name||'Activity'}</div><div className="text-xs text-muted">{f2(wgt(a))}% · {x==null?'not entered':f2(x)+'%'}</div>{a.est&&<span className="mt-0.5 inline-block rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span>}</div>
      <Num nav v={a.s} on={v=>setAct(s.id,p.id,a.id,'s',v)} ph="score" bad={x!=null&&x>100} w={cx('w-[4.5rem] sm:w-20',a.est&&'!border-accent/60 !italic')}/><span className="text-muted">/</span><Num v={a.m} on={v=>setAct(s.id,p.id,a.id,'m',v)} ph="100" w="w-14 sm:w-16"/></div>})}</div>
    <button className={BTNP+' self-start'} onClick={()=>{addAct(s.id,p.id);setEdit(true)}}>＋ Add Extra Activity</button>
-   {acts.length>0&&<p className={cx('text-xs',Math.abs(wsum-100)>.005?'text-bad':'text-muted')}>Weights total {f2(wsum)}%{Math.abs(wsum-100)>.005?' · the grade is scaled to 100%':''}</p>}
-   {BaseChips(s,p)}
+   {acts.length>0&&<p className={cx('text-xs',Math.abs(wsum-100)>.005?'text-bad':'text-muted')}>Activity weights total {f2(wsum)}%{Math.abs(wsum-100)>.005?' · the grade is scaled to 100%':''}</p>}
    <div className="grid grid-cols-3 gap-2 rounded-xl bg-surface/70 p-2.5 text-center sm:p-3">
-    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Raw{c.raw==null&&R!=null?' so far':''}</div><div className="text-base font-black tabular-nums sm:text-lg">{R==null?'—':f2(R)}</div></div>
-    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Base</div><div className="text-base font-black tabular-nums sm:text-lg">{f2(c.B)}</div></div>
-    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">{p.name} grade</div><div className="text-base font-black tabular-nums sm:text-lg">{Tg==null?'—':f2(Tg)}</div></div></div>
-   {R!=null&&<p className="text-xs text-muted">({f2(R)} ÷ 100) × (100 − {f2(c.B)}) + {f2(c.B)} = <b className="text-ink">{f2(trans(R,c.B))}</b>{c.raw==null?' (partial: finish every activity for the final grade)':''}</p>}
+    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">{p.name} grade{c.raw==null&&R!=null?' so far':''}</div><div className="text-base font-black tabular-nums sm:text-lg">{R==null?'—':f2(R)}</div></div>
+    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Weight</div><div className="text-base font-black tabular-nums sm:text-lg">{f2(w)}%</div></div>
+    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Activities</div><div className="text-base font-black tabular-nums sm:text-lg">{c.n}/{c.total}</div></div></div>
    {Reverse(s,p)}</div>};
  const TrackerBody=()=>{const s=cur,sem=semActual(s,P),eq=sem==null?null:eqv(sem);return <>
   <div className="flex items-center gap-2.5 sm:gap-3"><span className="h-10 w-1.5 shrink-0 rounded-full bg-sa"/><span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-sa/15 text-xl sm:h-12 sm:w-12 sm:text-2xl">{s.e||'📘'}</span>
@@ -423,7 +447,8 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
    <label className="text-center text-[11px] font-semibold text-muted sm:text-xs">Units<Num v={s.units} on={v=>setF(s.id,'units',v)} w="w-14 sm:w-16"/></label></div>
   <Seg v={pcur.id} on={x=>{setPid(x);setEdit(false)}} opts={P.map(p=>[p.id,p.name])} cls="w-full"/>
   {PeriodBlock(s,pcur)}
-  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{P.map(p=>{const c=pcalc(s,p);return <span key={p.id}>{p.name} <b className="text-ink">{c.grade!=null?f2(c.grade):c.gradeSoFar!=null?f2(c.gradeSoFar)+'*':'—'}</b></span>})}<span>* so far</span></div>
+  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{P.map(p=>{const c=pcalc(s,p);return <span key={p.id}>{p.name} <b className="text-ink">{c.grade!=null?f2(c.grade):c.gradeSoFar!=null?f2(c.gradeSoFar)+'*':'—'}</b></span>})}<span>raw · * so far</span></div>
+  {SemSetup(s)}
   <AccentBox l="Semestral grade" v={sem==null?'—':f2(sem)} rl="Grade" r={fg(eq)} foot={sem==null?'Complete every period':sem>=C.pass?'Passing ✓':'Below '+C.pass}/>
   <div className="flex gap-2"><button className={BTN+' flex-1'} onClick={()=>clearScores([s.id])}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>delSub(s.id)}>Delete subject</button></div></>};
  const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><div className="text-4xl">📚</div><p className="font-bold">No subjects yet</p><button className={BTNP} onClick={()=>setAdding(true)}>＋ Add your first subject</button></div>;
@@ -432,16 +457,16 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  /* ---- forecaster (also one subject card at a time) ---- */
  const setMissing=pidv=>upd(x=>({...x,subs:x.subs.map(s=>{const pi=P.findIndex(p=>p.id===pidv),T=tFor(s,pi);if(T==null)return s;const r=pproj(s,P[pi],T),wi={...(s.wi||{})};r.miss.forEach(a=>{wi[a.id]=String(r.uni<=0?0:Math.min(100,Math.ceil(r.uni)))});return{...s,wi}})}));
  const setMax=pidv=>upd(x=>({...x,subs:x.subs.map(s=>{const p=P.find(q=>q.id===pidv),wi={...(s.wi||{})};pcalc(s,p).live.forEach(a=>{if(ap(a)==null)wi[a.id]='100'});return{...s,wi}})}));
- const ForecastBody=pi=>{const s=cur,p=P[pi],prj=P.map(q=>pproj(s,q,0)),T=tFor(s,pi),r=pproj(s,p,T),sem=wavg(prj.map(x=>x.proj),P),met=T!=null&&r.proj!=null&&r.proj>=T-1e-9,B=r.B;
+ const ForecastBody=pi=>{const s=cur,p=P[pi],sp=semProjC(s,P),prj=sp.pr,W=sp.W,B=sp.B,T=tFor(s,pi),r=pproj(s,p,T),sem=sp.grade,met=T!=null&&r.proj!=null&&r.proj>=T-1e-9;
   let hint;if(!r.live.length)hint='No activities';else if(!r.miss.length)hint='All scores are in';else if(r.miss.length===1)hint='Need '+need(r.alone[0][1])[0]+' on '+r.miss[0].name;else hint='Need '+need(r.uni)[0]+' on each of '+r.miss.length+' scores';
   return <>
    <div className="flex items-center gap-2.5 sm:gap-3"><span className="h-10 w-1.5 shrink-0 rounded-full bg-sa"/><span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-sa/15 text-xl sm:h-12 sm:w-12 sm:text-2xl">{s.e||'📘'}</span>
     <div className="min-w-0 flex-1"><div className="truncate text-lg font-extrabold sm:text-xl">{s.code}</div><div className="truncate text-sm text-muted">{hint}</div></div>
     <div className="text-right"><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Projected</div><div className={cx('text-xl font-black tabular-nums',met?'text-good':'text-ink')}>{r.proj==null?'—':f2(r.proj)}</div></div></div>
    <div className="rounded-2xl border border-line/60 bg-surface2/60 p-3 text-sm">
-    <div>{p.name} grade needed: <b className={T!=null&&T>100?'text-bad':''}>{T==null?'—':T<=0?'Secured ✓':T>100?'Out of reach ('+f2(T)+')':f2(T)}</b>{T!=null&&T>0&&T<=100&&<span className="text-muted"> · Base {f2(B)} means a raw grade of {f2(Math.max(0,r.Rneed))}</span>}</div>
-    {P.map((q,j)=>j===pi?null:<div key={q.id} className="text-muted">{q.name}: <b className="text-ink">{prj[j].proj==null?'—':f2(prj[j].proj)}</b> ({prj[j].complete?'actual':'projected'})</div>)}
-    {pi===last0&&P.length>1&&<div className="mt-1 text-xs text-muted">Aiming for a semestral grade of {f2(Ts)}.</div>}</div>
+    <div>{p.name} grade needed (raw): <b className={T!=null&&T>100?'text-bad':''}>{T==null?'—':T<=0?'Secured ✓':T>100?'Out of reach ('+f2(T)+')':f2(T)}</b></div>
+    {pi===last0?<div className="mt-1 text-xs text-muted">Semestral target {f2(Ts)}. With Base {f2(B)} that needs a raw semestral grade of {f2(Math.max(0,untrans(Ts,B)))}.</div>:<div className="mt-1 text-xs text-muted">Period target: the raw grade that passes if every period matches (change it above).</div>}
+    {P.map((q,j)=>j===pi?null:<div key={q.id} className="text-muted">{q.name} ({f2(W[j])}%): <b className="text-ink">{prj[j].proj==null?'—':f2(prj[j].proj)}</b> ({prj[j].complete?'actual':'projected'})</div>)}</div>
    {r.miss.length>1&&<Tile l={`Same % on all ${r.miss.length} missing`} v={need(r.uni)[0]} bad={need(r.uni)[1]}/>}
    <div className="flex flex-col gap-2.5 sm:gap-3">{r.acts.filter(a=>wgt(a)>0).map(a=>{const x=ap(a);if(x!=null)return <div key={a.id} className="flex items-center justify-between rounded-2xl bg-surface2/50 px-4 py-2.5 text-sm"><span className="font-semibold">{a.name} <span className="font-normal text-muted">{f2(wgt(a))}%</span></span><span className="font-bold">✓ {f2(x)}%{a.est&&<span className="ml-1 text-[10px] font-bold uppercase text-accent-text">possible</span>}</span></div>;
     const v=r.alone.find(z=>z[0]===a.id)[1],[t,bad]=need(v),m=mxs(a);
@@ -449,15 +474,16 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
      <div className="flex items-center justify-between"><span className="font-bold">{a.name} <span className="text-xs font-semibold text-muted">{f2(wgt(a))}%</span></span><span className="rounded-full bg-accent/25 px-2 py-0.5 text-xs font-bold">Not yet</span></div>
      <div><span className="text-xs text-muted">Score needed{r.miss.length>1?' (others at their sliders)':''}:</span><div className={cx('text-xl font-extrabold',bad?'text-bad':'text-ink')}>{t}{v>0&&v<=100&&<span className="text-sm font-semibold text-muted"> ≈ {f2(v/100*m)}/{m}</span>}</div></div>
      <div className="flex items-center gap-3"><span className="w-16 text-xs font-semibold">If I score</span><input type="range" min="0" max="100" step="1" value={Math.min(100,+wiv(s,a)||0)} onChange={e=>setWi(s.id,a.id,e.target.value)} className="min-w-0 flex-1"/><Num v={wiv(s,a)} on={v=>setWi(s.id,a.id,v)} w="w-16"/></div></div>})}</div>
-   <AccentBox l={`Projected ${p.name.toLowerCase()} grade`} v={r.proj==null?'—':f2(r.proj)} rl={T==null?'':'vs target'} r={T==null?'—':f2(Math.max(0,T))} foot={T==null?'':met?'Meets target ✓':'Short by '+f2(T-(r.proj||0))}/>
-   {P.length>1&&<AccentBox l="Projected semestral" v={sem==null?'—':f2(sem)} rl="Grade" r={sem==null?'—':fg(eqv(sem))} foot={sem==null?'':sem>=C.pass?'Passing ✓':'Below '+C.pass}/>}</>};
+   <AccentBox l={`Projected ${p.name.toLowerCase()} grade (raw)`} v={r.proj==null?'—':f2(r.proj)} rl={T==null?'':'vs target'} r={T==null?'—':f2(Math.max(0,T))} foot={T==null?'':met?'Meets target ✓':'Short by '+f2(T-(r.proj||0))}/>
+   {P.length>1&&<AccentBox l="Projected semestral (after Base)" v={sem==null?'—':f2(sem)} rl="Grade" r={sem==null?'—':fg(eqv(sem))} foot={sem==null?'':sem>=C.pass?'Passing ✓':'Below '+C.pass}/>}
+   {SemSetup(s)}</>};
  const gridC={gridTemplateColumns:'1.5fr repeat('+(P.length+2)+',1fr)'};
  const GradesTable=()=><div className={cx(CARD,'flex flex-col gap-2 p-3.5 sm:p-6')}>
   <div className="mb-1"><div className="font-extrabold">Projected grades</div><div className="text-xs text-muted">{all.length} subjects · GWA {fg(finalG)}</div></div>
   <div className="grid gap-2 text-xs font-bold text-muted" style={gridC}><span>Subject</span>{P.map(p=><span key={p.id} className="truncate text-right">{p.name}</span>)}<span className="text-right">Sem.</span><span className="text-right">Grade</span></div>
   {all.map((r,i)=><div key={i} className="grid items-center gap-2 border-t border-line/60 pt-2.5 text-sm" style={gridC}><div className="min-w-0"><div className="truncate font-extrabold">{r.e} {r.n}</div><div className="text-xs text-muted">{r.u} units{r.sem!=null&&r.sem<C.pass&&<span className="font-semibold text-bad"> · {r.maj?'debarment risk':'failing'}</span>}</div></div>{r.pg.map((v,j)=><span key={j} className="text-right tabular-nums">{v==null?'—':f2(v)}</span>)}<span className={cx('text-right font-bold tabular-nums',r.sem!=null&&r.sem<C.pass&&'text-bad')}>{r.sem==null?'—':f2(r.sem)}</span><span className={cx('text-right font-extrabold tabular-nums',tone(r.eq))}>{fg(r.eq)}</span></div>)}
   <div className="flex justify-between border-t-2 border-line pt-3 font-extrabold"><span>Final / Projected GWA</span><span className={cx('tot tabular-nums',tone(finalG))}>{fg(finalG)}</span></div>
-  <p className="text-xs text-muted">Highest grade is {fg(C.hi)}. Majors must stay at {C.pass} or above or you risk debarment.</p>
+  <p className="text-xs text-muted">Period columns are raw grades. Sem. is after each subject’s Base. Highest grade is {fg(C.hi)}. Majors must stay at {C.pass} or above or you risk debarment.</p>
   <div className="flex flex-wrap gap-1.5 text-xs">{C.table?<>{C.table.map(([t,v])=><span key={t} className="rounded-full bg-surface2 px-2.5 py-1 font-semibold">{t}+ → {fg(v)}</span>)}<span className="rounded-full bg-bad/15 px-2.5 py-1 font-semibold text-bad">below {C.table[C.table.length-1][0]} → {fg(C.fail)}</span></>:<span className="rounded-full bg-surface2 px-2.5 py-1 font-semibold">Grade equals the percentage</span>}</div></div>;
  const GenEds=()=><div className={cx(CARD,'flex flex-col gap-3 p-3.5 sm:p-6')}>
   <div className="flex items-start justify-between gap-3"><div><div className="font-extrabold">📗 Gen Eds</div><div className="text-xs text-muted">Name, units and {P[0].name.toLowerCase()} grade. Then set what you expect for the rest.</div></div>{!gadd&&<button className={BTNP} onClick={()=>setGadd(true)}>＋ Add</button>}</div>
@@ -468,13 +494,13 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
    {P.length>1&&<div className="flex items-center gap-3"><span className="w-24 text-xs font-semibold">Expected {P.length===2?P[1].name.toLowerCase():'rest'}</span><input type="range" min="0" max="100" step="1" value={Math.min(100,+g.fin||0)} onChange={e=>setGen(g.id,'fin',e.target.value)} className="min-w-0 flex-1"/><Num v={g.fin} on={v=>setGen(g.id,'fin',v)} w="w-16"/></div>}
    <div className="flex justify-between text-sm"><span>Projected semestral <b>{f2(gps[i].sem)}</b></span><span>Grade <b className={tone(gps[i].eq)}>{fg(gps[i].eq)}</b></span></div></div>)}</div>;
  const Planner=()=><div className={cx(CARD,'flex flex-col gap-3 p-3.5 sm:p-6')}>
-  <div><div className="font-extrabold">🎓 Dean’s List planner</div><div className="text-xs text-muted">{P[last0].name} grade needed per subject for {fg(C.target)}</div></div>
+  <div><div className="font-extrabold">🎓 Dean’s List planner</div><div className="text-xs text-muted">{P[last0].name} (raw) grade needed per subject for {fg(C.target)}</div></div>
   <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
    <Tile l={`Best possible GWA (100 in every ${P[last0].name.toLowerCase()})`} v={fg(best)} sub={best==null?null:C.meets(best)?'Dean’s List is still possible':'Dean’s List is out of reach'}/>
    <Tile l={`Same ${P[last0].name.toLowerCase()} grade in every subject`} v={P.length<2?'—':fstar==null?'Not possible':f2(fstar)} sub={`Lowest equal grade that still reaches ${fg(C.target)}`}/>
    <Tile l="Passing mark" v={String(C.pass)} sub="Majors below this risk debarment"/></div>
   <div className="grid gap-2 text-xs font-bold text-muted" style={{gridTemplateColumns:'1.4fr repeat(3,1fr)'}}><span>Subject</span><span className="text-right">{P[0].name}</span><span className="text-right">{P[last0].name} to pass ({C.pass})</span><span className="text-right">{P[last0].name} for {fg(C.target)} ({f2(C.need)})</span></div>
-  {all.map((r,i)=>{const a=r.maj?needIn(r.pr,P,last0,C.pass):needGen(r.gen,P,C.pass),b=r.maj?needIn(r.pr,P,last0,C.need):needGen(r.gen,P,C.need);return <div key={i} className="grid items-center gap-2 border-t border-line/60 pt-2.5 text-sm" style={{gridTemplateColumns:'1.4fr repeat(3,1fr)'}}><span className="truncate font-extrabold">{r.e} {r.n}</span><span className="text-right tabular-nums">{r.pg[0]==null?'—':f2(r.pg[0])}</span><span className={cx('text-right font-bold',a>100&&'text-bad')}>{ng(a)}</span><span className={cx('text-right font-extrabold',b>100?'text-bad':'text-good')}>{ng(b)}</span></div>})}
+  {all.map((r,i)=>{const a=needFor(r,C.pass),b=needFor(r,C.need);return <div key={i} className="grid items-center gap-2 border-t border-line/60 pt-2.5 text-sm" style={{gridTemplateColumns:'1.4fr repeat(3,1fr)'}}><span className="truncate font-extrabold">{r.e} {r.n}</span><span className="text-right tabular-nums">{r.pg[0]==null?'—':f2(r.pg[0])}</span><span className={cx('text-right font-bold',a>100&&'text-bad')}>{ng(a)}</span><span className={cx('text-right font-extrabold',b>100?'text-bad':'text-good')}>{ng(b)}</span></div>})}
   <p className="text-xs text-muted">The last column assumes each subject lands exactly on {f2(C.need)}. A strong subject can offset a weaker one, so watch the projected GWA at the top as you move the sliders.</p></div>;
  const GwaView=()=><div className="flex flex-col gap-4"><Seg v={gv} on={setGv} opts={[['grades','Grades'],['gens','Gen Eds'],['plan','Planner']]} cls="w-full sm:w-auto sm:self-start"/>{gv==='grades'?GradesTable():gv==='gens'?GenEds():Planner()}</div>;
  const ForecastView=()=>{const pi=P.findIndex(p=>p.id===fsub);return <>
@@ -494,14 +520,14 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   const rp=rawP(),tw=P.reduce((a,p)=>a+p.w,0);
   return <>
    <section className="flex flex-col gap-3"><h3 className={LBL}>Appearance</h3><ThemePicker theme={theme} setTheme={setTheme}/></section>
-   <section className="flex flex-col gap-3"><h3 className={LBL}>Grading periods</h3>
+   <section className="flex flex-col gap-3"><h3 className={LBL}>Grading periods and Base</h3>
     {rp.map((p,i)=><div key={p.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-surface2/60 p-3">
      <TextIn v={p.name} on={v=>setPeriod(i,{name:v})} ph="Period name" cls="min-w-[8rem] flex-1"/>
      <label className="flex items-center gap-1 text-xs font-semibold text-muted">Weight<Num v={p.w} on={v=>setPeriod(i,{w:v})} w="w-[4.5rem]"/>%</label>
-     <label className="flex items-center gap-1 text-xs font-semibold text-muted">Base<Num v={p.base} on={v=>setPeriod(i,{base:v})} w="w-[4.5rem]"/></label>
      {rp.length>1&&<button className={BTNX+' !px-2.5'} onClick={()=>delPeriod(i)} aria-label="Remove period">✕</button>}</div>)}
     <div className="flex flex-wrap items-center gap-2"><button className={BTN} onClick={addPeriod} disabled={rp.length>=5}>＋ Add period</button>{rp.length===2&&<><button className={BTN} onClick={()=>setWeights([40,60])}>40 / 60</button><button className={BTN} onClick={()=>setWeights([50,50])}>50 / 50</button></>}<span className={cx('text-xs font-semibold',Math.abs(tw-100)>.005?'text-bad':'text-muted')}>Weights total {f2(tw)}%{Math.abs(tw-100)>.005?' (scaled to 100%)':''}</span></div>
-    <p className="text-xs text-muted">Each period has its own activities and a Base. Transmuted grade = (Raw ÷ 100) × (100 − Base) + Base. The Base here is the default; any subject can override it.</p></section>
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-surface2/60 p-3"><span className="text-sm font-bold">Default Base</span>{[0,20,50].map(x=><button key={x} onClick={()=>setCfg({base:String(x)},'cfgbase')} className={chip(C.base===x)}>{x}</button>)}<Num v={st.cfg&&st.cfg.base!==undefined?st.cfg.base:'0'} on={v=>setCfg({base:v},'cfgbase')} w="w-20"/></div>
+    <p className="text-xs text-muted">These weights and this Base are the defaults for every subject. Any subject can change its own period weights and Base on its card. The curve is applied to the <b>semestral grade</b> (Prelims + Finals combined): (Raw ÷ 100) × (100 − Base) + Base.</p></section>
    <section className="flex flex-col gap-4"><h3 className={LBL}>Highest possible grade</h3>
     <div className="grid gap-2">{Object.entries(PRESETS).map(([id,p])=><button key={id} onClick={()=>pickScale(id)} className={cx('rounded-2xl border p-3 text-left transition',C.id===id?'border-accent bg-accent/10 ring-2 ring-accent/40':'border-line bg-surface/60 hover:bg-surface')}><div className="font-bold">{p.label}</div><div className="text-xs text-muted">{p.sub}</div></button>)}</div>
     <div className="flex flex-wrap gap-4">

@@ -2,12 +2,12 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new
-- **Groups first.** The home screen shows only **group cards** (each with an icon or picture). Tap a group to see its **account cards** (picture, name, bio). **＋ Create New Group** is on the home screen. Inside a group, **＋ New Account** creates a **cloud** account; a local-only account is the small secondary link beneath it.
-- **Auto-fetch.** Every time you open the app (and when you return to the home screen) it pulls your cloud groups and accounts.
-- **One subject card at a time**, with the subject tab bar inside the card header. Swipe the card left or right. The **Manual Automatic Calculator** sits below it and never resets when you change subject.
-- **Reverse calculator** (per period): enter the released Prelims or Finals grade and the blank scores are worked out through your Base. They are labelled **Possible score**.
-- **Tiger logo** and new home-screen icons.
+## What's new in this version
+- **The curve (Base) is applied to the semestral grade**, not to each period. Period grades stay raw. Semestral raw = Prelims and Finals combined by their weights; **Semestral grade = (Raw ÷ 100) × (100 − Base) + Base**. The Forecaster runs this backwards: it turns your semestral target into a raw target, then works out the scores you still need.
+- **Period weights per subject.** On each subject card, "Period weights" lets you switch Prelims / Finals from 40 / 60 to 50 / 50, 60 / 40 or any numbers (with two periods the other one balances to 100 automatically). "Reset to default" returns to the weights in Settings. Each subject can also set its own Base.
+- Settings → **Grading periods and Base** now holds the *default* weights and the *default* Base.
+- The reverse calculator treats the released period grade as a **raw** grade by default, with a switch for grades that already include the Base.
+- Your saved data is upgraded automatically. An old per-period Base becomes the subject's semestral Base.
 
 ## Part 1: Create the free database (about 5 minutes)
 1. Go to **console.firebase.google.com**, click **Create a project**, turn Google Analytics off.
@@ -57,7 +57,7 @@ Files (already in `icons/`): `tiger.svg` (vector), `icon-192.png`, `icon-512.png
 **To change or refresh the icon:**
 1. Replace the PNG files in `icons/` with your new artwork using the **same file names and sizes** (192, 512, 512 with ~20% padding for *maskable*, and 180 with no transparency for `apple-touch-icon.png`). To re-export from the SVG: `npx sharp-cli -i icons/tiger.svg -o icons/icon-512.png resize 512` or any editor.
 2. `manifest.json` already points to them, so no edit is needed unless you rename a file. If you do, update the `src` entries in the `icons` array and the matching `<link rel="apple-touch-icon">` / `<link rel="icon">` lines in `index.html`. Colours: `background_color` is `#FFFFFF`, `theme_color` is `#FACC15`.
-3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v6'` to `'gtf-v7'`) so devices download the new icons.
+3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v7'` to `'gtf-v8'`) so devices download the new icons.
 4. Upload, then on each device **delete the old Home Screen icon and add it again** (iPhone/iPad: Share → Add to Home Screen; Android: Install app). iOS keeps the old icon until you re-add it.
 
 **Inline SVG for the UI** (this is the `TigerLogo` component in `src/app.jsx`; paste this anywhere in HTML and size it with CSS):
