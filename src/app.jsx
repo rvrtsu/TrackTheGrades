@@ -10,6 +10,56 @@ const CFG=window.GTF_CONFIG||{},DB=String(CFG.databaseURL||'').trim().replace(/\
 const ADAPT={init(){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}};
 
 /* =====================================================================
+   1b. SOUND, HAPTICS AND CONFETTI
+   Every sound is synthesised live with the Web Audio API (no audio files).
+   Sound and haptics each have a switch in Settings and are remembered on this device.
+   ===================================================================== */
+const FX=(()=>{
+ let ctx=null,nb=null,lastS=0,lastC=0;
+ const rd=k=>{try{return localStorage.getItem(k)!=='0'}catch(e){return true}},S={snd:rd('gtf-snd'),hap:rd('gtf-hap')};
+ const set=(k,v)=>{S[k]=!!v;try{localStorage.setItem('gtf-'+k,v?'1':'0')}catch(e){}};
+ const ac=()=>{if(!S.snd)return null;try{if(!ctx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;ctx=new A()}if(ctx.state==='suspended')ctx.resume();return ctx}catch(e){return null}};
+ const buf=c=>{if(!nb||nb.sampleRate!==c.sampleRate){nb=c.createBuffer(1,c.sampleRate,c.sampleRate);const d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}return nb};
+ const env=(g,t,pk,at,dc)=>{g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(pk,t+at);g.gain.exponentialRampToValueAtTime(.0001,t+at+dc)};
+ // a pitched blip: oscillator that can glide from f0 to f1
+ const osc=(c,type,f0,f1,t,pk,at,dc)=>{const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);if(f1)o.frequency.exponentialRampToValueAtTime(f1,t+at+dc);env(g,t,pk,at,dc);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+at+dc+.05)};
+ // filtered noise: the body of clicks and swooshes
+ const hiss=(c,t,type,fq,fq1,q,pk,at,dc)=>{const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=buf(c);f.type=type;f.Q.value=q;f.frequency.setValueAtTime(fq,t);if(fq1)f.frequency.exponentialRampToValueAtTime(fq1,t+at+dc);env(g,t,pk,at,dc);s.connect(f);f.connect(g);g.connect(c.destination);s.start(t,Math.random()*.4);s.stop(t+at+dc+.05)};
+ const vib=p=>{if(!S.hap)return;try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+ const confetti=()=>{try{
+  if(typeof document==='undefined'||(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches))return;
+  const n=Date.now();if(n-lastC<2500)return;lastC=n;
+  const box=document.createElement('div');box.className='gtf-conf';box.setAttribute('aria-hidden','true');
+  const cols=['rgb(var(--accent))','rgb(var(--good))','#F472B6','#60A5FA','#FB923C','#A78BFA','#FACC15'];
+  for(let i=0;i<48;i++){const p=document.createElement('i'),a=-Math.PI/2+(Math.random()-.5)*Math.PI*1.1,v=140+Math.random()*340,s=p.style;
+   s.setProperty('--x',Math.round(Math.cos(a)*v)+'px');s.setProperty('--y',Math.round(Math.sin(a)*v)+'px');
+   s.setProperty('--g',Math.round(Math.sin(a)*v*.2+260+Math.random()*180)+'px');s.setProperty('--r',Math.round((Math.random()-.5)*900)+'deg');
+   s.background=cols[i%cols.length];s.width=(6+Math.random()*5)+'px';s.height=(9+Math.random()*7)+'px';if(i%3===0)s.borderRadius='50%';
+   s.animationDuration=(1.2+Math.random()*.8)+'s';s.animationDelay=Math.round(Math.random()*80)+'ms';box.appendChild(p)}
+  document.body.appendChild(box);setTimeout(()=>box.remove(),2400)}catch(e){}};
+ return{S,set,confetti,
+  // crisp mechanical key: a short high noise tick plus a tiny low thump
+  clack(){vib(10);const c=ac();if(!c)return;const t=c.currentTime;hiss(c,t,'bandpass',3200,1800,1.4,.28,.001,.03);osc(c,'triangle',210,80,t,.2,.001,.035)},
+  // very soft airy sweep
+  swoosh(){vib(6);const c=ac();if(!c)return;const t=c.currentTime;hiss(c,t,'bandpass',500,2600,.8,.07,.07,.2)},
+  // resonant four-note chime, double-tap haptic, optional confetti
+  success(withConfetti){const n=Date.now();if(n-lastS<1200)return;lastS=n;vib([14,60,14]);if(withConfetti!==false)confetti();
+   const c=ac();if(!c)return;const t=c.currentTime;[784,988,1175,1568].forEach((f,i)=>{const s=t+i*.09;osc(c,'sine',f,0,s,.12,.01,1.1);osc(c,'sine',f*2,0,s,.025,.01,.6)})},
+  // muted low thud
+  thud(){vib(35);const c=ac();if(!c)return;const t=c.currentTime;osc(c,'sine',150,55,t,.45,.004,.22);hiss(c,t,'lowpass',240,0,.7,.14,.002,.1)}}
+})();
+// theme-aware extras (traffic lights, insight banners, confetti), injected so this file stays self-contained
+(function(){try{if(document.getElementById('gtf-x'))return;const el=document.createElement('style');el.id='gtf-x';el.textContent=[
+ ':root,[data-theme=sun],[data-theme=lav]{--warn:202 138 4}[data-theme=dark]{--warn:250 204 21}[data-theme=mono]{--warn:85 85 85}',
+ '.tl-g{color:rgb(var(--good))}.tl-y{color:rgb(var(--warn))}.tl-r{color:rgb(var(--bad))}',
+ '.tlb-g{background:rgb(var(--good)/.15);color:rgb(var(--good))}.tlb-y{background:rgb(var(--warn)/.16);color:rgb(var(--warn))}.tlb-r{background:rgb(var(--bad)/.15);color:rgb(var(--bad))}',
+ '.ins-good{border-color:rgb(var(--good)/.45);background:rgb(var(--good)/.1)}.ins-warn{border-color:rgb(var(--warn)/.5);background:rgb(var(--warn)/.12)}.ins-bad{border-color:rgb(var(--bad)/.5);background:rgb(var(--bad)/.1)}.ins-idle{border-color:rgb(var(--line));background:rgb(var(--surface2)/.7)}',
+ '.gtf-conf{position:fixed;inset:0;z-index:100;pointer-events:none;overflow:hidden}',
+ '.gtf-conf i{position:absolute;left:50%;top:38%;display:block;opacity:0;animation:gtf-conf 1.6s cubic-bezier(.15,.7,.3,1) forwards}',
+ '@keyframes gtf-conf{0%{opacity:1;transform:translate(0,0) rotate(0)}30%{opacity:1;transform:translate(var(--x),var(--y)) rotate(calc(var(--r)*.4))}100%{opacity:0;transform:translate(calc(var(--x)*1.3),var(--g)) rotate(var(--r))}}'
+].join('');document.head.appendChild(el)}catch(e){}})();
+
+/* =====================================================================
    2. GRADING SCALES  (percent score -> grade, target, passing mark)
    ===================================================================== */
 const PRESETS={
@@ -31,7 +81,9 @@ const mkScale=cfg=>{
  const pg=toG(pass),bad=g=>g!=null&&Number.isFinite(g)&&(dir<0?g>pg+1e-9:g<pg-1e-9);
  let need;if(!table)need=target;else{const r=table.filter(x=>meets(x[1]));need=r.length?Math.min(...r.map(x=>x[0])):101}
  const periods=normP(cfg.periods),sumW=periods.reduce((a,p)=>a+p.w,0)||1,base=Math.min(99,Math.max(0,num(cfg.base,0)));
- return{id,P,table,target,pass,dir,fail,hi:P.hi,toG,meets,bad,need,periods,sumW,base}};
+ // lowest percent that still earns grade g (used for each subject's Retention Grade)
+ const pctFor=g=>{if(g==null||!Number.isFinite(+g))return null;if(!table)return +g;const r=table.filter(x=>dir<0?x[1]<=+g+1e-9:x[1]>=+g-1e-9);return r.length?Math.min(...r.map(x=>x[0])):101};
+ return{id,P,table,target,pass,dir,fail,hi:P.hi,toG,meets,bad,need,periods,sumW,base,pctFor}};
 CUR=mkScale(null);
 const eqv=g=>CUR.toG(g);
 const tone=g=>g==null?'':CUR.meets(g)?'text-good':CUR.bad(g)?'text-bad':'';
@@ -67,12 +119,13 @@ const normBook=j=>{try{
  if(j&&Array.isArray(j.list)&&j.data&&typeof j.data==='object'){
   let gs=(Array.isArray(j.groups)?j.groups:[]).map(g=>typeof g==='string'?{id:'g'+uid(),name:g,icon:'📁'}:g).filter(g=>g&&g.id&&g.name);
   const seen={};gs=gs.filter(g=>seen[g.name.toLowerCase()]?false:(seen[g.name.toLowerCase()]=1));
-  if(!gs.length)gs=[defGroup()];
+  if(!gs.length&&j.list.length)gs=[defGroup()]; // only to rescue accounts saved by an older version
   const by=Object.fromEntries(gs.map(g=>[g.name,g.id])),ids=new Set(gs.map(g=>g.id));
   const list=j.list.map(a=>{const n={...a};if(!n.gid||!ids.has(n.gid))n.gid=by[n.group]||gs[0].id;delete n.group;return n});
   return{list,data:j.data,groups:gs}}
  if(okState(j))return mkBook(j)}catch(e){}return null};
-const loadRaw=()=>{let b=null;try{b=normBook(JSON.parse(localStorage.getItem(BK)))}catch(e){}if(!b)try{b=normBook(JSON.parse(localStorage.getItem('gtf-v1')))}catch(e){}if(!b)b=mkBook(seed());return b};
+const loadRaw=()=>{let b=null;try{b=normBook(JSON.parse(localStorage.getItem(BK)))}catch(e){}if(!b)try{b=normBook(JSON.parse(localStorage.getItem('gtf-v1')))}catch(e){}if(!b)b={list:[],data:{},groups:[]}; // first launch: strictly empty, no groups and no accounts
+ return b};
 const loadBook=()=>{const b=loadRaw();Object.keys(b.data).forEach(k=>{b.data[k]=mig(b.data[k])});return b};
 const saveBook=b=>{try{localStorage.setItem(BK,JSON.stringify(b))}catch(e){}};
 const THEMES=[{id:'sun',name:'White & Yellow',bar:'#FFFFFF',sw:['#FFFFFF','#FACC15','#1C1B18']},{id:'dark',name:'Dark',bar:'#0E0E11',sw:['#1C1C21','#FBBF24','#F6F6F8']},{id:'mono',name:'Monochrome',bar:'#FAFAFA',sw:['#FFFFFF','#111111','#737373']},{id:'lav',name:'Lavender',bar:'#F7F5FF',sw:['#FFFFFF','#7C3AED','#1E1B3A']}];
@@ -148,6 +201,28 @@ const rvPlan=(s,p,Tstr,mode)=>{const T=+Tstr;if(Tstr===''||Tstr==null||!Number.i
 const need=v=>v==null?['—',false]:v<=0?['Secured ✓',false]:v>100?['Out of reach ('+f2(v)+'%)',true]:[f2(v)+'%',false];
 const ng=v=>v==null?'—':v<=0?'Secured ✓':v>100?'Out of reach':f2(v);
 
+// ---- Retention grade (per subject), needed scores, traffic lights ----
+const RETCH={ph:[3,2.5,2],gpa:[2,2.7,3],pct:[70,75,80]};
+// the lowest grade a subject must keep. Blank = the default passing mark from Settings.
+const retOf=s=>{const o=s&&s.ret,has=o!==undefined&&o!==null&&o!==''&&Number.isFinite(+o);
+ if(!has)return{g:CUR.table?CUR.toG(CUR.pass):CUR.pass,pct:CUR.pass,custom:false};
+ return{g:+o,pct:CUR.pctFor(+o),custom:true}};
+// Linear model of one subject: if every missing score equals x, raw semestral = a + b*x
+const linSub=(s,P)=>{const w=wts(s,P);let a=0,b=0,Wt=0;
+ P.forEach((p,i)=>{const c=pcalc(s,p);if(!(c.W>0))return;const Wm=c.live.reduce((t,q)=>ap(q)==null?t+wgt(q):t,0);a+=w[i]*c.K/c.W;b+=w[i]*Wm/c.W;Wt+=w[i]});
+ return Wt>0?{a:a/Wt,b:b/Wt,B:sbaseOf(s)}:null};
+// what the missing scores must average so the semestral grade (after Base) reaches Sx
+const needX=(l,Sx)=>{if(!l)return null;if(l.b<1e-9)return{done:true,x:null,ok:trans(l.a,l.B)>=Sx-1e-9};return{done:false,x:(untrans(Sx,l.B)-l.a)/l.b}};
+const missOf=(s,P)=>[].concat(...P.map(p=>pcalc(s,p).live.filter(a=>ap(a)==null)));
+// traffic light: green under 75, yellow 75 to 89, red 90 and up (or out of reach)
+const tlX=x=>x==null?'':x<=0?'g':x>100?'r':(c=>c<75?'g':c<90?'y':'r')(Math.ceil(x-1e-9));
+const TLC={g:'tl-g',y:'tl-y',r:'tl-r'},TLB={g:'tlb-g',y:'tlb-y',r:'tlb-r'},TLW={g:'Easy',y:'Moderate',r:'Critical'};
+const tlCls=x=>{const k=tlX(x);return k?TLC[k]:''};
+const needTC=o=>{if(!o)return'';if(o.done)return o.ok?'g':'r';return tlX(o.x)};
+const needLbl=(o,ms)=>{if(!o)return'No activities to score';if(o.done)return o.ok?'Secured ✓':'Already locked below it';if(o.x<=1e-9)return'Secured ✓';if(o.x>100+1e-9)return'Out of reach ('+f2(o.x)+'%)';
+ const c=Math.ceil(o.x-1e-9);return ms.length===1?'Need '+c+'% on '+(ms[0].name||'the last score'):'Need ~'+c+'% on each of '+ms.length+' remaining scores'};
+const needShort=o=>o==null?'—':o.done?(o.ok?'Secured ✓':'Locked below'):o.x<=1e-9?'Secured ✓':o.x>100+1e-9?'Out of reach':Math.ceil(o.x-1e-9)+'%';
+
 /* =====================================================================
    5. UI PRIMITIVES (theme-aware: every colour is a CSS token, see index.html)
    ===================================================================== */
@@ -160,12 +235,13 @@ const SEL='rounded-xl border border-line bg-surface/80 px-3 py-2 text-sm font-se
 const LBL='text-xs font-bold uppercase tracking-[.12em] text-muted';
 const LBL2='text-[10px] font-bold uppercase leading-tight tracking-[.08em] text-muted sm:text-xs sm:tracking-[.12em]';
 
-const Num=({v,on,ph,w='w-20',nav,bad})=><input inputMode="decimal" enterKeyHint="next" data-n={nav?1:undefined} onKeyDown={nav?e=>{if(e.key==='Enter'){e.preventDefault();const a=[...document.querySelectorAll('input[data-n]')],i=a.indexOf(e.target),n=a[i+1];n?n.focus():e.target.blur()}}:undefined} value={v??''} placeholder={ph} onChange={e=>{const x=e.target.value;if(/^\d*\.?\d*$/.test(x))on(x)}} className={cx(INP,'h-11 min-w-0 sm:h-12',w,bad&&'!border-bad ring-2 ring-bad/40')}/>;
+const Num=({v,on,ph,w='w-20',nav,bad,clk})=><input inputMode="decimal" enterKeyHint="next" data-n={nav?1:undefined} onKeyDown={nav?e=>{if(e.key==='Enter'){e.preventDefault();const a=[...document.querySelectorAll('input[data-n]')],i=a.indexOf(e.target),n=a[i+1];n?n.focus():e.target.blur()}}:undefined} value={v??''} placeholder={ph} onChange={e=>{const x=e.target.value;if(/^\d*\.?\d*$/.test(x)){if(clk)FX.clack();on(x)}}} className={cx(INP,'h-11 min-w-0 sm:h-12',w,bad&&'!border-bad ring-2 ring-bad/40')}/>;
 const TextIn=({v,on,ph,cls='',type='text'})=><input type={type} value={v} placeholder={ph} autoComplete="off" onChange={e=>on(e.target.value)} className={cx(INP,'h-11 w-full !text-left px-3.5 sm:h-12',cls)}/>;
 const Txt=({v,on,cls=''})=><input value={v} onChange={e=>on(e.target.value)} className={cx('min-w-0 rounded-xl bg-transparent px-2 py-1 text-base text-ink transition hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-accent/40',cls)}/>;
 const Seg=({v,on,opts,cls=''})=><div className={cx('inline-grid grid-flow-col auto-cols-fr gap-1 rounded-2xl border border-line/70 bg-surface2/80 p-1',cls)}>{opts.map(([k,l])=><button key={k} onClick={()=>on(k)} className={cx('rounded-xl px-4 py-1.5 text-sm font-bold transition-all duration-300',v===k?'bg-accent text-accent-ink shadow':'text-muted hover:text-ink')}>{l}</button>)}</div>;
 const Chev=({open})=><svg viewBox="0 0 20 20" className={cx('h-5 w-5 shrink-0 text-muted transition-transform duration-300',open&&'rotate-180')} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5"/></svg>;
-const Tile=({l,v,sub,bad})=><div className="rounded-2xl border border-line/60 bg-surface2/70 p-3"><div className="text-xs font-semibold text-muted">{l}</div><div className={cx('text-xl font-extrabold tabular-nums',bad?'text-bad':'text-ink')}>{v}</div>{sub&&<div className="mt-0.5 text-xs text-muted">{sub}</div>}</div>;
+const Tile=({l,v,sub,bad,vc})=><div className="rounded-2xl border border-line/60 bg-surface2/70 p-3"><div className="text-xs font-semibold text-muted">{l}</div><div className={cx('text-xl font-extrabold tabular-nums',vc||(bad?'text-bad':'text-ink'))}>{v}</div>{sub&&<div className="mt-0.5 text-xs text-muted">{sub}</div>}</div>;
+const Switch=({on,onChange,label,sub})=><button role="switch" aria-checked={on} onClick={onChange} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line/60 bg-surface2/60 p-3 text-left transition hover:bg-surface2"><span className="min-w-0"><span className="block text-sm font-bold">{label}</span>{sub&&<span className="block text-xs text-muted">{sub}</span>}</span><span className={cx('relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300',on?'bg-accent':'bg-line')}><span className={cx('absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-all duration-300',on?'left-[1.4rem]':'left-0.5')}/></span></button>;
 const AccentBox=({l,v,rl,r,foot})=><div className="flex items-center justify-between rounded-2xl bg-accent p-4 text-accent-ink shadow-md shadow-accent/20"><div><div className="text-xs font-semibold opacity-70">{l}</div><div className="tot inline-block text-3xl font-black tabular-nums">{v}</div></div><div className="text-right"><div className="text-xs font-semibold opacity-70">{rl}</div><div className="text-2xl font-black tabular-nums">{r}</div><div className="text-xs font-bold">{foot}</div></div></div>;
 const Avatar=({a,s='h-14 w-14',t='text-3xl'})=>a&&a.pic?<img src={a.pic} alt="" className={cx(s,'shrink-0 rounded-2xl object-cover ring-1 ring-line')}/>:<div className={cx(s,t,'grid shrink-0 place-items-center rounded-2xl bg-accent/20 ring-1 ring-accent/30')}>{a?a.emoji:'👤'}</div>;
 
@@ -234,17 +310,17 @@ function CalcBase({sk}){
   <div><h3 className="text-base font-extrabold sm:text-lg">🧮 Manual Automatic Calculator</h3><p className="text-xs text-muted sm:text-sm">Scratchpad for quick what-ifs. Not saved, and it stays put when you change subject.</p></div>
   <div className="flex flex-col gap-2">{rows.map(r=><div key={r.id} className="flex items-center gap-1.5 sm:gap-2">
    <input value={r.name} onChange={e=>upd(r.id,'name',e.target.value)} className={cx(INP,'h-11 min-w-0 flex-1 !text-left px-3')} placeholder="Name"/>
-   <Num v={r.s} on={v=>upd(r.id,'s',v)} ph="score" w="w-[3.75rem] sm:w-[4.25rem]"/><span className="text-muted">/</span><Num v={r.m} on={v=>upd(r.id,'m',v)} ph="100" w="w-[3.5rem] sm:w-[4.25rem]"/><Num v={r.w} on={v=>upd(r.id,'w',v)} ph="wt %" w="w-[3.5rem] sm:w-[4.25rem]"/>
-   <button className={BTN+' !px-2.5'} onClick={()=>setRows(x=>x.filter(y=>y.id!==r.id))} aria-label="Remove row">✕</button></div>)}
-   <div className="flex gap-2"><button className={BTN} onClick={()=>setRows(x=>[...x,row('Activity','10')])}>＋ Add row</button><button className={BTN} onClick={()=>setRows([row('Activity','')])}>Clear</button></div></div>
-  <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">Base</span>{[0,20,50].map(b=><button key={b} onClick={()=>setBase(String(b))} className={cx('rounded-full px-3 py-1.5 text-xs font-bold transition',B===b?'bg-accent text-accent-ink':'bg-surface2 hover:bg-line/60')}>{b}</button>)}<Num v={base} on={setBase} ph="Base" w="w-20"/></div>
+   <Num clk v={r.s} on={v=>upd(r.id,'s',v)} ph="score" w="w-[3.75rem] sm:w-[4.25rem]"/><span className="text-muted">/</span><Num clk v={r.m} on={v=>upd(r.id,'m',v)} ph="100" w="w-[3.5rem] sm:w-[4.25rem]"/><Num clk v={r.w} on={v=>upd(r.id,'w',v)} ph="wt %" w="w-[3.5rem] sm:w-[4.25rem]"/>
+   <button className={BTN+' !px-2.5'} onClick={()=>{FX.clack();setRows(x=>x.filter(y=>y.id!==r.id))}} aria-label="Remove row">✕</button></div>)}
+   <div className="flex gap-2"><button className={BTN} onClick={()=>{FX.clack();setRows(x=>[...x,row('Activity','10')])}}>＋ Add row</button><button className={BTN} onClick={()=>{FX.clack();setRows([row('Activity','')])}}>Clear</button></div></div>
+  <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">Base</span>{[0,20,50].map(b=><button key={b} onClick={()=>{FX.clack();setBase(String(b))}} className={cx('rounded-full px-3 py-1.5 text-xs font-bold transition',B===b?'bg-accent text-accent-ink':'bg-surface2 hover:bg-line/60')}>{b}</button>)}<Num clk v={base} on={setBase} ph="Base" w="w-20"/></div>
   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
    <Tile l="Raw grade" v={R==null?'—':f2(R)} sub={`${ent.length} of ${rows.filter(r=>wgt(r)>0).length} rows scored`}/>
    <Tile l="Transmuted grade" v={T==null?'—':f2(T)}/>
    <Tile l="Grade" v={T==null?'—':fg(eqv(T))}/>
    <Tile l="Status" v={T==null?'—':T>=C.pass?'Passing':'Below '+C.pass} bad={T!=null&&T<C.pass}/></div>
   {T!=null&&<p className="rounded-xl bg-surface2/70 px-3 py-2 text-xs text-muted">({f2(R)} ÷ 100) × (100 − {B}) + {B} = <b className="text-ink">{f2(T)}</b></p>}
-  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-line p-3"><span className="text-sm font-semibold">Quick convert</span><Num v={raw} on={setRaw} ph="raw grade" w="w-28"/><span className="text-muted">→</span><span className="text-lg font-extrabold tabular-nums">{q==null?'—':f2(q)}</span><span className="text-xs text-muted">at Base {B}</span></div>
+  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-line p-3"><span className="text-sm font-semibold">Quick convert</span><Num clk v={raw} on={setRaw} ph="raw grade" w="w-28"/><span className="text-muted">→</span><span className="text-lg font-extrabold tabular-nums">{q==null?'—':f2(q)}</span><span className="text-xs text-muted">at Base {B}</span></div>
  </section>;
 }
 const Calc=React.memo(CalcBase);
@@ -253,8 +329,10 @@ const Calc=React.memo(CalcBase);
    7. APP  (one profile: Tracker, Forecaster, Settings)
    ===================================================================== */
 function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,theme,setTheme}){
- const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('t'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0);
+ const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('t'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:''}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0);
  const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false});
+ const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[plan,setPlan]=useState(null);
+ const togFx=k=>{const v=!fxs[k];FX.set(k,v);setFxs({...fxs,[k]:v});if(v)FX.clack()};
  const commit=n=>{ref.current=n;setSt(n);onSave(n)};
  useEffect(()=>{if(ext&&ext.data&&ext.n!==e0.current){e0.current=ext.n;const d=mig(ext.data);ref.current=d;setSt(d);past.current=[];fut.current=[];last.current={k:'',t:0}}},[ext&&ext.n]);
  useEffect(()=>{const t=setInterval(()=>setNow(x=>x+1),20000);return()=>clearInterval(t)},[]);
@@ -271,16 +349,17 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const addAct=(id,p)=>updSub(id,s=>{const l=actsOf(s,{id:p});return{...s,acts:{...s.acts,[p]:[...l,{id:uid(),name:'Activity '+(l.length+1),w:'10',s:'',m:''}]}}});
  const delAct=(id,p,aid)=>updSub(id,s=>({...s,acts:{...s.acts,[p]:actsOf(s,{id:p}).filter(a=>a.id!==aid)}}));
  const setSBase=(id,v)=>updSub(id,s=>({...s,sbase:v}),'sb');
+ const setRet=(id,v)=>updSub(id,s=>({...s,ret:v}),'rt');
  const setPW=(id,i,v)=>updSub(id,s=>{const pw={...(s.pw||{})};pw[P[i].id]=v;if(P.length===2){pw[P[1-i].id]=v!==''&&Number.isFinite(+v)?String(+(100-Math.min(100,Math.max(0,+v))).toFixed(2)):''}return{...s,pw}},'pw'+i);
  const setPWs=(id,arr)=>updSub(id,s=>({...s,pw:Object.fromEntries(P.map((p,i)=>[p.id,String(arr[i])]))}));
  const resetPW=id=>updSub(id,s=>{const n={...s};delete n.pw;return n});
  const setWi=(id,aid,v)=>updSub(id,s=>({...s,wi:{...(s.wi||{}),[aid]:v}}),'w'+aid);
  const setRel=(id,p,v)=>updSub(id,s=>({...s,rel:{...(s.rel||{}),[p]:v}}),'rel'+p);
- const rvFill=(s,p)=>{const k=s.id+p.id,plan=rvPlan(s,p,(s.rel&&s.rel[p.id])??'',rvMode[s.id+p.id]||'r');if(!plan.ok){setRvMsg({k,msg:plan.msg,bad:true});return}
+ const rvFill=(s,p)=>{const k=s.id+p.id,plan=rvPlan(s,p,(s.rel&&s.rel[p.id])??'',rvMode[s.id+p.id]||'r');if(!plan.ok){FX.thud();setRvMsg({k,msg:plan.msg,bad:true});return}
   const fill=a=>plan.miss.some(m=>m.id===a.id)?{...a,s:String(+(plan.x/100*mxs(a)).toFixed(2)),est:true}:a;
   updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(fill)}}));
   const ns={...s,acts:{...s.acts,[p.id]:actsOf(s,p).map(fill)}};
-  setRvMsg({k,msg:`Filled ${plan.miss.length} possible score${plan.miss.length>1?'s':''} at about ${f2(plan.x)}% each. ${p.name} grade is now ${f2(pcalc(ns,p).grade)}.`,bad:false})};
+  setRvMsg({k,msg:`Filled ${plan.miss.length} possible score${plan.miss.length>1?'s':''} at about ${f2(plan.x)}% each. ${p.name} grade is now ${f2(pcalc(ns,p).grade)}.`,bad:false});FX.success(false)};
  const rvClear=(s,p)=>{updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(a=>a.est?{...a,s:'',est:false}:a)}}));setRvMsg(null)};
  const setTg=(k,v)=>set(c=>({...c,tg:{...(c.tg||{}),[k]:v}}),'tg'+k);
  const setCfg=(p,key)=>set(c=>({...c,cfg:{...(c.cfg||{}),...p}}),key||'cfg'+Object.keys(p).join());
@@ -295,7 +374,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const addYear=()=>set(c=>{const y=uid(),s=uid();return{...c,y,s,years:[...c.years,{id:y,name:(ords[c.years.length]||(c.years.length+1)+'th')+' Year',sems:[{id:s,name:'1st Semester',subs:[]}]}]}});
  const addSem=()=>set(c=>{const s=uid(),n=Y.sems.length;return{...c,s,years:c.years.map(y=>y.id!==Y.id?y:{...y,sems:[...y.sems,{id:s,name:(ords[n]||(n+1)+'th')+' Semester',subs:[]}]})}});
  const rename=(f,v)=>set(c=>({...c,years:c.years.map(y=>y.id!==Y.id?y:f==='y'?{...y,name:v}:{...y,sems:y.sems.map(x=>x.id!==S.id?x:{...x,name:v})})}),'rn'+f);
- const addSub=()=>{if(!nf.code.trim())return;const m=mk(nf.code.trim().toUpperCase(),nf.name.trim(),nf.units||'3','📘',P);upd(x=>({...x,subs:[...x.subs,m]}));setSid(m.id);setNf({code:'',name:'',units:'3'});setAdding(false)};
+ const addSub=()=>{if(!nf.code.trim())return;const m={...mk(nf.code.trim().toUpperCase(),nf.name.trim(),nf.units||'3','📘',P),ret:nf.ret||''};upd(x=>({...x,subs:[...x.subs,m]}));setSid(m.id);setNf({code:'',name:'',units:'3',ret:''});setAdding(false)};
  const delSub=id=>upd(x=>({...x,subs:x.subs.filter(s=>s.id!==id)}));
  const clearScores=ids=>upd(x=>({...x,subs:x.subs.map(s=>!ids||ids.includes(s.id)?{...s,rel:{},acts:Object.fromEntries(Object.entries(s.acts||{}).map(([k,l])=>[k,l.map(a=>({...a,s:'',m:'',est:false}))]))}:s)}));
  const addGen=()=>{if(!gf.name.trim())return;upd(x=>({...x,gens:[...(x.gens||[]),{id:uid(),name:gf.name.trim(),units:gf.units||'3',pre:gf.pre,fin:'85'}]}));setGf({name:'',units:'3',pre:''});setGadd(false)};
@@ -309,20 +388,66 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const subs=S.subs,gens=S.gens||[],gps=gens.map(g=>gproj(g,P)),last0=P.length-1,Wg=P.map(p=>p.w);
  const cur=subs.find(s=>s.id===sid)||subs[0],idx=cur?subs.indexOf(cur):-1,pcur=P.find(p=>p.id===pid)||P[0];
  const fsub=sub==='g'||P.some(p=>p.id===sub)?sub:P[0].id;
- const rowsS=subs.map(s=>{const sc=semProjC(s,P);return{s,sc,pg:sc.pr.map(x=>x.proj),sem:sc.grade,eq:sc.grade==null?null:eqv(sc.grade),act:semActual(s,P)}});
- const all=[...rowsS.map(r=>({n:r.s.code,e:r.s.e||'📘',u:r.s.units,pg:r.pg,sem:r.sem,eq:r.eq,maj:1,W:r.sc.W,B:r.sc.B})),...gens.map((g,i)=>({n:g.name||'Gen Ed',e:'📗',u:g.units,pg:P.map((_,j)=>j===0?gps[i].pre:gps[i].fin),sem:gps[i].sem,eq:gps[i].eq,maj:0,gen:g,W:Wg,B:0}))];
+ const rowsS=subs.map(s=>{const sc=semProjC(s,P),rt=retOf(s),l=linSub(s,P);return{s,sc,rt,l,pg:sc.pr.map(x=>x.proj),sem:sc.grade,eq:sc.grade==null?null:eqv(sc.grade),act:semActual(s,P),ex:needX(l,C.need),sv:needX(l,rt.pct)}});
+ const genEx=g=>{const x=needGen(g,P,C.need);return x==null?null:{done:false,x}};
+ const all=[...rowsS.map(r=>({n:r.s.code,e:r.s.e||'📘',u:r.s.units,pg:r.pg,sem:r.sem,eq:r.eq,maj:1,W:r.sc.W,B:r.sc.B,s:r.s,raw:r.sc.raw,rt:r.rt,ex:r.ex,sv:r.sv,ms:missOf(r.s,P)})),...gens.map((g,i)=>({n:g.name||'Gen Ed',e:'📗',u:g.units,pg:P.map((_,j)=>j===0?gps[i].pre:gps[i].fin),sem:gps[i].sem,eq:gps[i].eq,maj:0,gen:g,W:Wg,B:0,raw:gps[i].sem,ex:genEx(g),ms:[{name:P[last0].name}]}))];
  const units=subs.reduce((a,s)=>a+(+s.units||0),0),uAll=units+gens.reduce((a,g)=>a+(+g.units||0),0);
  const preRows=[...subs.filter(s=>pcalc(s,P[0]).complete).map(s=>[eqv(trans(pcalc(s,P[0]).raw,sbaseOf(s))),s.units]),...gens.filter(g=>g.pre!==''&&g.pre!=null).map(g=>[eqv(+g.pre),g.units])];
  const preG=gwa(preRows),preN=preRows.length,finalG=gwa(all.map(r=>[r.eq,r.u])),finalN=rowsS.filter(r=>r.act!=null).length;
  const rowSem=(r,F)=>{const raw=wavg(r.pg.map((v,j)=>j===last0&&P.length>1?F:v),r.W);return raw==null?null:trans(raw,r.B)};
- let fstar=null;if(all.length&&P.length>1)for(let i=0;i<=1000;i++){const F=i/10,g=gwa(all.map(r=>[eqv(rowSem(r,F)),r.u]));if(g!=null&&C.meets(g)&&all.every(r=>{const x=rowSem(r,F);return x!=null&&x>=C.pass-1e-9})){fstar=F;break}}
+ let fstar=null;if(all.length&&P.length>1)for(let i=0;i<=1000;i++){const F=i/10,g=gwa(all.map(r=>[eqv(rowSem(r,F)),r.u]));if(g!=null&&C.meets(g)&&all.every(r=>{const x=rowSem(r,F);return x!=null&&x>=(r.rt?r.rt.pct:C.pass)-1e-9})){fstar=F;break}}
  const best=all.length&&P.length>1?gwa(all.map(r=>[eqv(rowSem(r,100)),r.u])):finalG;
+
+ /* ---- retention levels, bottom-line insight, Survival and Excellence plans ---- */
+ // 0 fine, 1 retention is tight (needs 85%+ on what is left), 2 projected below retention or out of reach
+ const rLvl=r=>{if(!r.maj)return r.sem!=null&&r.sem<C.pass-1e-9?2:0;const v=r.sv;if(!v)return 0;if(v.done)return v.ok?0:2;if(v.x>100+1e-9)return 2;if(r.sem!=null&&r.sem<r.rt.pct-1e-9)return 2;return v.x>=85?1:0};
+ const gwaAt=x=>gwa([...rowsS.map(o=>[o.l?eqv(trans(o.l.a+o.l.b*x,o.l.B)):null,o.s.units]),...gens.map((g,i)=>[gps[i].eq,g.units])]);
+ const okAt=x=>{const g=gwaAt(x);return g!=null&&C.meets(g)&&rowsS.every(o=>!o.l||trans(o.l.a+o.l.b*x,o.l.B)>=o.rt.pct-1e-9)};
+ const hasMiss=rowsS.some(o=>o.l&&o.l.b>1e-9);
+ // xa: the one score every remaining activity must average to reach the target GWA with every retention grade kept
+ let xa=null;if(rowsS.length||gens.length)for(let i=0;i<=200;i++)if(okAt(i/2)){xa=i/2;break}
+ const preGP=gwa(all.map(r=>[r.pg[0]==null||(r.gen&&(r.gen.pre===''||r.gen.pre==null))?null:eqv(trans(r.pg[0],r.B)),r.u]));
+ const nm=a=>a.length<2?a.join(''):a.length===2?a.join(' and '):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+ const ins=(()=>{
+  const M=all.filter(r=>r.maj),tg1=fg(C.target);
+  if(!all.length)return{t:'idle',h:'Waiting for subjects.',x:'Add a subject and a few scores, and I will tell you exactly what to aim for.'};
+  const cr=M.filter(r=>rLvl(r)===2&&r.sv&&(r.sv.done||r.sv.x>100+1e-9)),pj=M.filter(r=>rLvl(r)===2&&!cr.includes(r)),tt=M.filter(r=>rLvl(r)===1),rk=[...pj,...tt];
+  const ov=xa!=null&&hasMiss&&xa>0?' Overall, averaging about '+Math.ceil(xa-1e-9)+'% on what is left also secures your '+tg1+' target.':'';
+  if(cr.length)return{t:'bad',h:'Critical:',x:nm(cr.map(r=>r.n))+' can no longer reach '+(cr.length>1?'their':'its')+' retention grade'+(cr.every(r=>!r.sv.done)?', even with 100% on everything that is left':'')+'. Talk to your instructor or adviser as early as you can.'};
+  if(rk.length){const it=rk.map(r=>({n:r.n,c:Math.min(100,Math.max(0,Math.ceil(r.sv.x-1e-9))),g:fg(r.rt.g)}));
+   return{t:'warn',h:'Warning:',x:(it.length===1?it[0].n+' is at risk. Focus on hitting at least '+it[0].c+'% on your remaining activities to stay at '+it[0].g+' or better.':nm(it.map(i=>i.n))+' are at risk. To survive, aim for at least '+it.map(i=>i.n+' '+i.c+'%').join(', ')+' on your remaining activities.')+ov}}
+  if(!hasMiss)return finalG!=null&&C.meets(finalG)?{t:'good',h:'Status: Target secured!',x:'Every score is in and your '+fg(finalG)+' GWA meets your '+tg1+' target.'}:{t:'warn',h:'Status: Final numbers are in.',x:finalG==null?'Enter your scores to see where you land.':'Your GWA is '+fg(finalG)+', which is '+fg(Math.abs(finalG-C.target))+' away from your '+tg1+' target.'};
+  if(xa==null)return{t:'bad',h:'Heads up:',x:'even a perfect score on everything that is left only reaches a '+fg(gwaAt(100))+' GWA, short of your '+tg1+' target. Keep every subject above its retention grade and aim as high as you can.'};
+  if(xa<=0)return{t:'good',h:'Status: Target secured!',x:'You have already locked in your '+tg1+' target. Anything you score from here is a bonus.'};
+  const c=Math.ceil(xa-1e-9);
+  return c<75?{t:'good',h:'Status: On Track!',x:'You only need to average around '+c+'% on your remaining activities to secure your '+tg1+' target.'}
+   :c<90?{t:'warn',h:'Status: Within reach.',x:'You need to average about '+c+'% on your remaining activities to secure your '+tg1+' target. Keep every score steady.'}
+   :{t:'bad',h:'Status: Steep climb.',x:'You would need to average '+c+'% on your remaining activities to secure your '+tg1+' target. Start with the highest-weighted activities.'};
+ })();
+ // chime and confetti the moment the projection newly reaches the target (never on first load)
+ const okNow=finalG!=null&&C.meets(finalG),prevOk=useRef(null);
+ useEffect(()=>{if(prevOk.current===false&&okNow&&!sx)FX.success(true);prevOk.current=okNow},[okNow]);
+ // Survival: the least each subject needs to stay at its Retention Grade. Excellence: the least that reaches the Dean's List target.
+ const applyPlan=mode=>{
+  const ms=rowsS.filter(o=>o.l&&o.l.b>1e-9);
+  if(!ms.length){setPlan({t:'warn',x:subs.length?'Nothing left to forecast: every score is already in.':'Add a subject first.'});return}
+  const vals={},fails=[],parts=[];let v0=0;
+  if(mode==='surv')ms.forEach(o=>{const n=needX(o.l,o.rt.pct);let v;if(n.x>100+1e-9){fails.push(o.s.code);v=100}else v=Math.max(0,Math.ceil(n.x-1e-9));vals[o.s.id]=v;parts.push(o.s.code+' '+v+'%')});
+  else{v0=xa==null?100:Math.max(0,Math.ceil(xa-1e-9));ms.forEach(o=>{vals[o.s.id]=v0});if(xa==null)fails.push('all')}
+  upd(x=>({...x,subs:x.subs.map(s=>{const v=vals[s.id];if(v===undefined)return s;const wi={...(s.wi||{})};P.forEach(p=>pcalc(s,p).live.forEach(a=>{if(ap(a)==null)wi[a.id]=String(v)}));return{...s,wi}})}));
+  if(mode==='surv'){
+   if(fails.length){FX.thud();setPlan({t:'bad',x:'Survival plan set what it can. '+nm(fails)+' cannot reach '+(fails.length>1?'their':'its')+' retention grade even at 100%, so '+(fails.length>1?'those scores are':'that score is')+' set to 100%.'})}
+   else{FX.success(true);setPlan({t:'good',x:'Survival plan set. These are the lowest scores that keep each subject at its retention grade: '+parts.join(', ')+'.'})}
+  }else{
+   if(fails.length){FX.thud();setPlan({t:'bad',x:'Even 100% on everything left only reaches a '+fg(gwaAt(100))+' GWA, short of your '+fg(C.target)+' target. Every remaining score is set to 100% so you can see the best case.'})}
+   else{FX.success(true);setPlan({t:'good',x:xa<=0?'Your '+fg(C.target)+' target is already locked in. Remaining scores are set to 0% just to show it holds.':'Excellence plan set: '+v0+'% on every remaining activity lands your GWA at '+fg(gwaAt(v0))+', which meets your '+fg(C.target)+' target.'})}
+  }};
  const needFor=(r,Sx)=>r.maj?needIn(r.pg,r.W,last0,untrans(Sx,r.B)):needGen(r.gen,P,Sx);
  const Ts=+tg.s||C.pass,chip=on=>cx('rounded-full px-3 py-1.5 transition',on?'bg-accent text-accent-ink':'bg-surface2 hover:bg-line/60');
  const tFor=(s,i)=>{const W=wts(s,P),B=sbaseOf(s);if(i===last0){const prj=P.map(p=>pproj(s,p,0).proj);return needIn(prj,W,i,untrans(Ts,B))}return +tg[P[i].id]||Math.max(0,untrans(C.pass,B))};
 
  /* ---- subject navigation: tab bar inside the card header, arrows, keyboard, swipe ---- */
- const goTo=i=>{if(i<0||i>=subs.length||i===idx)return;setDir(i>idx?1:-1);setSid(subs[i].id);setEdit(false);setRvMsg(null)};
+ const goTo=i=>{if(i<0||i>=subs.length||i===idx)return;FX.swoosh();setDir(i>idx?1:-1);setSid(subs[i].id);setEdit(false);setRvMsg(null)};
  useEffect(()=>{if(!cur||(tab==='f'&&fsub==='g'))return;const el=document.getElementById('tab-'+cur.id);if(el&&el.scrollIntoView)try{el.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}catch(e){}},[cur&&cur.id,tab]);
  useEffect(()=>{if(tab==='f'&&fsub==='g')return;const k=e=>{if(/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||'')))return;if(e.key==='ArrowRight')goTo(idx+1);if(e.key==='ArrowLeft')goTo(idx-1)};window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k)});
  const onTS=e=>{if(e.target.closest&&e.target.closest('input,select,textarea,[data-noswipe]'))return;const t=e.touches[0];sw.current={on:true,x:t.clientX,y:t.clientY,lock:null,t:Date.now()}};
@@ -385,6 +510,13 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
    <div className="min-w-0"><div className={LBL2}>Dean’s List target</div><div className="mt-1 text-3xl font-black tabular-nums tracking-tight sm:text-6xl">{fg(C.target)}</div><div className="mt-1 hidden text-sm text-muted sm:block">or better · highest grade {fg(C.hi)}</div></div></div>
   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1"><span className="text-base font-extrabold sm:text-xl">{finalG==null?'Waiting for grades':ok?'On track for the Dean’s List':'Not there yet'}</span><span className="text-xs text-muted sm:text-sm">{finalG==null?'':ok?'The projection meets your target':fg(Math.abs(finalG-C.target))+' away from the target'}</span><button onClick={exportImage} className={BTN+' sm:ml-auto'}>📤 Share / export as image</button></div></div>};
 
+ const ForecastSummary=()=>{const ok=finalG!=null&&C.meets(finalG),ico={good:'✅',warn:'⚠️',bad:'🚨',idle:'💬'}[ins.t],single=P.length<2;return <div className="flex flex-col gap-3 sm:gap-5">
+  <div className={cx('anim-rise flex items-start gap-3 rounded-3xl border p-4 sm:p-5','ins-'+ins.t)} role="status"><span className="text-2xl leading-none sm:text-3xl" aria-hidden="true">{ico}</span><div className="min-w-0"><div className={LBL2}>Bottom line</div><p className="mt-1 text-sm font-semibold leading-relaxed sm:text-lg"><b className="font-black">{ins.h}</b> {ins.x}</p></div></div>
+  <div className="grid grid-cols-2 gap-3 px-1 sm:gap-8">
+   <div className="min-w-0"><div className={LBL2}>{P[0].name} GWA</div><div className="mt-1 text-4xl font-black tabular-nums tracking-tight sm:text-6xl">{fg(preGP)}</div><div className="mt-1 text-[11px] text-muted sm:text-sm">{preGP==null?'Nothing to project yet':preN+' of '+(subs.length+gens.length)+' actual · rest projected'}</div></div>
+   <div className="min-w-0"><div className={LBL2}>{single?'Semestral GWA':P[last0].name+' / Semestral GWA'}</div><div className={cx('mt-1 text-4xl font-black tabular-nums tracking-tight sm:text-6xl',ok&&'text-good')}>{fg(finalG)}</div><div className="mt-1 text-[11px] text-muted sm:text-sm">{finalN} final · {subs.length-finalN+gens.length} projected</div></div></div>
+  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1"><span className="text-sm font-bold sm:text-base">Dean’s List target {fg(C.target)} <span className="font-semibold text-muted">or {C.dir<0?'lower':'higher'}</span></span><span className={cx('text-xs font-semibold sm:text-sm',ok?'text-good':'text-muted')}>{finalG==null?'':ok?'Projection meets your target ✓':fg(Math.abs(finalG-C.target))+' away from the target'}</span><button onClick={exportImage} className={BTN+' sm:ml-auto'}>📤 Share / export as image</button></div></div>};
+
  const Banners=()=><>
   {loser&&<div className="anim-rise flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface2/80 p-3 text-sm"><span className="min-w-[14rem] flex-1 font-semibold">Edits from two devices clashed. The newest version was kept.</span><button className={BTN} onClick={restoreLoser}>Restore the other version</button><button className={BTN} onClick={onLoser}>Dismiss</button></div>}
   {guest&&<div className="anim-rise flex flex-wrap items-center gap-3 rounded-2xl border border-accent/40 bg-accent/15 p-3 text-sm"><span className="font-semibold">Guest mode: nothing is saved when you leave.</span><input value={kn} onChange={e=>setKn(e.target.value)} placeholder="Account name" className={cx(INP,'h-10 w-44 !text-left px-3')}/><button className={BTNP} onClick={()=>kn.trim()&&onKeep(kn.trim())}>Save as account</button></div>}
@@ -406,6 +538,12 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   <button onClick={()=>setSBase(s.id,'')} className={chip(!has)}>Default ({f2(C.base)})</button>
   {[0,20,50].map(x=><button key={x} onClick={()=>setSBase(s.id,String(x))} className={chip(has&&b===x)}>{x}</button>)}
   <Num v={has?o:''} on={v=>setSBase(s.id,v)} ph="other" w="w-16"/></div>};
+ const RetBox=s=>{const o=s.ret,has=o!==undefined&&o!==null&&o!=='',rt=retOf(s),d=retOf(null),lab=x=>C.id==='pct'?String(x):x.toFixed(2);return <div className="flex flex-col gap-1.5">
+  <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold"><span className="text-sm font-bold">Retention grade</span>
+   <button onClick={()=>setRet(s.id,'')} className={chip(!has)}>Default ({fg(d.g)})</button>
+   {RETCH[C.id].map(x=><button key={x} onClick={()=>setRet(s.id,String(x))} className={chip(has&&+o===x)}>{lab(x)}</button>)}
+   <Num v={has?o:''} on={v=>setRet(s.id,v)} ph="other" w="w-16"/></div>
+  <p className="text-xs text-muted">The lowest {C.id==='pct'?'percentage':'grade'} you must keep in {s.code||'this subject'}. That takes about <b className="text-ink">{rt.pct>100?'more than 100':f2(rt.pct)}%</b> semestral.</p></div>};
  const WeightsBox=s=>{const W=wts(s,P),tot=W.reduce((a,b)=>a+b,0),has=!!(s.pw&&Object.values(s.pw).some(v=>v!==''&&v!=null));return <div className="flex flex-col gap-2">
   <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold">Period weights <span className="text-xs font-semibold text-muted">for {s.code||'this subject'}</span></span>{has&&<button className="text-xs font-semibold text-accent-text underline" onClick={()=>resetPW(s.id)}>Reset to default</button>}</div>
   {P.length===2&&<div className="flex flex-wrap gap-1.5 text-xs font-semibold">{[[40,60],[50,50],[60,40]].map(([a,b])=><button key={a} onClick={()=>setPWs(s.id,[a,b])} className={chip(Math.abs(W[0]-a)<.005&&Math.abs(W[1]-b)<.005)}>{P[0].name} {a} / {P[1].name} {b}</button>)}</div>}
@@ -415,6 +553,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   <div className="font-bold">Semestral grade <span className="text-xs font-semibold text-muted">· the curve (Base) is applied here</span></div>
   {WeightsBox(s)}
   {BaseChips(s)}
+  {RetBox(s)}
   <div className="grid grid-cols-3 gap-2 rounded-xl bg-surface/70 p-2.5 text-center sm:p-3">
    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Raw semestral{sc.raw==null&&R!=null?' (projected)':''}</div><div className="text-base font-black tabular-nums sm:text-lg">{R==null?'—':f2(R)}</div></div>
    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Base</div><div className="text-base font-black tabular-nums sm:text-lg">{f2(B)}</div></div>
@@ -449,7 +588,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   {PeriodBlock(s,pcur)}
   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{P.map(p=>{const c=pcalc(s,p);return <span key={p.id}>{p.name} <b className="text-ink">{c.grade!=null?f2(c.grade):c.gradeSoFar!=null?f2(c.gradeSoFar)+'*':'—'}</b></span>})}<span>raw · * so far</span></div>
   {SemSetup(s)}
-  <AccentBox l="Semestral grade" v={sem==null?'—':f2(sem)} rl="Grade" r={fg(eq)} foot={sem==null?'Complete every period':sem>=C.pass?'Passing ✓':'Below '+C.pass}/>
+  <AccentBox l="Semestral grade" v={sem==null?'—':f2(sem)} rl="Grade" r={fg(eq)} foot={sem==null?'Complete every period':sem>=retOf(s).pct-1e-9?'Meets retention ✓':'Below retention ('+fg(retOf(s).g)+')'}/>
   <div className="flex gap-2"><button className={BTN+' flex-1'} onClick={()=>clearScores([s.id])}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>delSub(s.id)}>Delete subject</button></div></>};
  const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><div className="text-4xl">📚</div><p className="font-bold">No subjects yet</p><button className={BTNP} onClick={()=>setAdding(true)}>＋ Add your first subject</button></div>;
  const TrackerView=()=><>{Summary()}{subs.length?Shell(TrackerBody()):EmptyCard()}</>;
@@ -467,23 +606,40 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
     <div>{p.name} grade needed (raw): <b className={T!=null&&T>100?'text-bad':''}>{T==null?'—':T<=0?'Secured ✓':T>100?'Out of reach ('+f2(T)+')':f2(T)}</b></div>
     {pi===last0?<div className="mt-1 text-xs text-muted">Semestral target {f2(Ts)}. With Base {f2(B)} that needs a raw semestral grade of {f2(Math.max(0,untrans(Ts,B)))}.</div>:<div className="mt-1 text-xs text-muted">Period target: the raw grade that passes if every period matches (change it above).</div>}
     {P.map((q,j)=>j===pi?null:<div key={q.id} className="text-muted">{q.name} ({f2(W[j])}%): <b className="text-ink">{prj[j].proj==null?'—':f2(prj[j].proj)}</b> ({prj[j].complete?'actual':'projected'})</div>)}</div>
-   {r.miss.length>1&&<Tile l={`Same % on all ${r.miss.length} missing`} v={need(r.uni)[0]} bad={need(r.uni)[1]}/>}
+   {(()=>{const rr=all.find(z=>z.s&&z.s.id===s.id),lv=rr?rLvl(rr):0;return lv?<div className={cx('rounded-xl border px-3 py-2 text-xs font-semibold',lv===2?'ins-bad':'ins-warn')}>{lv===2?'⚠ Projected below its '+fg(rr.rt.g)+' retention grade':'⚠ Retention at risk: needs '+Math.ceil(rr.sv.x-1e-9)+'% on what is left to stay at '+fg(rr.rt.g)}</div>:null})()}
+   {r.miss.length>1&&<Tile l={`Same % on all ${r.miss.length} missing`} v={need(r.uni)[0]} bad={need(r.uni)[1]} vc={tlCls(r.uni)}/>}
    <div className="flex flex-col gap-2.5 sm:gap-3">{r.acts.filter(a=>wgt(a)>0).map(a=>{const x=ap(a);if(x!=null)return <div key={a.id} className="flex items-center justify-between rounded-2xl bg-surface2/50 px-4 py-2.5 text-sm"><span className="font-semibold">{a.name} <span className="font-normal text-muted">{f2(wgt(a))}%</span></span><span className="font-bold">✓ {f2(x)}%{a.est&&<span className="ml-1 text-[10px] font-bold uppercase text-accent-text">possible</span>}</span></div>;
     const v=r.alone.find(z=>z[0]===a.id)[1],[t,bad]=need(v),m=mxs(a);
     return <div key={a.id} className="flex flex-col gap-2 rounded-2xl border border-line/60 bg-surface2/60 p-3 sm:p-4">
      <div className="flex items-center justify-between"><span className="font-bold">{a.name} <span className="text-xs font-semibold text-muted">{f2(wgt(a))}%</span></span><span className="rounded-full bg-accent/25 px-2 py-0.5 text-xs font-bold">Not yet</span></div>
-     <div><span className="text-xs text-muted">Score needed{r.miss.length>1?' (others at their sliders)':''}:</span><div className={cx('text-xl font-extrabold',bad?'text-bad':'text-ink')}>{t}{v>0&&v<=100&&<span className="text-sm font-semibold text-muted"> ≈ {f2(v/100*m)}/{m}</span>}</div></div>
+     <div><span className="text-xs text-muted">Score needed{r.miss.length>1?' (others at their sliders)':''}:</span><div className={cx('text-xl font-extrabold',tlCls(v)||(bad?'text-bad':'text-ink'))}>{t}{v>0&&v<=100&&<span className="text-sm font-semibold text-muted"> ≈ {f2(v/100*m)}/{m}</span>}</div></div>
      <div className="flex items-center gap-3"><span className="w-16 text-xs font-semibold">If I score</span><input type="range" min="0" max="100" step="1" value={Math.min(100,+wiv(s,a)||0)} onChange={e=>setWi(s.id,a.id,e.target.value)} className="min-w-0 flex-1"/><Num v={wiv(s,a)} on={v=>setWi(s.id,a.id,v)} w="w-16"/></div></div>})}</div>
    <AccentBox l={`Projected ${p.name.toLowerCase()} grade (raw)`} v={r.proj==null?'—':f2(r.proj)} rl={T==null?'':'vs target'} r={T==null?'—':f2(Math.max(0,T))} foot={T==null?'':met?'Meets target ✓':'Short by '+f2(T-(r.proj||0))}/>
-   {P.length>1&&<AccentBox l="Projected semestral (after Base)" v={sem==null?'—':f2(sem)} rl="Grade" r={sem==null?'—':fg(eqv(sem))} foot={sem==null?'':sem>=C.pass?'Passing ✓':'Below '+C.pass}/>}
+   {P.length>1&&<AccentBox l="Projected semestral (after Base)" v={sem==null?'—':f2(sem)} rl="Grade" r={sem==null?'—':fg(eqv(sem))} foot={sem==null?'':sem>=retOf(s).pct-1e-9?'Meets retention ✓':'Below retention ('+fg(retOf(s).g)+')'}/>}
    {SemSetup(s)}</>};
  const gridC={gridTemplateColumns:'1.5fr repeat('+(P.length+2)+',1fr)'};
- const GradesTable=()=><div className={cx(CARD,'flex flex-col gap-2 p-3.5 sm:p-6')}>
-  <div className="mb-1"><div className="font-extrabold">Projected grades</div><div className="text-xs text-muted">{all.length} subjects · GWA {fg(finalG)}</div></div>
-  <div className="grid gap-2 text-xs font-bold text-muted" style={gridC}><span>Subject</span>{P.map(p=><span key={p.id} className="truncate text-right">{p.name}</span>)}<span className="text-right">Sem.</span><span className="text-right">Grade</span></div>
-  {all.map((r,i)=><div key={i} className="grid items-center gap-2 border-t border-line/60 pt-2.5 text-sm" style={gridC}><div className="min-w-0"><div className="truncate font-extrabold">{r.e} {r.n}</div><div className="text-xs text-muted">{r.u} units{r.sem!=null&&r.sem<C.pass&&<span className="font-semibold text-bad"> · {r.maj?'debarment risk':'failing'}</span>}</div></div>{r.pg.map((v,j)=><span key={j} className="text-right tabular-nums">{v==null?'—':f2(v)}</span>)}<span className={cx('text-right font-bold tabular-nums',r.sem!=null&&r.sem<C.pass&&'text-bad')}>{r.sem==null?'—':f2(r.sem)}</span><span className={cx('text-right font-extrabold tabular-nums',tone(r.eq))}>{fg(r.eq)}</span></div>)}
-  <div className="flex justify-between border-t-2 border-line pt-3 font-extrabold"><span>Final / Projected GWA</span><span className={cx('tot tabular-nums',tone(finalG))}>{fg(finalG)}</span></div>
-  <p className="text-xs text-muted">Period columns are raw grades. Sem. is after each subject’s Base. Highest grade is {fg(C.hi)}. Majors must stay at {C.pass} or above or you risk debarment.</p>
+ const Row=r=>{const k=r.s?r.s.id:r.gen.id,open=!!ox[k],lv=rLvl(r),tc=needTC(r.ex),lbl=needLbl(r.ex,r.ms),sc=needTC(r.sv),te=r.maj?'Below '+fg(r.rt.g)+' retention':'Projected failing',tr=r.maj?'Retention at risk ('+fg(r.rt.g)+')':'';
+  return <div key={k} className={cx('rounded-2xl border transition-colors duration-300',lv===2?'ins-bad':lv===1?'ins-warn':'border-transparent')}>
+   <button onClick={()=>setOx(x=>({...x,[k]:!x[k]}))} aria-expanded={open} className="flex w-full items-center gap-3 rounded-2xl px-2.5 py-3 text-left transition hover:bg-surface2/60">
+    <span className="text-xl">{r.e}</span>
+    <div className="min-w-0 flex-1"><div className="truncate font-extrabold">{r.n}</div>
+     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs"><span className={cx('font-semibold',tc?TLC[tc]:'text-muted')}>{lbl}</span>{tc&&<span className={cx('rounded-full px-1.5 py-px text-[10px] font-bold uppercase tracking-wider',TLB[tc])}>{TLW[tc]}</span>}</div>
+     {lv>0&&<div className={cx('mt-0.5 text-[11px] font-bold',lv===2?'tl-r':'tl-y')}>⚠ {lv===2?te:tr}</div>}</div>
+    <div className="text-right"><div className={cx('text-2xl font-black tabular-nums',tone(r.eq))}>{fg(r.eq)}</div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Forecast</div></div><Chev open={open}/></button>
+   <div className={cx('acc',open&&'open')} aria-hidden={!open}><div><div className="grid grid-cols-2 gap-2 px-2.5 pb-3 sm:grid-cols-3">
+    {P.map((p,j)=><Tile key={p.id} l={p.name+(r.maj?' (raw)':'')} v={r.pg[j]==null?'—':f2(r.pg[j])}/>)}
+    <Tile l={r.maj?'Semestral raw':'Semestral'} v={r.raw==null?'—':f2(r.raw)}/>
+    {r.maj&&<Tile l={'After Base '+f2(r.B)} v={r.sem==null?'—':f2(r.sem)} sub="semestral percent"/>}
+    <Tile l="Units" v={String(r.u)}/>
+    {r.maj&&<Tile l="Retention grade" v={fg(r.rt.g)} sub={r.rt.pct>100?'out of range':'needs '+f2(r.rt.pct)+'% semestral'}/>}
+    {r.maj&&<Tile l="To survive" v={needShort(r.sv)} vc={sc?TLC[sc]:''} sub="to keep the retention grade"/>}
+    <Tile l={'For '+fg(C.target)} v={needShort(r.ex)} vc={tc?TLC[tc]:''} sub="to reach the target"/></div></div></div></div>};
+ const GradesTable=()=><div className={cx(CARD,'flex flex-col gap-1.5 p-3.5 sm:p-6')}>
+  <div className="mb-1 flex items-end justify-between gap-3"><div><div className="font-extrabold">Projected grades</div><div className="text-xs text-muted">{all.length} subject{all.length===1?'':'s'} · tap a row for the numbers</div></div><div className="text-right"><div className={LBL2}>GWA</div><div className={cx('text-2xl font-black tabular-nums',tone(finalG))}>{fg(finalG)}</div></div></div>
+  {!all.length&&<p className="py-6 text-center text-sm text-muted">No subjects yet. Add one in the Tracker.</p>}
+  {all.map(Row)}
+  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold"><span className="text-muted">Score needed:</span><span className="rounded-full px-2 py-0.5 tlb-g">Easy · under 75%</span><span className="rounded-full px-2 py-0.5 tlb-y">Moderate · 75 to 89%</span><span className="rounded-full px-2 py-0.5 tlb-r">Critical · 90%+</span></div>
+  <p className="text-xs text-muted">The big grade is the forecast after each subject’s Base. “Need” is the score on what is left that reaches your {fg(C.target)} target. Set a retention grade on each subject card to track its survival line. Highest grade is {fg(C.hi)}.</p>
   <div className="flex flex-wrap gap-1.5 text-xs">{C.table?<>{C.table.map(([t,v])=><span key={t} className="rounded-full bg-surface2 px-2.5 py-1 font-semibold">{t}+ → {fg(v)}</span>)}<span className="rounded-full bg-bad/15 px-2.5 py-1 font-semibold text-bad">below {C.table[C.table.length-1][0]} → {fg(C.fail)}</span></>:<span className="rounded-full bg-surface2 px-2.5 py-1 font-semibold">Grade equals the percentage</span>}</div></div>;
  const GenEds=()=><div className={cx(CARD,'flex flex-col gap-3 p-3.5 sm:p-6')}>
   <div className="flex items-start justify-between gap-3"><div><div className="font-extrabold">📗 Gen Eds</div><div className="text-xs text-muted">Name, units and {P[0].name.toLowerCase()} grade. Then set what you expect for the rest.</div></div>{!gadd&&<button className={BTNP} onClick={()=>setGadd(true)}>＋ Add</button>}</div>
@@ -498,18 +654,21 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
    <Tile l={`Best possible GWA (100 in every ${P[last0].name.toLowerCase()})`} v={fg(best)} sub={best==null?null:C.meets(best)?'Dean’s List is still possible':'Dean’s List is out of reach'}/>
    <Tile l={`Same ${P[last0].name.toLowerCase()} grade in every subject`} v={P.length<2?'—':fstar==null?'Not possible':f2(fstar)} sub={`Lowest equal grade that still reaches ${fg(C.target)}`}/>
-   <Tile l="Passing mark" v={String(C.pass)} sub="Majors below this risk debarment"/></div>
-  <div className="grid gap-2 text-xs font-bold text-muted" style={{gridTemplateColumns:'1.4fr repeat(3,1fr)'}}><span>Subject</span><span className="text-right">{P[0].name}</span><span className="text-right">{P[last0].name} to pass ({C.pass})</span><span className="text-right">{P[last0].name} for {fg(C.target)} ({f2(C.need)})</span></div>
-  {all.map((r,i)=>{const a=needFor(r,C.pass),b=needFor(r,C.need);return <div key={i} className="grid items-center gap-2 border-t border-line/60 pt-2.5 text-sm" style={{gridTemplateColumns:'1.4fr repeat(3,1fr)'}}><span className="truncate font-extrabold">{r.e} {r.n}</span><span className="text-right tabular-nums">{r.pg[0]==null?'—':f2(r.pg[0])}</span><span className={cx('text-right font-bold',a>100&&'text-bad')}>{ng(a)}</span><span className={cx('text-right font-extrabold',b>100?'text-bad':'text-good')}>{ng(b)}</span></div>})}
+   <Tile l="Retention watch" v={String(all.filter(r=>rLvl(r)>0).length)} sub="subjects near or below their retention grade" vc={all.some(r=>rLvl(r)===2)?'tl-r':all.some(r=>rLvl(r)===1)?'tl-y':'tl-g'}/></div>
+  <div className="grid gap-2 text-xs font-bold text-muted" style={{gridTemplateColumns:'1.4fr repeat(3,1fr)'}}><span>Subject</span><span className="text-right">{P[0].name}</span><span className="text-right">{P[last0].name} to retain</span><span className="text-right">{P[last0].name} for {fg(C.target)} ({f2(C.need)})</span></div>
+  {all.map((r,i)=>{const a=needFor(r,r.rt?r.rt.pct:C.pass),b=needFor(r,C.need);return <div key={i} className="grid items-center gap-2 border-t border-line/60 pt-2.5 text-sm" style={{gridTemplateColumns:'1.4fr repeat(3,1fr)'}}><span className="truncate font-extrabold">{r.e} {r.n}</span><span className="text-right tabular-nums">{r.pg[0]==null?'—':f2(r.pg[0])}</span><span className={cx('text-right font-bold',a>100&&'text-bad')}>{ng(a)}</span><span className={cx('text-right font-extrabold',b>100?'text-bad':'text-good')}>{ng(b)}</span></div>})}
   <p className="text-xs text-muted">The last column assumes each subject lands exactly on {f2(C.need)}. A strong subject can offset a weaker one, so watch the projected GWA at the top as you move the sliders.</p></div>;
  const GwaView=()=><div className="flex flex-col gap-4"><Seg v={gv} on={setGv} opts={[['grades','Grades'],['gens','Gen Eds'],['plan','Planner']]} cls="w-full sm:w-auto sm:self-start"/>{gv==='grades'?GradesTable():gv==='gens'?GenEds():Planner()}</div>;
  const ForecastView=()=>{const pi=P.findIndex(p=>p.id===fsub);return <>
-  {Summary()}
+  {ForecastSummary()}
   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
    <Seg v={fsub} on={setSub} opts={[...P.map(p=>[p.id,p.name]),['g','GWA']]} cls="w-full sm:w-auto"/>
    {fsub!=='g'&&pi<last0&&<label className="flex items-center gap-2 text-sm font-semibold">{P[pi].name} target<Num v={tg[fsub]} on={v=>setTg(fsub,v)} ph={String(C.pass)} w="w-20"/></label>}
    {fsub!=='g'&&pi===last0&&<label className="flex items-center gap-2 text-sm font-semibold">Semestral target<Num v={tg.s} on={v=>setTg('s',v)} ph={String(C.pass)} w="w-20"/></label>}
-   {fsub!=='g'&&<div className="flex gap-2"><button className={BTN} onClick={()=>setMissing(fsub)}>🎯 Set missing to needed</button><button className={BTN} onClick={()=>setMax(fsub)}>💯 Max</button></div>}</div>
+   <div className="flex flex-wrap gap-2">{fsub!=='g'&&<><button className={BTN} onClick={()=>setMissing(fsub)}>🎯 Set missing to needed</button><button className={BTN} onClick={()=>setMax(fsub)}>💯 Max</button></>}
+    <button className={BTN} onClick={()=>applyPlan('surv')} title="The lowest scores that keep every subject at its retention grade">🛟 Survival</button>
+    <button className={BTNP} onClick={()=>applyPlan('exc')} title="The scores that reach your Dean’s List target GWA">🏆 Excellence</button></div></div>
+  {plan&&<div className={cx('anim-rise flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold','ins-'+plan.t)} role="status"><span>{plan.x}</span><button className="shrink-0 text-muted" onClick={()=>setPlan(null)} aria-label="Dismiss">✕</button></div>}
   {fsub==='g'?GwaView():subs.length?Shell(ForecastBody(pi)):EmptyCard()}</>};
 
  /* ---- settings sheet ---- */
@@ -520,6 +679,9 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   const rp=rawP(),tw=P.reduce((a,p)=>a+p.w,0);
   return <>
    <section className="flex flex-col gap-3"><h3 className={LBL}>Appearance</h3><ThemePicker theme={theme} setTheme={setTheme}/></section>
+   <section className="flex flex-col gap-3"><h3 className={LBL}>Sound and haptics</h3>
+    <Switch on={fxs.snd} onChange={()=>togFx('snd')} label="Sound effects" sub="Calculator clacks, swipe swooshes, success chimes and error thuds. Turn off to mute everything."/>
+    <Switch on={fxs.hap} onChange={()=>togFx('hap')} label="Haptic feedback" sub="Short vibrations on phones that support them."/></section>
    <section className="flex flex-col gap-3"><h3 className={LBL}>Grading periods and Base</h3>
     {rp.map((p,i)=><div key={p.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-surface2/60 p-3">
      <TextIn v={p.name} on={v=>setPeriod(i,{name:v})} ph="Period name" cls="min-w-[8rem] flex-1"/>
@@ -532,7 +694,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
     <div className="grid gap-2">{Object.entries(PRESETS).map(([id,p])=><button key={id} onClick={()=>pickScale(id)} className={cx('rounded-2xl border p-3 text-left transition',C.id===id?'border-accent bg-accent/10 ring-2 ring-accent/40':'border-line bg-surface/60 hover:bg-surface')}><div className="font-bold">{p.label}</div><div className="text-xs text-muted">{p.sub}</div></button>)}</div>
     <div className="flex flex-wrap gap-4">
      <label className="text-sm font-semibold">Dean’s List GWA target<div className="mt-1"><Num v={st.cfg&&st.cfg.target!==undefined?st.cfg.target:PRESETS[C.id].target} on={v=>setCfg({target:v},'cfgt')} w="w-28"/></div></label>
-     <label className="text-sm font-semibold">Passing mark (percent)<div className="mt-1"><Num v={st.cfg&&st.cfg.pass!==undefined?st.cfg.pass:String(PRESETS[C.id].pass)} on={setPass} w="w-28"/></div></label></div>
+     <label className="text-sm font-semibold">Passing mark and default retention (percent)<div className="mt-1"><Num v={st.cfg&&st.cfg.pass!==undefined?st.cfg.pass:String(PRESETS[C.id].pass)} on={setPass} w="w-28"/></div></label></div>
     <p className="text-xs text-muted">{C.dir<0?`Lower is better on this scale, so a target of ${fg(C.target)} means ${fg(C.target)} or lower.`:`Higher is better on this scale, so a target of ${fg(C.target)} means ${fg(C.target)} or higher.`} You need about {f2(C.need)}% in a subject to land on the target.</p>
     {C.table&&<div className="flex flex-col gap-2"><div className="text-sm font-bold">Grade table <span className="text-xs font-semibold text-muted">(minimum percent → grade)</span></div>
      {raw.map((r,i)=><div key={i} className="flex items-center gap-2"><Num v={String(r[0])} on={v=>setRow(i,0,v)} ph="min %" w="w-24"/><span className="text-muted">→</span><Num v={String(r[1])} on={v=>setRow(i,1,v)} ph="grade" w="w-24"/><button className={BTN+' !px-3'} onClick={()=>setCfg({table:str().filter((_,k)=>k!==i)})} aria-label="Remove row">✕</button></div>)}
@@ -559,6 +721,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
    <label className="text-sm font-semibold">Code<TextIn v={nf.code} on={v=>setNf({...nf,code:v})} ph="e.g. AUDITING" cls="mt-1"/></label>
    <label className="text-sm font-semibold">Name (optional)<TextIn v={nf.name} on={v=>setNf({...nf,name:v})} cls="mt-1"/></label>
    <label className="text-sm font-semibold">Credit units<div className="mt-1"><Num v={nf.units} on={v=>setNf({...nf,units:v})} w="w-full"/></div></label>
+   <label className="text-sm font-semibold">Retention grade <span className="text-xs font-normal text-muted">(optional)</span><div className="mt-1"><Num v={nf.ret} on={v=>setNf({...nf,ret:v})} ph={'e.g. '+(C.id==='ph'?'2.50':C.id==='gpa'?'2.0':'75')} w="w-full"/></div><span className="mt-1 block text-xs font-normal text-muted">The lowest grade you must keep in this subject. Leave blank to use the default ({fg(retOf(null).g)}). You can change it later on the subject card.</span></label>
    <button className={BTNP} onClick={addSub}>Add subject</button></Sheet>
  </div>;
 }
@@ -599,11 +762,15 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const Greeting=<div className="anim-rise pb-6 pt-8 sm:pb-8 sm:pt-12"><h1 className="max-w-3xl text-3xl font-black leading-[1.1] tracking-tight sm:text-5xl">Hello! <span className="text-muted">Feel free to track and forecast your grades.</span></h1></div>;
  const GroupsScreen=()=><>
   {Greeting}
-  <div className="mb-3 flex items-center justify-between gap-3"><h2 className={LBL}>Groups</h2><button className={BTNP} onClick={()=>{setNg({name:'',icon:'📁',pic:'',cloud:CLOUD,pass:''});setCm('');setSh({t:'newGroup'})}}>＋ Create New Group</button></div>
-  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{book.groups.map(GroupCard)}</div>
+  {book.groups.length>0&&<div className="mb-3 flex items-center justify-between gap-3"><h2 className={LBL}>Groups</h2><button className={BTNP} onClick={()=>{setNg({name:'',icon:'📁',pic:'',cloud:CLOUD,pass:''});setCm('');setSh({t:'newGroup'})}}>＋ Create New Group</button></div>}
+  {book.groups.length?<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{book.groups.map(GroupCard)}</div>
+  :<div className={cx(CARD,'anim-rise flex flex-col items-center gap-4 p-8 text-center sm:p-12')}>
+   <TigerLogo className="h-16 w-[4.2rem]"/>
+   <div><h2 className="text-xl font-black sm:text-2xl">Start with a group</h2><p className="mx-auto mt-1 max-w-md text-sm text-muted">Create a group first, then add your account inside it. {CLOUD?'Keep cloud sync on so your grades are backed up and follow you to every device.':'Cloud sync is off, so this group will live on this device only. Add your database URL in config.js to sync.'}</p></div>
+   <div className="flex flex-wrap items-center justify-center gap-2"><button className={BTNP} onClick={()=>{setNg({name:'',icon:'📁',pic:'',cloud:CLOUD,pass:''});setCm('');setSh({t:'newGroup'})}}>＋ Create New Group</button>{CLOUD&&<button className={BTN} onClick={()=>{setJf({name:'',pass:''});setCm('');setSh({t:'joinGroup'})}}>Join an existing group</button>}</div></div>}
   <div className="mt-8 flex flex-col items-center gap-3 text-center text-xs text-muted">
    {CLOUD&&<button className="font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setJf({name:'',pass:''});setCm('');setSh({t:'joinGroup'})}}>Join an existing group with its passcode</button>}
-   <button className="font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={ctl.guest}>Continue as guest (nothing is saved)</button>
+   
    <p className="max-w-md">{CLOUD?'Groups sync from the cloud every time you open the app. Each account inside a group is protected by its own passcode.':'Cloud sync is off. Add your database URL in config.js to sync groups and accounts between devices.'}</p></div></>;
  const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a.last||0)||(a.name||'').localeCompare(b.name||'')),rs=remotesOf(grp);return <>
   <div className="anim-rise flex items-center gap-3 pb-5 pt-6 sm:pt-10"><button className={BTN+' !px-3'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-12 w-12" t="text-2xl"/><div className="min-w-0 flex-1"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'⚠ group not found in the cloud':'☁ cloud group'):'this device only'}</div></div>
@@ -750,7 +917,7 @@ function Root(){
  const enableGroupCloud=async(id,pw)=>{const g=grp(id);if(!g)return'Group not found.';if(!CLOUD)return NOCLOUD;if((pw||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
   try{const k=await gkey(g.name,pw),ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose a different passcode.';await gwrite(k,'meta',{n:g.name,i:g.icon||'📁',p:g.pic||null,t:Date.now()});g.cloud={k,sn:g.name.trim()};g.members={};save();bk.current.list.filter(a=>a.gid===id&&a.cloud).forEach(a=>pubM(a.id));return'ok'}catch(e){return BADNET}};
  const deleteGroup=async(id,everywhere)=>{const g=grp(id);if(!g)return;if(everywhere&&g.cloud){try{await gremove(g.cloud.k)}catch(e){}}
-  let gs=bk.current.groups.filter(x=>x.id!==id);if(!gs.length)gs=[defGroup()];bk.current.groups=gs;bk.current.list.forEach(a=>{if(a.gid===id)a.gid=gs[0].id});save()};
+  let gs=bk.current.groups.filter(x=>x.id!==id);if(!gs.length&&bk.current.list.some(a=>a.gid===id))gs=[defGroup()];bk.current.groups=gs;bk.current.list.forEach(a=>{if(a.gid===id)a.gid=gs[0].id});save()};
  const createAccount=async n=>{const name=(n.name||'').trim();if(!name)return'Enter a name.';const d=blank(n.pre),o={name,bio:n.bio,emoji:n.emoji,pic:n.pic,gid:n.gid};
   if(n.local){const id=addAcc(o,d);save();return'ok:'+id}
   if(!CLOUD)return NOCLOUD;if((n.pass||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET+' You can create a local-only account instead.';
@@ -774,7 +941,7 @@ function Root(){
   bk.current.list=bk.current.list.filter(x=>x.id!==id);delete bk.current.data[id];save()};
  const imp=(gid,name,d)=>{addAcc({name,emoji:'📥',gid},mig(d));save()};
  const guest=()=>{gd.current=blank(false);setCur({guest:true})};
- const keep=name=>{const id=addAcc({name,emoji:'🎓',gid:bk.current.groups[0].id},gd.current);save();open(id)};
+ const keep=name=>{const g0=bk.current.groups[0];if(!g0)return;const id=addAcc({name,emoji:'🎓',gid:g0.id},gd.current);save();open(id)};
  const leave=()=>{const id=cur&&cur.id,a=id&&acc(id);if(a&&a.cloud){clearTimeout(tm.current[id]);if(a.sy&&a.sy.dirty&&navigator.onLine)push(id)}setCur(null);refresh()};
  const ctl={open,guest,createGroup,joinGroup,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,disable,del,imp,refresh};
 
