@@ -43,9 +43,13 @@ window.tailwind&&(tailwind.config={theme:{extend:{colors:{
 .glass{background:rgb(var(--surface)/.7);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);border:1px solid rgb(var(--line)/.8);box-shadow:0 14px 44px -10px rgb(var(--ink)/.22)}
 .orb{position:absolute;border-radius:9999px;background:radial-gradient(circle,rgb(var(--accent)/.38),transparent 70%);filter:blur(12px);pointer-events:none}
 input:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid rgb(var(--accent));outline-offset:2px}
-/* per-subject accent (themes can override) */
-.sa-0{--sa:245 158 11}.sa-1{--sa:16 185 129}.sa-2{--sa:99 102 241}.sa-3{--sa:244 63 94}.sa-4{--sa:14 165 233}.sa-5{--sa:168 85 247}
-[data-theme=mono] .sa-0,[data-theme=mono] .sa-1,[data-theme=mono] .sa-2,[data-theme=mono] .sa-3,[data-theme=mono] .sa-4,[data-theme=mono] .sa-5{--sa:60 60 60}
+/* iOS Safari zooms the page when a field under 16px gets focus: force exactly 16px on all of them */
+input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{font-size:16px!important}
+button,select,input,a{touch-action:manipulation}
+input,textarea{caret-color:rgb(var(--accent))}
+::selection{background:rgb(var(--accent)/.3)}
+/* every subject accent follows the globally selected theme colour */
+:root,.sa-0,.sa-1,.sa-2,.sa-3,.sa-4,.sa-5{--sa:var(--accent)}
 /* ---------- base ---------- */
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 4.5rem);min-height:100%;-webkit-text-size-adjust:100%}

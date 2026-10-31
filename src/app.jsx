@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
-const {useState,useRef,useEffect}=React;
+import {createPortal} from 'react-dom';
+const {useState,useRef,useEffect,useLayoutEffect}=React;
 
 /* =====================================================================
    1. CONFIG
@@ -15,16 +16,22 @@ const ADAPT={init(){try{navigator.storage&&navigator.storage.persist&&navigator.
    Sound and haptics each have a switch in Settings and are remembered on this device.
    ===================================================================== */
 const FX=(()=>{
- let ctx=null,nb=null,lastS=0,lastC=0;
+ let ctx=null,master=null,conv=null,lastS=0,lastD=0,lastC=0;
  const rd=k=>{try{return localStorage.getItem(k)!=='0'}catch(e){return true}},S={snd:rd('gtf-snd'),hap:rd('gtf-hap')};
  const set=(k,v)=>{S[k]=!!v;try{localStorage.setItem('gtf-'+k,v?'1':'0')}catch(e){}};
- const ac=()=>{if(!S.snd)return null;try{if(!ctx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;ctx=new A()}if(ctx.state==='suspended')ctx.resume();return ctx}catch(e){return null}};
- const buf=c=>{if(!nb||nb.sampleRate!==c.sampleRate){nb=c.createBuffer(1,c.sampleRate,c.sampleRate);const d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}return nb};
- const env=(g,t,pk,at,dc)=>{g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(pk,t+at);g.gain.exponentialRampToValueAtTime(.0001,t+at+dc)};
- // a pitched blip: oscillator that can glide from f0 to f1
- const osc=(c,type,f0,f1,t,pk,at,dc)=>{const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);if(f1)o.frequency.exponentialRampToValueAtTime(f1,t+at+dc);env(g,t,pk,at,dc);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+at+dc+.05)};
- // filtered noise: the body of clicks and swooshes
- const hiss=(c,t,type,fq,fq1,q,pk,at,dc)=>{const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=buf(c);f.type=type;f.Q.value=q;f.frequency.setValueAtTime(fq,t);if(fq1)f.frequency.exponentialRampToValueAtTime(fq1,t+at+dc);env(g,t,pk,at,dc);s.connect(f);f.connect(g);g.connect(c.destination);s.start(t,Math.random()*.4);s.stop(t+at+dc+.05)};
+ // a small generated "room" so every note blooms softly instead of stopping dead (no audio files)
+ const room=c=>{const n=Math.floor(c.sampleRate*1.5),b=c.createBuffer(2,n,c.sampleRate);for(let k=0;k<2;k++){const d=b.getChannelData(k);let lp=0;for(let i=0;i<n;i++){lp+=((Math.random()*2-1)-lp)*.35;d[i]=lp*Math.pow(1-i/n,3)}}return b};
+ // the audio engine is created silently on the first touch so later sounds are allowed to play on iPhone
+ const boot=()=>{try{if(!ctx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;ctx=new A();
+   master=ctx.createGain();master.gain.value=.9;const cp=ctx.createDynamicsCompressor();cp.threshold.value=-20;cp.ratio.value=3;master.connect(cp);cp.connect(ctx.destination);
+   conv=ctx.createConvolver();conv.buffer=room(ctx);const wet=ctx.createGain();wet.gain.value=.38;conv.connect(wet);wet.connect(master)}
+  if(ctx.state==='suspended')ctx.resume();return ctx}catch(e){return null}};
+ const ac=()=>S.snd?boot():null;
+ // one soft bell note: a sine with a faint octave, a gentle attack and a long smooth tail, lightly low-passed
+ const tone=(f,t,pk,dc,f1)=>{const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3600;lp.Q.value=.3;
+  [[1,1],[2,.16]].forEach(([m,a])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(f*m,t);if(f1)o.frequency.exponentialRampToValueAtTime(f1*m,t+dc*.5);
+   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(pk*a,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dc);o.connect(g);g.connect(lp);o.start(t);o.stop(t+dc+.05)});
+  lp.connect(master);lp.connect(conv)};
  const vib=p=>{if(!S.hap)return;try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
  const confetti=()=>{try{
   if(typeof document==='undefined'||(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches))return;
@@ -37,16 +44,16 @@ const FX=(()=>{
    s.background=cols[i%cols.length];s.width=(6+Math.random()*5)+'px';s.height=(9+Math.random()*7)+'px';if(i%3===0)s.borderRadius='50%';
    s.animationDuration=(1.2+Math.random()*.8)+'s';s.animationDelay=Math.round(Math.random()*80)+'ms';box.appendChild(p)}
   document.body.appendChild(box);setTimeout(()=>box.remove(),2400)}catch(e){}};
+ try{const un=()=>{boot();if(ctx&&ctx.state==='running')['pointerdown','touchend','keydown'].forEach(e=>window.removeEventListener(e,un,true))};['pointerdown','touchend','keydown'].forEach(e=>window.addEventListener(e,un,true))}catch(e){}
+ // Sound is reserved for big moments. Typing, taps and navigation are always silent.
  return{S,set,confetti,
-  // crisp mechanical key: a short high noise tick plus a tiny low thump
-  clack(){vib(10);const c=ac();if(!c)return;const t=c.currentTime;hiss(c,t,'bandpass',3200,1800,1.4,.28,.001,.03);osc(c,'triangle',210,80,t,.2,.001,.035)},
-  // very soft airy sweep
-  swoosh(){vib(6);const c=ac();if(!c)return;const t=c.currentTime;hiss(c,t,'bandpass',500,2600,.8,.07,.07,.2)},
-  // resonant four-note chime, double-tap haptic, optional confetti
-  success(withConfetti){const n=Date.now();if(n-lastS<1200)return;lastS=n;vib([14,60,14]);if(withConfetti!==false)confetti();
-   const c=ac();if(!c)return;const t=c.currentTime;[784,988,1175,1568].forEach((f,i)=>{const s=t+i*.09;osc(c,'sine',f,0,s,.12,.01,1.1);osc(c,'sine',f*2,0,s,.025,.01,.6)})},
-  // muted low thud
-  thud(){vib(35);const c=ac();if(!c)return;const t=c.currentTime;osc(c,'sine',150,55,t,.45,.004,.22);hiss(c,t,'lowpass',240,0,.7,.14,.002,.1)}}
+  // a calculation just finished: a soft two-note bell
+  done(){const n=Date.now();if(n-lastD<300)return;lastD=n;vib(8);const c=ac();if(!c)return;const t=c.currentTime+.01;tone(659.25,t,.1,.9);tone(987.77,t+.09,.09,1.1)},
+  // a target was reached: a warm rising arpeggio over a low pad, a gentle double-tap, optional confetti
+  success(withConfetti){const n=Date.now();if(n-lastS<1500)return;lastS=n;vib([10,70,10]);if(withConfetti!==false)confetti();
+   const c=ac();if(!c)return;const t=c.currentTime+.01;[[523.25,0],[659.25,.08],[783.99,.16],[1046.5,.24]].forEach(([f,d],i)=>tone(f,t+d,.085+i*.01,1.6));tone(261.63,t,.05,2)},
+  // something is not possible: a quiet downward sigh
+  low(){vib(16);const c=ac();if(!c)return;const t=c.currentTime+.01;tone(392,t,.07,.5,370);tone(293.66,t+.1,.06,.7)}}
 })();
 // theme-aware extras (traffic lights, insight banners, confetti), injected so this file stays self-contained
 (function(){try{if(document.getElementById('gtf-x'))return;const el=document.createElement('style');el.id='gtf-x';el.textContent=[
@@ -229,14 +236,14 @@ const BTN='inline-flex items-center justify-center gap-1.5 rounded-xl border bor
 const BTNP='inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-bold text-accent-ink shadow-sm hover:brightness-105 active:scale-[.97] transition disabled:opacity-50 disabled:pointer-events-none';
 const BTNX='inline-flex items-center justify-center gap-1.5 rounded-xl border border-bad/30 px-3.5 py-2 text-sm font-semibold text-bad hover:bg-bad/10 active:scale-[.97] transition';
 const INP='rounded-2xl border border-line/60 bg-surface2/80 text-center text-base font-semibold text-ink transition placeholder:font-normal placeholder:text-muted/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40';
-const SEL='rounded-xl border border-line bg-surface/80 px-3 py-2 text-sm font-semibold text-ink max-w-full focus:outline-none focus:ring-2 focus:ring-accent/40';
+const SEL='rounded-xl border border-line bg-surface/80 px-3 py-2 text-base font-semibold text-ink max-w-full focus:outline-none focus:ring-2 focus:ring-accent/40';
 const LBL='text-xs font-bold uppercase tracking-[.12em] text-muted';
 const LBL2='text-[10px] font-bold uppercase leading-tight tracking-[.08em] text-muted sm:text-xs sm:tracking-[.12em]';
 
-const Num=({v,on,ph,w='w-20',nav,bad,clk})=><input inputMode="decimal" enterKeyHint="next" data-n={nav?1:undefined} onKeyDown={nav?e=>{if(e.key==='Enter'){e.preventDefault();const a=[...document.querySelectorAll('input[data-n]')],i=a.indexOf(e.target),n=a[i+1];n?n.focus():e.target.blur()}}:undefined} value={v??''} placeholder={ph} onChange={e=>{const x=e.target.value;if(/^\d*\.?\d*$/.test(x)){if(clk)FX.clack();on(x)}}} className={cx(INP,'h-11 min-w-0 sm:h-12',w,bad&&'!border-bad ring-2 ring-bad/40')}/>;
+const Num=({v,on,ph,w='w-20',nav,bad,clk})=><input inputMode="decimal" enterKeyHint="next" data-n={nav?1:undefined} onKeyDown={nav?e=>{if(e.key==='Enter'){e.preventDefault();const a=[...document.querySelectorAll('input[data-n]')],i=a.indexOf(e.target),n=a[i+1];n?n.focus():e.target.blur()}}:undefined} value={v??''} placeholder={ph} onChange={e=>{const x=e.target.value;if(/^\d*\.?\d*$/.test(x)){on(x)}}} className={cx(INP,'h-11 min-w-0 sm:h-12',w,bad&&'!border-bad ring-2 ring-bad/40')}/>;
 const TextIn=({v,on,ph,cls='',type='text'})=><input type={type} value={v} placeholder={ph} autoComplete="off" onChange={e=>on(e.target.value)} className={cx(INP,'h-11 w-full !text-left px-3.5 sm:h-12',cls)}/>;
 const Txt=({v,on,cls=''})=><input value={v} onChange={e=>on(e.target.value)} className={cx('min-w-0 rounded-xl bg-transparent px-2 py-1 text-base text-ink transition hover:bg-surface2 focus:outline-none focus:ring-2 focus:ring-accent/40',cls)}/>;
-const Seg=({v,on,opts,cls=''})=><div className={cx('inline-grid grid-flow-col auto-cols-fr gap-1 rounded-2xl border border-line/70 bg-surface2/80 p-1',cls)}>{opts.map(([k,l])=><button key={k} onClick={()=>on(k)} className={cx('rounded-xl px-4 py-1.5 text-sm font-bold transition-all duration-300',v===k?'bg-accent text-accent-ink shadow':'text-muted hover:text-ink')}>{l}</button>)}</div>;
+const Seg=({v,on,opts,cls=''})=><div className={cx('inline-grid grid-flow-col auto-cols-fr gap-1 rounded-2xl border border-line/70 bg-surface2/80 p-1',cls)}>{opts.map(([k,l])=><button key={k} onClick={()=>on(k)} className={cx('min-w-0 rounded-xl px-3 py-2 text-center text-sm font-bold leading-tight transition-all duration-300',v===k?'bg-accent text-accent-ink shadow':'text-muted hover:text-ink')}>{l}</button>)}</div>;
 const Chev=({open})=><svg viewBox="0 0 20 20" className={cx('h-5 w-5 shrink-0 text-muted transition-transform duration-300',open&&'rotate-180')} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5"/></svg>;
 const Tile=({l,v,sub,bad,vc})=><div className="rounded-2xl border border-line/60 bg-surface2/70 p-3"><div className="text-xs font-semibold text-muted">{l}</div><div className={cx('text-xl font-extrabold tabular-nums',vc||(bad?'text-bad':'text-ink'))}>{v}</div>{sub&&<div className="mt-0.5 text-xs text-muted">{sub}</div>}</div>;
 const Switch=({on,onChange,label,sub})=><button role="switch" aria-checked={on} onClick={onChange} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line/60 bg-surface2/60 p-3 text-left transition hover:bg-surface2"><span className="min-w-0"><span className="block text-sm font-bold">{label}</span>{sub&&<span className="block text-xs text-muted">{sub}</span>}</span><span className={cx('relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300',on?'bg-accent':'bg-line')}><span className={cx('absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-all duration-300',on?'left-[1.4rem]':'left-0.5')}/></span></button>;
@@ -254,48 +261,62 @@ function Sheet({open,onClose,title,children,wide}){
  if(!open)return null;
  return <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
   <div onClick={onClose} className="anim-fade absolute inset-0 bg-ink/40 backdrop-blur-sm"/>
-  <div className={cx('anim-sheet relative max-h-[92vh] w-full overflow-y-auto overscroll-contain rounded-t-[2rem] border border-line bg-bg shadow-2xl sm:rounded-[2rem]',wide?'sm:max-w-2xl':'sm:max-w-lg')} style={{paddingBottom:'env(safe-area-inset-bottom,0px)'}}>
+  <div className={cx('anim-sheet relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-t-[2rem] border border-line bg-bg shadow-2xl sm:rounded-[2rem]',wide?'sm:max-w-2xl':'sm:max-w-lg')} style={{paddingBottom:'env(safe-area-inset-bottom,0px)'}}>
    <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line/60 bg-bg/80 px-6 py-4 backdrop-blur-xl"><h2 className="text-lg font-extrabold">{title}</h2><button onClick={onClose} aria-label="Close" className={BTN+' !px-3'}>✕</button></div>
    <div className="flex flex-col gap-7 p-6">{children}</div></div></div>;
 }
 
-const Tip=({t})=>{const [o,setO]=useState(false);return <span className="relative inline-flex align-middle"><button type="button" onClick={e=>{e.preventDefault();e.stopPropagation();setO(!o)}} onBlur={()=>setO(false)} aria-label="More info" aria-expanded={o} className="ml-1.5 grid h-4 w-4 place-items-center rounded-full border border-muted/60 text-[10px] font-bold leading-none text-muted transition hover:border-accent hover:text-accent-text">i</button>{o&&<span role="tooltip" className="anim-fade absolute left-1/2 top-full z-40 mt-2 w-60 max-w-[70vw] -translate-x-1/2 rounded-2xl border border-line bg-surface p-3 text-left text-xs font-medium normal-case leading-relaxed tracking-normal text-ink shadow-xl">{t}</span>}</span>};
+const Tip=({t})=>{const [o,setO]=useState(false),[ps,setPs]=useState(null),b=useRef(null),p=useRef(null);
+ // measure after the first paint, then keep the bubble 16px inside every screen edge (and flip above the icon when there is no room below)
+ useLayoutEffect(()=>{if(!o){setPs(null);return}const el=b.current,tp=p.current;if(!el||!tp)return;const r=el.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight,pad=16,w=Math.min(280,vw-pad*2),h=tp.offsetHeight;
+  const left=Math.max(pad,Math.min(r.left+r.width/2-w/2,vw-w-pad));let top=r.bottom+10;if(top+h>vh-pad)top=Math.max(pad,r.top-10-h);setPs({left,top,w})},[o]);
+ useEffect(()=>{if(!o)return;const close=()=>setO(false),down=e=>{const x=e.target;if((b.current&&b.current.contains(x))||(p.current&&p.current.contains(x)))return;close()},key=e=>{if(e.key==='Escape')close()};
+  window.addEventListener('scroll',close,true);window.addEventListener('resize',close);document.addEventListener('pointerdown',down);document.addEventListener('keydown',key);
+  return()=>{window.removeEventListener('scroll',close,true);window.removeEventListener('resize',close);document.removeEventListener('pointerdown',down);document.removeEventListener('keydown',key)}},[o]);
+ return <><button ref={b} type="button" onClick={e=>{e.preventDefault();e.stopPropagation();setO(v=>!v)}} aria-label="More info" aria-expanded={o} className="ml-1.5 inline-grid h-5 w-5 place-items-center rounded-full border border-muted/60 align-middle text-[11px] font-bold leading-none text-muted transition hover:border-accent hover:text-accent-text">i</button>
+  {o&&createPortal(<div ref={p} role="tooltip" style={ps?{left:ps.left,top:ps.top,width:ps.w}:{left:0,top:0,width:Math.min(280,window.innerWidth-32),visibility:'hidden'}} className="anim-fade fixed z-[90] rounded-2xl border border-line bg-surface p-4 text-left text-sm font-medium normal-case leading-relaxed tracking-normal text-ink shadow-2xl">{t}</div>,document.body)}</>};
 const IC={o:'M4 11l8-6.5 8 6.5M6 9.5V19h4v-5h4v5h4V9.5',t:'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',f:'M3 20h18M6 20v-8M11 20V5M16 20v-5M21 20v-9',p:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20c.7-3.5 3.5-5.5 7-5.5s6.3 2 7 5.5',s:'M4 7h9M17 7h3M4 17h3M11 17h9M15 4v6M9 14v6'};
 const NAV=[['o','Overview'],['t','Tracker'],['f','Forecaster'],['p','Profile'],['s','Settings']];
 const BottomNav=({tab,on})=>{const i=Math.max(0,NAV.findIndex(x=>x[0]===tab));return <nav aria-label="Main" className="fixed inset-x-0 z-40 flex justify-center px-3" style={{bottom:'calc(env(safe-area-inset-bottom,0px) + .75rem)'}}>
  <div className="glass relative grid w-full max-w-md grid-cols-5 rounded-[1.75rem] p-1.5 md:max-w-xl">
   <span aria-hidden="true" className="absolute bottom-1.5 top-1.5 rounded-[1.3rem] bg-accent shadow-md shadow-accent/30 transition-all duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{left:'calc(.375rem + '+i+' * (100% - .75rem) / 5)',width:'calc((100% - .75rem) / 5)'}}/>
-  {NAV.map(([k,l])=><button key={k} onClick={()=>{FX.clack();on(k)}} aria-current={tab===k?'page':undefined} className={cx('relative z-10 flex flex-col items-center gap-0.5 rounded-[1.3rem] py-2 text-[10px] font-bold transition-colors duration-300 md:flex-row md:justify-center md:gap-2 md:text-sm',tab===k?'text-accent-ink':'text-muted hover:text-ink')}>
+  {NAV.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-current={tab===k?'page':undefined} className={cx('relative z-10 flex flex-col items-center gap-0.5 rounded-[1.3rem] py-2 text-[10px] font-bold transition-colors duration-300 md:flex-row md:justify-center md:gap-2 md:text-sm',tab===k?'text-accent-ink':'text-muted hover:text-ink')}>
    <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={IC[k]}/></svg><span>{l}</span></button>)}</div></nav>};
 const ThemePicker=({theme,setTheme})=><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{THEMES.map(t=><button key={t.id} onClick={()=>setTheme(t.id)} className={cx('rounded-2xl border p-3 text-left transition-all duration-300 hover:-translate-y-0.5',theme===t.id?'border-accent ring-2 ring-accent/40 bg-surface':'border-line bg-surface/60 hover:bg-surface')}>
  <div className="mb-2 flex gap-1.5">{t.sw.map((c,i)=><span key={i} className="h-6 w-6 rounded-full border border-black/10" style={{background:c}}/>)}</div>
  <div className="text-sm font-bold">{t.name}</div><div className="text-xs text-muted">{theme===t.id?'Selected':'Tap to use'}</div></button>)}</div>;
 
-// Tiger mark (inline SVG, transparent background). Pass a className to size it, e.g. "h-10 w-10".
-function TigerLogo({className='h-10 w-10',title='Grades Tracker tiger'}){
- const id=React.useId().replace(/:/g,''),G='url(#'+id+')';
- return <svg viewBox="64 90 384 372" className={className} role="img" aria-label={title} xmlns="http://www.w3.org/2000/svg">
-  <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#FFD84A"/><stop offset="1" stopColor="#F5B400"/></linearGradient></defs>
-  <g>
-  <circle cx="148" cy="150" r="46" fill={G}/>
-  <circle cx="364" cy="150" r="46" fill={G}/>
-  <circle cx="150" cy="154" r="22" fill="#FFF3C4"/>
-  <circle cx="362" cy="154" r="22" fill="#FFF3C4"/>
-  <path d="M256 126C334 126 398 164 414 232C420 258 420 282 414 304L434 342L398 338C388 366 372 392 344 412C316 432 286 440 256 440C226 440 196 432 168 412C140 392 124 366 114 338L78 342L98 304C92 282 92 258 98 232C114 164 178 126 256 126Z" fill={G} stroke={G} strokeWidth="6" strokeLinejoin="round"/>
-  <path d="M256 146L268 160L262 214L256 224L250 214L244 160Z" fill="#2A2204"/>
-  <path d="M212 158Q226 186 232 216" stroke="#2A2204" strokeWidth="13" strokeLinecap="round" fill="none"/>
-  <path d="M300 158Q286 186 280 216" stroke="#2A2204" strokeWidth="13" strokeLinecap="round" fill="none"/>
-  <g stroke="#2A2204" strokeWidth="13" strokeLinecap="round" fill="none">
-    <path d="M108 250Q142 254 168 274"/><path d="M110 292Q142 294 170 308"/><path d="M132 332Q152 332 176 342"/>
-    <path d="M404 250Q370 254 344 274"/><path d="M402 292Q370 294 342 308"/><path d="M380 332Q360 332 336 342"/>
+// Tiger mark: a tiger paw whose main pad is an open book, framed by tiger stripes. Pass a className to size it, e.g. "h-10 w-10".
+function TigerLogo({className='h-10 w-10',title='Grades Tracker: tiger paw and open book'}){
+ const id=React.useId().replace(/:/g,''),G='url(#'+id+'g)',K='url(#'+id+'k)';
+ return <svg viewBox="0 0 512 512" className={className} role="img" aria-label={title} xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id={id+'g'} x1=".15" y1="0" x2=".6" y2="1"><stop offset="0" stopColor="#FFE27A"/><stop offset="1" stopColor="#F59E0B"/></linearGradient><clipPath id={id+'k'}><rect width="512" height="512" rx="116"/></clipPath></defs>
+  <rect width="512" height="512" rx="116" fill={G}/><g clipPath={K}><g fill="#2A1A05">
+  <path d="M-10 96C64 100 120 124 160 168C108 148 46 142 -10 146Z"/>
+  <path d="M-10 214C38 216 76 230 100 256C70 246 30 244 -10 248Z"/>
+  <path d="M-10 330C34 334 62 348 80 372C54 364 24 362 -10 366Z"/>
+  <path d="M522 96C448 100 392 124 352 168C404 148 466 142 522 146Z"/>
+  <path d="M522 214C474 216 436 230 412 256C442 246 482 244 522 248Z"/>
+  <path d="M522 330C478 334 450 348 432 372C458 364 488 362 522 366Z"/>
+</g></g>
+  <g transform="translate(0,-14)">
+    
+    <g fill="#2A1A05">
+      <ellipse cx="126" cy="254" rx="30" ry="41" transform="rotate(-26 126 254)"/>
+      <ellipse cx="204" cy="188" rx="33" ry="46" transform="rotate(-8 204 188)"/>
+      <ellipse cx="308" cy="188" rx="33" ry="46" transform="rotate(8 308 188)"/>
+      <ellipse cx="386" cy="254" rx="30" ry="41" transform="rotate(26 386 254)"/>
+    </g>
+    
+    <g transform="translate(256 366) scale(1.1) translate(-256 -366)"><g fill="#FFF8E1" stroke="#FFF8E1" strokeWidth="18" strokeLinejoin="round">
+      <path d="M248 332C224 312 190 306 154 312V394C190 388 224 394 248 414Z"/>
+      <path d="M264 332C288 312 322 306 358 312V394C322 388 288 394 264 414Z"/>
+    </g>
+    <g fill="none" stroke="#2A1A05" strokeWidth="9" strokeLinecap="round">
+      <path d="M176 340C196 337 218 340 234 350"/><path d="M176 364C196 361 218 364 234 374"/>
+      <path d="M336 340C316 337 294 340 278 350"/><path d="M336 364C316 361 294 364 278 374"/>
+    </g></g>
   </g>
-  <path d="M256 316C292 316 324 336 324 368C324 398 292 414 256 414C220 414 188 398 188 368C188 336 220 316 256 316Z" fill="#FFFFFF"/>
-  <path d="M178 244Q212 234 244 264Q208 276 178 244Z" fill="#2A2204"/>
-  <path d="M334 244Q300 234 268 264Q304 276 334 244Z" fill="#2A2204"/>
-  <circle cx="219" cy="254" r="4.5" fill="#FFF3C4"/><circle cx="293" cy="254" r="4.5" fill="#FFF3C4"/>
-  <path d="M236 332H276L256 358Z" fill="#2A2204" stroke="#2A2204" strokeWidth="9" strokeLinejoin="round"/>
-  <path d="M256 360V378M256 378Q238 394 220 384M256 378Q274 394 292 384" stroke="#2A2204" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-</g>
  </svg>;
 }
 const GroupIcon=({g,s='h-14 w-14',t='text-3xl'})=>g&&g.pic?<img src={g.pic} alt="" className={cx(s,'shrink-0 rounded-2xl object-cover ring-1 ring-line')}/>:<div className={cx(s,t,'grid shrink-0 place-items-center rounded-2xl bg-accent/20 ring-1 ring-accent/30')}>{((g&&g.name)||'G').trim().charAt(0).toUpperCase()}</div>;
@@ -312,21 +333,21 @@ function CalcBase({sk}){
  const B=Math.min(99,Math.max(0,+base||0));
  const ent=rows.filter(r=>ap(r)!=null&&wgt(r)>0),W=ent.reduce((t,r)=>t+wgt(r),0),R=W>0?ent.reduce((t,r)=>t+wgt(r)*ap(r),0)/W:null,T=R==null?null:trans(R,B);
  const q=raw===''?null:trans(+raw,B);
- return <section data-renders={rc.current} className={cx(CARD,'flex flex-col gap-3 p-4 sm:gap-4 sm:p-6')}>
+ return <section data-renders={rc.current} className={cx(CARD,'flex flex-col gap-4 p-5 sm:gap-5 sm:p-7')}>
   <div><h3 className="text-base font-extrabold sm:text-lg">Manual Automatic Calculator</h3><p className="text-xs text-muted sm:text-sm">Scratchpad for quick what-ifs. Not saved, and it stays put when you change subject.</p></div>
   <div className="flex flex-col gap-2">{rows.map(r=><div key={r.id} className="flex items-center gap-1.5 sm:gap-2">
    <input value={r.name} onChange={e=>upd(r.id,'name',e.target.value)} className={cx(INP,'h-11 min-w-0 flex-1 !text-left px-3')} placeholder="Name"/>
-   <Num clk v={r.s} on={v=>upd(r.id,'s',v)} ph="score" w="w-[3.75rem] sm:w-[4.25rem]"/><span className="text-muted">/</span><Num clk v={r.m} on={v=>upd(r.id,'m',v)} ph="100" w="w-[3.5rem] sm:w-[4.25rem]"/><Num clk v={r.w} on={v=>upd(r.id,'w',v)} ph="wt %" w="w-[3.5rem] sm:w-[4.25rem]"/>
-   <button className={BTN+' !px-2.5'} onClick={()=>{FX.clack();setRows(x=>x.filter(y=>y.id!==r.id))}} aria-label="Remove row">✕</button></div>)}
-   <div className="flex gap-2"><button className={BTN} onClick={()=>{FX.clack();setRows(x=>[...x,row('Activity','10')])}}>＋ Add row</button><button className={BTN} onClick={()=>{FX.clack();setRows([row('Activity','')])}}>Clear</button></div></div>
-  <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">Base</span><Num clk v={base} on={setBase} ph="Base" w="w-20"/></div>
+   <Num v={r.s} on={v=>upd(r.id,'s',v)} ph="score" w="w-[3.75rem] sm:w-[4.25rem]"/><span className="text-muted">/</span><Num v={r.m} on={v=>upd(r.id,'m',v)} ph="100" w="w-[3.5rem] sm:w-[4.25rem]"/><Num v={r.w} on={v=>upd(r.id,'w',v)} ph="wt %" w="w-[3.5rem] sm:w-[4.25rem]"/>
+   <button className={BTN+' !px-2.5'} onClick={()=>setRows(x=>x.filter(y=>y.id!==r.id))} aria-label="Remove row">✕</button></div>)}
+   <div className="flex gap-2"><button className={BTN} onClick={()=>setRows(x=>[...x,row('Activity','10')])}>＋ Add row</button><button className={BTN} onClick={()=>setRows([row('Activity','')])}>Clear</button></div></div>
+  <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">Base</span><Num v={base} on={setBase} ph="Base" w="w-20"/></div>
   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
    <Tile l="Raw grade" v={R==null?'—':f2(R)} sub={`${ent.length} of ${rows.filter(r=>wgt(r)>0).length} rows scored`}/>
    <Tile l="Transmuted grade" v={T==null?'—':f2(T)}/>
    <Tile l="Grade" v={T==null?'—':fg(eqv(T))}/>
    <Tile l="Status" v={T==null?'—':T>=C.pass?'Passing':'Below '+C.pass} bad={T!=null&&T<C.pass}/></div>
   {T!=null&&<p className="rounded-xl bg-surface2/70 px-3 py-2 text-xs text-muted">({f2(R)} ÷ 100) × (100 − {B}) + {B} = <b className="text-ink">{f2(T)}</b></p>}
-  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-line p-3"><span className="text-sm font-semibold">Quick convert</span><Num clk v={raw} on={setRaw} ph="raw grade" w="w-28"/><span className="text-muted">→</span><span className="text-lg font-extrabold tabular-nums">{q==null?'—':f2(q)}</span><span className="text-xs text-muted">at Base {B}</span></div>
+  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-line p-3"><span className="text-sm font-semibold">Quick convert</span><Num v={raw} on={setRaw} ph="raw grade" w="w-28"/><span className="text-muted">→</span><span className="text-lg font-extrabold tabular-nums">{q==null?'—':f2(q)}</span><span className="text-xs text-muted">at Base {B}</span></div>
  </section>;
 }
 const Calc=React.memo(CalcBase);
@@ -337,8 +358,8 @@ const Calc=React.memo(CalcBase);
 function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,theme,setTheme,prof}){
  const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('o'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0);
  const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false});
- const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[plan,setPlan]=useState(null),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState('');
- const togFx=k=>{const v=!fxs[k];FX.set(k,v);setFxs({...fxs,[k]:v});if(v)FX.clack()};
+ const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState('');
+ const togFx=k=>{const v=!fxs[k];FX.set(k,v);setFxs({...fxs,[k]:v})};
  const commit=n=>{ref.current=n;setSt(n);onSave(n)};
  useEffect(()=>{if(ext&&ext.data&&ext.n!==e0.current){e0.current=ext.n;const d=mig(ext.data);ref.current=d;setSt(d);past.current=[];fut.current=[];last.current={k:'',t:0}}},[ext&&ext.n]);
  useEffect(()=>{const t=setInterval(()=>setNow(x=>x+1),20000);return()=>clearInterval(t)},[]);
@@ -361,11 +382,11 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const resetPW=id=>updSub(id,s=>{const n={...s};delete n.pw;return n});
  const setWi=(id,aid,v)=>updSub(id,s=>({...s,wi:{...(s.wi||{}),[aid]:v}}),'w'+aid);
  const setRel=(id,p,v)=>updSub(id,s=>({...s,rel:{...(s.rel||{}),[p]:v}}),'rel'+p);
- const rvFill=(s,p)=>{const k=s.id+p.id,plan=rvPlan(s,p,(s.rel&&s.rel[p.id])??'',rvMode[s.id+p.id]||'r');if(!plan.ok){FX.thud();setRvMsg({k,msg:plan.msg,bad:true});return}
+ const rvFill=(s,p)=>{const k=s.id+p.id,plan=rvPlan(s,p,(s.rel&&s.rel[p.id])??'',rvMode[s.id+p.id]||'r');if(!plan.ok){FX.low();setRvMsg({k,msg:plan.msg,bad:true});return}
   const fill=a=>plan.miss.some(m=>m.id===a.id)?{...a,s:String(+(plan.x/100*mxs(a)).toFixed(2)),est:true}:a;
   updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(fill)}}));
   const ns={...s,acts:{...s.acts,[p.id]:actsOf(s,p).map(fill)}};
-  setRvMsg({k,msg:`Filled ${plan.miss.length} possible score${plan.miss.length>1?'s':''} at about ${f2(plan.x)}% each. ${p.name} grade is now ${f2(pcalc(ns,p).grade)}.`,bad:false});FX.success(false)};
+  setRvMsg({k,msg:`Filled ${plan.miss.length} possible score${plan.miss.length>1?'s':''} at about ${f2(plan.x)}% each. ${p.name} grade is now ${f2(pcalc(ns,p).grade)}.`,bad:false});FX.done()};
  const rvClear=(s,p)=>{updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(a=>a.est?{...a,s:'',est:false}:a)}}));setRvMsg(null)};
  const setTg=(k,v)=>set(c=>({...c,tg:{...(c.tg||{}),[k]:v}}),'tg'+k);
  const setCfg=(p,key)=>set(c=>({...c,cfg:{...(c.cfg||{}),...p}}),key||'cfg'+Object.keys(p).join());
@@ -388,7 +409,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const delGen=id=>upd(x=>({...x,gens:(x.gens||[]).filter(g=>g.id!==id)}));
  const restoreLoser=()=>{try{set(()=>mig(JSON.parse(loser.d)))}catch(e){}onLoser()};
  const exportData=()=>{const d=JSON.stringify({app:'grades-tracker',version:3,account:acct.name,exported:new Date().toISOString(),data:ref.current},null,2),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d],{type:'application/json'}));a.download='grades-'+(acct.name||'backup').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);setMsg('Backup downloaded ✓')};
- const importData=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result),d=j&&j.data?j.data:j;if(!okState(d))throw new Error('bad');set(()=>mig(d));setMsg('Backup restored ✓ (Undo brings back your previous data)')}catch(x){setMsg('That file is not a valid backup.')}};r.onerror=()=>setMsg('Could not read that file.');r.readAsText(f)};
+ const importData=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result),d=j&&j.data?j.data:j;if(!okState(d))throw new Error('bad');set(()=>mig(d));setMsg('Backup restored ✓ (Undo in Settings brings back your previous data)')}catch(x){setMsg('That file is not a valid backup.')}};r.onerror=()=>setMsg('Could not read that file.');r.readAsText(f)};
 
  /* ---- derived numbers ---- */
  const subs=S.subs,gens=S.gens||[],gps=gens.map(g=>gproj(g,P)),last0=P.length-1,Wg=P.map(p=>p.w);
@@ -404,57 +425,28 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  let fstar=null;if(all.length&&P.length>1)for(let i=0;i<=1000;i++){const F=i/10,g=gwa(all.map(r=>[eqv(rowSem(r,F)),r.u]));if(g!=null&&C.meets(g)&&all.every(r=>{const x=rowSem(r,F);return x!=null&&x>=(r.rt?r.rt.pct:C.pass)-1e-9})){fstar=F;break}}
  const best=all.length&&P.length>1?gwa(all.map(r=>[eqv(rowSem(r,100)),r.u])):finalG;
  const mjR=all.filter(r=>r.maj&&r.s&&r.s.kind!=="gen"),mG=gwa(mjR.map(r=>[r.eq,r.u]));
+ // ---- ACTUAL grades only (used by the Overview and its share image). Nothing here uses what-if values. ----
+ // Period 1 GWA: only subjects whose first period is complete, plus gen eds with a recorded first-period grade.
+ // Final GWA: only subjects whose every period is complete (the semestral grade, Base applied). Gen ed finals are expectations, so they are left out unless there is a single period.
+ const single=P.length<2,isMaj=s=>s.kind!=='gen',preEq=s=>pcalc(s,P[0]).complete?eqv(trans(pcalc(s,P[0]).raw,sbaseOf(s))):null,finEq=s=>{const a=semActual(s,P);return a==null?null:eqv(a)};
+ const genPre=gens.filter(g=>g.pre!==''&&g.pre!=null).map(g=>[eqv(+g.pre),g.units]),preSubs=subs.filter(s=>preEq(s)!=null),finSubs=subs.filter(s=>finEq(s)!=null),nMaj=subs.filter(isMaj).length;
+ const aPre=gwa([...preSubs.map(s=>[preEq(s),s.units]),...genPre]),aPreM=gwa(preSubs.filter(isMaj).map(s=>[preEq(s),s.units]));
+ const aFin=gwa([...finSubs.map(s=>[finEq(s),s.units]),...(single?genPre:[])]),aFinM=gwa(finSubs.filter(isMaj).map(s=>[finEq(s),s.units]));
+ const aRows=subs.map(s=>({code:s.code,pe:preEq(s),fe:finEq(s)}));
 
- /* ---- retention levels, bottom-line insight, Survival and Excellence plans ---- */
+ /* ---- retention levels ---- */
  // 0 fine, 1 retention is tight (needs 85%+ on what is left), 2 projected below retention or out of reach
  const rLvl=r=>{if(!r.maj)return r.sem!=null&&r.sem<C.pass-1e-9?2:0;const v=r.sv;if(!v)return 0;if(v.done)return v.ok?0:2;if(v.x>100+1e-9)return 2;if(r.sem!=null&&r.sem<r.rt.pct-1e-9)return 2;return v.x>=85?1:0};
- const gwaAt=x=>gwa([...rowsS.map(o=>[o.l?eqv(trans(o.l.a+o.l.b*x,o.l.B)):null,o.s.units]),...gens.map((g,i)=>[gps[i].eq,g.units])]);
- const okAt=x=>{const g=gwaAt(x);return g!=null&&C.meets(g)&&rowsS.every(o=>!o.l||trans(o.l.a+o.l.b*x,o.l.B)>=o.rt.pct-1e-9)};
- const hasMiss=rowsS.some(o=>o.l&&o.l.b>1e-9);
- // xa: the one score every remaining activity must average to reach the target GWA with every retention grade kept
- let xa=null;if(rowsS.length||gens.length)for(let i=0;i<=200;i++)if(okAt(i/2)){xa=i/2;break}
  const preGP=gwa(all.map(r=>[r.pg[0]==null||(r.gen&&(r.gen.pre===''||r.gen.pre==null))?null:eqv(trans(r.pg[0],r.B)),r.u]));
- const nm=a=>a.length<2?a.join(''):a.length===2?a.join(' and '):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
- const ins=(()=>{
-  const M=all.filter(r=>r.maj),tg1=fg(C.target);
-  if(!all.length)return{t:'idle',h:'Waiting for subjects.',x:'Add a subject and a few scores, and I will tell you exactly what to aim for.'};
-  const cr=M.filter(r=>rLvl(r)===2&&r.sv&&(r.sv.done||r.sv.x>100+1e-9)),pj=M.filter(r=>rLvl(r)===2&&!cr.includes(r)),tt=M.filter(r=>rLvl(r)===1),rk=[...pj,...tt];
-  const ov=xa!=null&&hasMiss&&xa>0?' Overall, averaging about '+Math.ceil(xa-1e-9)+'% on what is left also secures your '+tg1+' target.':'';
-  if(cr.length)return{t:'bad',h:'Critical:',x:nm(cr.map(r=>r.n))+' can no longer reach '+(cr.length>1?'their':'its')+' retention grade'+(cr.every(r=>!r.sv.done)?', even with 100% on everything that is left':'')+'. Talk to your instructor or adviser as early as you can.'};
-  if(rk.length){const it=rk.map(r=>({n:r.n,c:Math.min(100,Math.max(0,Math.ceil(r.sv.x-1e-9))),g:fg(r.rt.g)}));
-   return{t:'warn',h:'Warning:',x:(it.length===1?it[0].n+' is at risk. Focus on hitting at least '+it[0].c+'% on your remaining activities to stay at '+it[0].g+' or better.':nm(it.map(i=>i.n))+' are at risk. To survive, aim for at least '+it.map(i=>i.n+' '+i.c+'%').join(', ')+' on your remaining activities.')+ov}}
-  if(!hasMiss)return finalG!=null&&C.meets(finalG)?{t:'good',h:'Status: Target secured!',x:'Every score is in and your '+fg(finalG)+' GWA meets your '+tg1+' target.'}:{t:'warn',h:'Status: Final numbers are in.',x:finalG==null?'Enter your scores to see where you land.':'Your GWA is '+fg(finalG)+', which is '+fg(Math.abs(finalG-C.target))+' away from your '+tg1+' target.'};
-  if(xa==null)return{t:'bad',h:'Heads up:',x:'even a perfect score on everything that is left only reaches a '+fg(gwaAt(100))+' GWA, short of your '+tg1+' target. Keep every subject above its retention grade and aim as high as you can.'};
-  if(xa<=0)return{t:'good',h:'Status: Target secured!',x:'You have already locked in your '+tg1+' target. Anything you score from here is a bonus.'};
-  const c=Math.ceil(xa-1e-9);
-  return c<75?{t:'good',h:'Status: On Track!',x:'You only need to average around '+c+'% on your remaining activities to secure your '+tg1+' target.'}
-   :c<90?{t:'warn',h:'Status: Within reach.',x:'You need to average about '+c+'% on your remaining activities to secure your '+tg1+' target. Keep every score steady.'}
-   :{t:'bad',h:'Status: Steep climb.',x:'You would need to average '+c+'% on your remaining activities to secure your '+tg1+' target. Start with the highest-weighted activities.'};
- })();
- // chime and confetti the moment the projection newly reaches the target (never on first load)
+ // soft chime and confetti the moment the projection newly reaches the target (never on first load)
  const okNow=finalG!=null&&C.meets(finalG),prevOk=useRef(null);
  useEffect(()=>{if(prevOk.current===false&&okNow&&!sx)FX.success(true);prevOk.current=okNow},[okNow]);
- // Survival: the least each subject needs to stay at its Retention Grade. Excellence: the least that reaches the Dean's List target.
- const applyPlan=mode=>{
-  const ms=rowsS.filter(o=>o.l&&o.l.b>1e-9);
-  if(!ms.length){setPlan({t:'warn',x:subs.length?'Nothing left to forecast: every score is already in.':'Add a subject first.'});return}
-  const vals={},fails=[],parts=[];let v0=0;
-  if(mode==='surv')ms.forEach(o=>{const n=needX(o.l,o.rt.pct);let v;if(n.x>100+1e-9){fails.push(o.s.code);v=100}else v=Math.max(0,Math.ceil(n.x-1e-9));vals[o.s.id]=v;parts.push(o.s.code+' '+v+'%')});
-  else{v0=xa==null?100:Math.max(0,Math.ceil(xa-1e-9));ms.forEach(o=>{vals[o.s.id]=v0});if(xa==null)fails.push('all')}
-  upd(x=>({...x,subs:x.subs.map(s=>{const v=vals[s.id];if(v===undefined)return s;const wi={...(s.wi||{})};P.forEach(p=>pcalc(s,p).live.forEach(a=>{if(ap(a)==null)wi[a.id]=String(v)}));return{...s,wi}})}));
-  if(mode==='surv'){
-   if(fails.length){FX.thud();setPlan({t:'bad',x:'Survival plan set what it can. '+nm(fails)+' cannot reach '+(fails.length>1?'their':'its')+' retention grade even at 100%, so '+(fails.length>1?'those scores are':'that score is')+' set to 100%.'})}
-   else{FX.success(true);setPlan({t:'good',x:'Survival plan set. These are the lowest scores that keep each subject at its retention grade: '+parts.join(', ')+'.'})}
-  }else{
-   if(fails.length){FX.thud();setPlan({t:'bad',x:'Even 100% on everything left only reaches a '+fg(gwaAt(100))+' GWA, short of your '+fg(C.target)+' target. Every remaining score is set to 100% so you can see the best case.'})}
-   else{FX.success(true);setPlan({t:'good',x:xa<=0?'Your '+fg(C.target)+' target is already locked in. Remaining scores are set to 0% just to show it holds.':'Excellence plan set: '+v0+'% on every remaining activity lands your GWA at '+fg(gwaAt(v0))+', which meets your '+fg(C.target)+' target.'})}
-  }};
  const needFor=(r,Sx)=>r.maj?needIn(r.pg,r.W,last0,untrans(Sx,r.B)):needGen(r.gen,P,Sx);
  const Ts=+tg.s||C.pass,chip=on=>cx('rounded-full px-3 py-1.5 transition',on?'bg-accent text-accent-ink':'bg-surface2 hover:bg-line/60');
  const tFor=(s,i)=>{const W=wts(s,P),B=sbaseOf(s);if(i===last0){const prj=P.map(p=>pproj(s,p,0).proj);return needIn(prj,W,i,untrans(Ts,B))}return +tg[P[i].id]||Math.max(0,untrans(C.pass,B))};
 
  /* ---- subject navigation: tab bar inside the card header, arrows, keyboard, swipe ---- */
- const goTo=i=>{if(i<0||i>=subs.length||i===idx)return;FX.swoosh();setDir(i>idx?1:-1);setSid(subs[i].id);setEdit(false);setRvMsg(null)};
+ const goTo=i=>{if(i<0||i>=subs.length||i===idx)return;setDir(i>idx?1:-1);setSid(subs[i].id);setEdit(false);setRvMsg(null)};
  useEffect(()=>{if(!cur||(tab==='f'&&fsub==='g'))return;const el=document.getElementById('tab-'+cur.id);if(el&&el.scrollIntoView)try{el.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}catch(e){}},[cur&&cur.id,tab]);
  useEffect(()=>{if(tab==='f'&&fsub==='g')return;const k=e=>{if(/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||'')))return;if(e.key==='ArrowRight')goTo(idx+1);if(e.key==='ArrowLeft')goTo(idx-1)};window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k)});
  const onTS=e=>{if(e.target.closest&&e.target.closest('input,select,textarea,[data-noswipe]'))return;const t=e.touches[0];sw.current={on:true,x:t.clientX,y:t.clientY,lock:null,t:Date.now()}};
@@ -465,7 +457,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   if(s.lock==='x'&&(Math.abs(dx)>70||(v>.5&&Math.abs(dx)>30)))goTo(dx<0?idx+1:idx-1)};
 
  /* ---- share / export as image ---- */
- const buildStory=async hide=>{
+ const buildStory=async(hide,mode)=>{
   try{await document.fonts.load('800 40px "Plus Jakarta Sans"')}catch(e){}
   const rs=getComputedStyle(document.documentElement),col=(n,a)=>{const t=rs.getPropertyValue(n).trim().split(/\s+/);return`rgba(${t[0]},${t[1]},${t[2]},${a==null?1:a})`};
   const W=1080,H=1920,ff='"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif',cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
@@ -476,6 +468,15 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   const glass=(a,b,w,h)=>{x.save();x.shadowColor='rgba(0,0,0,.16)';x.shadowBlur=70;x.shadowOffsetY=26;rr(a,b,w,h,72);x.fillStyle=col('--surface',.5);x.fill();x.restore();rr(a,b,w,h,72);const g=x.createLinearGradient(a,b,a+w,b+h);g.addColorStop(0,'rgba(255,255,255,.34)');g.addColorStop(1,'rgba(255,255,255,.06)');x.fillStyle=g;x.fill();x.lineWidth=2.5;x.strokeStyle='rgba(255,255,255,.55)';x.stroke()};
   const M=84,CW=W-M*2,ok=finalG!=null&&C.meets(finalG),okM=mG!=null&&C.meets(mG),dirW=C.dir<0?'or lower':'or higher';
   tx(acct.name||'My grades',M,170,60,800,col('--ink'));tx(Y.name+' · '+S.name,M,226,30,500,col('--muted'));
+  if(mode==='actual'){
+   // Overview share: recorded grades only, no targets and no projections
+   const secs=single?[['Semestral GWA',aFin,aFinM]]:[[P[0].name+' GWA',aPre,aPreM],[P[last0].name+' GWA',aFin,aFinM]],n=secs.length,ch=n===1?560:400,gap=36;
+   secs.forEach(([l,a,m],i)=>{const y=300+i*(ch+gap);glass(M,y,CW,ch);tx(l,M+64,y+96,38,700,col('--muted'));tx(fg(a),M+64,y+(n===1?400:292),n===1?280:220,900,col('--ink'));tx('Majors GWA',M+64,y+ch-48,34,700,col('--muted'));tx(fg(m),M+CW-64,y+ch-48,46,900,col('--ink'),'right')});
+   const y0=300+n*(ch+gap),room=Math.floor((H-150-y0-130)/74),rows=hide?[]:aRows.slice(0,Math.max(0,Math.min(room,5)));
+   if(rows.length){const gh=130+rows.length*74;glass(M,y0,CW,gh);tx('Subjects',M+56,y0+76,30,700,col('--muted'));
+    if(!single)tx(P[0].name,M+CW-300,y0+76,24,600,col('--muted'),'right');tx(single?'Semestral':P[last0].name,M+CW-56,y0+76,24,600,col('--muted'),'right');
+    rows.forEach((r,i)=>{const y=y0+150+i*74;tx(r.code||'Subject',M+56,y,36,800,col('--ink'));if(!single)tx(fg(r.pe),M+CW-300,y,32,700,col('--muted'),'right');tx(fg(r.fe),M+CW-56,y,38,900,col('--ink'),'right')})}
+  }else{
   glass(M,300,CW,620);tx('Overall GWA',M+64,400,36,700,col('--muted'));tx(fg(finalG),M+64,650,250,900,ok?col('--good'):col('--ink'));
   tx(finalG==null?'Waiting for grades':ok?'On track for your target':fg(Math.abs(finalG-C.target))+' away from your target',M+64,760,44,800,ok?col('--good'):col('--ink'));
   tx('Target '+fg(C.target)+' '+dirW,M+64,826,32,500,col('--muted'));
@@ -485,48 +486,47 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   if(!hide){const rows=rowsS.slice(0,5),gh=130+rows.length*74;glass(M,1244,CW,gh);tx('Subjects',M+56,1320,30,700,col('--muted'));
    rows.forEach((r,i)=>{const y=1400+i*74;tx(r.s.code||'Subject',M+56,y,36,800,col('--ink'));tx(r.pg.map(v=>v==null?'—':f2(v)).join('  /  '),M+420,y,30,600,col('--muted'));tx(fg(r.eq),M+CW-56,y,38,900,r.eq!=null&&C.meets(r.eq)?col('--good'):r.eq!=null&&C.bad(r.eq)?col('--bad'):col('--ink'),'right')});
    if(rowsS.length>5)tx('+'+(rowsS.length-5)+' more',M+56,1244+gh-20,26,600,col('--muted'))}
+  }
   tx(new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+' · Grades Tracker',W/2,H-90,28,600,col('--muted'),'center');
   return await new Promise(r=>cv.toBlob(r,'image/png'))};
- const genStory=async h=>{try{const b=await buildStory(h),u=URL.createObjectURL(b);setShr(s=>{if(s&&s.url)URL.revokeObjectURL(s.url);return{hide:h,url:u,blob:b}})}catch(e){setMsg('Could not create the image.')}};
- const openShare=()=>{setShr({hide:true,url:'',blob:null});genStory(true)};
+ const genStory=async(h,m)=>{try{const b=await buildStory(h,m),u=URL.createObjectURL(b);setShr(s=>{if(s&&s.url)URL.revokeObjectURL(s.url);return{hide:h,mode:m,url:u,blob:b}})}catch(e){setMsg('Could not create the image.')}};
+ const openShare=m=>{setShr({hide:true,mode:m,url:'',blob:null});genStory(true,m)};
  const closeShare=()=>setShr(s=>{if(s&&s.url)URL.revokeObjectURL(s.url);return null});
  const sendStory=async()=>{const b=shr&&shr.blob;if(!b)return;const file=new File([b],'grades-story.png',{type:'image/png'});
   try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'My grades'});return}}catch(e){if(e&&e.name==='AbortError')return}
   const a=document.createElement('a');a.href=shr.url;a.download='grades-story.png';document.body.appendChild(a);a.click();a.remove();setMsg('Image saved')};
 
- /* ---- top strip, overview, forecast summary ---- */
- const Top=()=><div className="flex flex-wrap items-center gap-2">
-  <button onClick={cloud.sync} disabled={!cloud.on} className={cx('inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold transition',cloud.on?'border-line bg-surface/70 hover:bg-surface2':'border-transparent text-muted')}>{cloud.label}</button>
-  {cloud.on&&<span className="hidden text-[11px] text-muted sm:inline">Last synced {rel(cloud.at)}{cloud.pending?' · changes waiting':''}</span>}
-  <div className="ml-auto flex flex-wrap items-center gap-2">
-   {tab!=='p'&&tab!=='s'&&<><select aria-label="Year" value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select><select aria-label="Semester" value={S.id} onChange={e=>set(c=>({...c,s:e.target.value}))} className={SEL}>{Y.sems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></>}
-   <button className={BTN+' !py-1.5'} onClick={undo} disabled={!past.current.length}>Undo</button><button className={BTN+' !py-1.5'} onClick={redo} disabled={!fut.current.length}>Redo</button></div></div>;
+/* ---- header, overview, forecast summary ---- */
+ // cloud status as one quiet icon: a check inside the cloud when everything is saved
+ const SyncBtn=()=>{const k=cloud.on?(cloud.state||'synced'):'local',ok=k==='synced';
+  return <button onClick={cloud.sync} disabled={!cloud.on} aria-label={cloud.label} title={cloud.label} className={cx('glass relative grid h-11 w-11 shrink-0 place-items-center rounded-full transition active:scale-95 disabled:pointer-events-none',k==='error'?'text-bad':k==='offline'||k==='local'?'text-muted':'text-ink')}>
+   <svg viewBox="0 0 24 24" className={cx('h-[22px] w-[22px]',k==='syncing'&&'animate-pulse')} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+    {ok&&<path d="M9.3 12.8l2.2 2.2 4.1-4.5" stroke="currentColor" strokeWidth="2.1" className="text-good"/>}
+    {k==='error'&&<path d="M12 8.5v4M12 15.4h.01" strokeWidth="2.1"/>}
+    {(k==='offline'||k==='local')&&<path d="M4.5 4.5l15 15" strokeWidth="2"/>}</svg></button>};
+ const Top=()=><header className="flex items-start justify-between gap-4 pt-1"><h1 className="min-w-0 text-balance text-[2.25rem] font-black leading-[1.06] tracking-tight sm:text-5xl">{Y.name} - {S.name}</h1><div className="pt-1">{SyncBtn()}</div></header>;
 
  const Ov=()=>{
-  const okM=mG!=null&&C.meets(mG),ok=finalG!=null&&C.meets(finalG),first=(acct.name||'').trim().split(/\s+/)[0]||'there',hr=new Date().getHours(),gr=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
-  const dist=g=>g==null?'':C.meets(g)?'Meets your target':fg(Math.abs(g-C.target))+' from your target';
-  const Wd=(l,v,sub,cls,good)=><div className={cx(CARD,'flex flex-col justify-between gap-8 p-5 sm:p-6',cls)}><div className="text-sm font-bold text-muted">{l}</div><div><div className={cx('text-6xl font-black tabular-nums tracking-tight sm:text-7xl',good&&'text-good')}>{v}</div><div className="mt-2 text-sm font-semibold text-muted">{sub}</div></div></div>;
+  const share=<button className={BTN} onClick={()=>openShare('actual')}>Share</button>,tot=subs.length+gens.length;
+  const Wd=(l,v,sub,tip,hero)=><div className={cx(CARD,'flex min-h-[11rem] flex-col justify-between gap-8 p-6 sm:p-7',hero&&'!border-accent/40 !bg-accent/15')}><div className="text-sm font-bold text-muted">{l}{tip&&<Tip t={tip}/>}</div><div><div className="text-6xl font-black tabular-nums tracking-tight sm:text-7xl">{v}</div><div className="mt-2 text-sm font-semibold text-muted">{sub}</div></div></div>;
+  const Sec=(title,note,a,m,sa,sm,act)=><section className="flex flex-col gap-4"><div className="flex items-end justify-between gap-3"><div className="min-w-0"><h2 className="text-2xl font-black tracking-tight sm:text-3xl">{title}</h2><p className="mt-0.5 text-sm text-muted">{note}</p></div>{act}</div>
+   <div className="grid gap-4 sm:grid-cols-2">{Wd('Overall GWA',fg(a),sa,'Every recorded subject, Major and Gen Ed, weighted by units.',true)}{Wd('Majors GWA',fg(m),sm,'Only subjects tagged Major.')}</div></section>;
+  const preSub=tot?(preSubs.length+genPre.length)+' of '+tot+' subject'+(tot===1?'':'s')+' recorded':'Add a subject to begin',preMSub=nMaj?preSubs.filter(isMaj).length+' of '+nMaj+' major subject'+(nMaj===1?'':'s')+' recorded':'No major subjects yet';
+  const ft=subs.length+(single?gens.length:0),finSub=ft?(finSubs.length+(single?genPre.length:0))+' of '+ft+' subject'+(ft===1?'':'s')+' complete':'Add a subject to begin',finMSub=nMaj?finSubs.filter(isMaj).length+' of '+nMaj+' major subject'+(nMaj===1?'':'s')+' complete':'No major subjects yet';
   return <>
-   <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold text-muted">{gr}</p><h1 className="text-4xl font-black tracking-tight sm:text-5xl">Hello, {first}</h1></div><button className={BTNP+' !px-5 !py-2.5'} onClick={openShare}>Share</button></div>
-   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-12">
-    {Wd(<>Overall GWA<Tip t="Every subject, Major and Gen Ed. Subjects without all scores use your what-if values."/></>,fg(finalG),finalN+' final · '+(subs.length-finalN+gens.length)+' projected','xl:col-span-4',ok)}
-    {Wd(<>Majors GWA<Tip t="Only subjects tagged Major. Use it to check retention rules that apply to major subjects."/></>,fg(mG),mjR.length?mjR.length+' major subject'+(mjR.length===1?'':'s')+' · '+dist(mG):'Tag a subject as Major to see this','xl:col-span-4',okM)}
-    {Wd('Target GWA',fg(C.target),(C.dir<0?'or lower':'or higher')+' · '+P[0].name+' GWA '+fg(preG),'xl:col-span-4')}
-    <div className={cx('anim-rise rounded-[1.75rem] border p-5 sm:p-6 md:col-span-2 xl:col-span-8','ins-'+ins.t)} role="status"><div className={LBL2}>Bottom line</div><p className="mt-2 text-base font-semibold leading-relaxed sm:text-xl"><b className="font-black">{ins.h}</b> {ins.x}</p></div>
-    <div className={cx(CARD,'grid grid-cols-3 gap-3 p-4 sm:p-5 md:col-span-2 xl:col-span-4')}><Tile l="Subjects" v={String(all.length)}/><Tile l="Units" v={String(uAll)}/><Tile l="At risk" v={String(all.filter(r=>rLvl(r)>0).length)} vc={all.some(r=>rLvl(r)===2)?'tl-r':all.some(r=>rLvl(r)===1)?'tl-y':'tl-g'}/></div>
-    <section className="md:col-span-2 xl:col-span-12"><h2 className="mb-3 text-lg font-extrabold">Subjects<Tip t="For subjects with no known breakdown, simply add the subject and enter the released Prelim Grade directly in Options, under Reverse calculator."/></h2>
-     {rowsS.length?<div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{rowsS.map(r=>{const s=r.s,pc=pcalc(s,P[0]),pg=pc.grade!=null?pc.grade:pc.gradeSoFar;return <button key={s.id} onClick={()=>{setSid(s.id);setTab('t')}} className={cx(CARD,'lift flex flex-col gap-4 p-4 text-left','sa-'+(subs.indexOf(s)%6))}>
-      <div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="truncate font-extrabold">{s.code||'Subject'}</div><div className="truncate text-xs text-muted">{s.name||'No name'}</div></div><span className={cx('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold',s.kind==='gen'?'bg-surface2 text-muted':'bg-sa/15 text-accent-text')}>{s.kind==='gen'?'Gen Ed':'Major'}</span></div>
-      <div className="flex items-end justify-between"><div><div className={LBL2}>{P[0].name}</div><div className="text-2xl font-black tabular-nums">{pg==null?'—':f2(pg)}</div></div><div className="text-right"><div className={LBL2}>Projected</div><div className={cx('text-2xl font-black tabular-nums',tone(r.eq))}>{fg(r.eq)}</div></div></div></button>})}</div>
-     :<div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><p className="max-w-sm text-sm text-muted">Add your first subject to see your GWA here.</p><button className={BTNP} onClick={()=>{setTab('t');setAdding(true)}}>Add subject</button></div>}</section>
-   </div></>};
+   {!single&&Sec(P[0].name+' GWA','Recorded '+P[0].name+' grades only',aPre,aPreM,preSub,preMSub,share)}
+   {Sec(single?'Semestral GWA':P[last0].name+' GWA',single?'Recorded grades only':'Cumulative · '+P.map(p=>p.name).join(' + '),aFin,aFinM,finSub,finMSub,single?share:null)}
+   <section><h2 className="mb-4 text-2xl font-black tracking-tight sm:text-3xl">Subjects<Tip t="For subjects with no known breakdown, simply add the subject and enter the released Prelim Grade directly in Options, under Reverse calculator."/></h2>
+    {subs.length?<div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{subs.map(s=>{const pe=preEq(s),fe=finEq(s);return <button key={s.id} onClick={()=>{setSid(s.id);setTab('t')}} className={cx(CARD,'lift flex flex-col gap-6 p-5 text-left hover:!border-accent/60')}>
+      <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span><div className="min-w-0 flex-1"><div className="truncate font-extrabold">{s.code||'Subject'}</div><div className="truncate text-xs text-muted">{s.name||'No name'}</div></div><span className={cx('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold',s.kind==='gen'?'bg-surface2 text-muted':'bg-accent/15 text-accent-text')}>{s.kind==='gen'?'Gen Ed':'Major'}</span></div>
+      <div className="flex items-end justify-between gap-3"><div><div className="text-xs font-semibold text-muted">{single?'Semestral':P[0].name}</div><div className="text-3xl font-black tabular-nums">{fg(single?fe:pe)}</div></div>{!single&&<div className="text-right"><div className="text-xs font-semibold text-muted">{P[last0].name}</div><div className="text-3xl font-black tabular-nums">{fg(fe)}</div></div>}</div></button>})}</div>
+     :<div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><p className="max-w-sm text-sm text-muted">Add your first subject to see your GWA here.</p><button className={BTNP} onClick={()=>{setTab('t');setAdding(true)}}>Add subject</button></div>}</section></>};
 
- const ForecastSummary=()=>{const ok=finalG!=null&&C.meets(finalG),single=P.length<2,fi=P.findIndex(p=>p.id===fsub),pre1=!single&&fsub!=='g'&&fi>=0&&fi<last0;return <div className="flex flex-col gap-4">
-  {!pre1&&<div className={cx('anim-rise rounded-[1.75rem] border p-4 sm:p-5','ins-'+ins.t)} role="status"><div className={LBL2}>Bottom line</div><p className="mt-1 text-sm font-semibold leading-relaxed sm:text-lg"><b className="font-black">{ins.h}</b> {ins.x}</p></div>}
-  <div className={cx('grid gap-3 px-1 sm:gap-8',pre1?'grid-cols-1':'grid-cols-2')}>
+ const ForecastSummary=()=>{const ok=finalG!=null&&C.meets(finalG),fi=P.findIndex(p=>p.id===fsub),pre1=!single&&fsub!=='g'&&fi>=0&&fi<last0;return <div className="flex flex-col gap-4">
+  <div className={cx('grid gap-4 px-1 sm:gap-8',pre1?'grid-cols-1':'grid-cols-2')}>
    <div className="min-w-0"><div className={LBL2}>{P[0].name} GWA</div><div className="mt-1 text-4xl font-black tabular-nums tracking-tight sm:text-6xl">{fg(preGP)}</div><div className="mt-1 text-[11px] text-muted sm:text-sm">{preGP==null?'Nothing to project yet':preN+' of '+(subs.length+gens.length)+' actual · rest projected'}</div></div>
    {!pre1&&<div className="min-w-0"><div className={LBL2}>{single?'Semestral GWA':P[last0].name+' / Semestral GWA'}</div><div className={cx('mt-1 text-4xl font-black tabular-nums tracking-tight sm:text-6xl',ok&&'text-good')}>{fg(finalG)}</div><div className="mt-1 text-[11px] text-muted sm:text-sm">{finalN} final · {subs.length-finalN+gens.length} projected</div></div>}</div>
-  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1"><span className="text-sm font-bold sm:text-base">Target {fg(C.target)} <span className="font-semibold text-muted">or {C.dir<0?'lower':'higher'}</span></span>{!pre1&&<span className={cx('text-xs font-semibold sm:text-sm',ok?'text-good':'text-muted')}>{finalG==null?'':ok?'Projection meets your target':fg(Math.abs(finalG-C.target))+' away from the target'}</span>}<button onClick={openShare} className={BTN+' sm:ml-auto'}>Share</button></div></div>};
+  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1"><span className="text-sm font-bold sm:text-base">Target {fg(C.target)} <span className="font-semibold text-muted">or {C.dir<0?'lower':'higher'}</span></span>{!pre1&&<span className={cx('text-xs font-semibold sm:text-sm',ok?'text-good':'text-muted')}>{finalG==null?'':ok?'Projection meets your target':fg(Math.abs(finalG-C.target))+' away from the target'}</span>}<button onClick={()=>openShare('forecast')} className={BTN+' sm:ml-auto'}>Share</button></div></div>};
 
 const Banners=()=><>
   {loser&&<div className="anim-rise flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface2/80 p-3 text-sm"><span className="min-w-[14rem] flex-1 font-semibold">Edits from two devices clashed. The newest version was kept.</span><button className={BTN} onClick={restoreLoser}>Restore the other version</button><button className={BTN} onClick={onLoser}>Dismiss</button></div>}
@@ -539,14 +539,17 @@ const Banners=()=><>
    {subs.map(s=><button key={s.id} id={'tab-'+s.id} onClick={()=>goTo(subs.indexOf(s))} className={cx('flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all duration-300 sm:text-sm',cur&&cur.id===s.id?'border-accent bg-accent text-accent-ink shadow-sm':'border-transparent text-muted hover:bg-surface hover:text-ink')}>{s.code||'Subject'}</button>)}
    <button onClick={()=>setAdding(true)} className="shrink-0 rounded-xl border border-dashed border-accent/60 px-3 py-1.5 text-xs font-bold text-accent-text transition hover:bg-accent/10 sm:text-sm" aria-label="Add subject">＋</button></div></div>
   {subs.length>1&&<div className="flex shrink-0 items-center gap-1"><button className="hidden h-8 w-8 rounded-lg text-lg text-muted transition hover:bg-surface hover:text-ink disabled:opacity-30 sm:block" onClick={()=>goTo(idx-1)} disabled={idx<=0} aria-label="Previous subject">‹</button><span className="w-9 text-center text-[11px] font-bold tabular-nums text-muted">{idx+1}/{subs.length}</span><button className="hidden h-8 w-8 rounded-lg text-lg text-muted transition hover:bg-surface hover:text-ink disabled:opacity-30 sm:block" onClick={()=>goTo(idx+1)} disabled={idx>=subs.length-1} aria-label="Next subject">›</button></div>}</div>;
- const Shell=body=><div onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE} style={{touchAction:'pan-y'}}>
+ const Shell=body=><div onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE} style={{touchAction:'pan-y'}} className="pb-3">
   <div ref={swRef} className="will-change-transform"><section className={cx(CARD,'sa-'+(idx%6),'overflow-hidden')}>{CardTabs()}
-   <div key={cur.id} className={cx('flex flex-col gap-3 p-3.5 sm:gap-5 sm:p-6',dir>0?'slide-r':'slide-l')}>{body}</div></section></div>
-  {subs.length>1&&<p className="mt-2 text-center text-[11px] text-muted sm:hidden">Swipe the card left or right to change subject</p>}</div>;
+   <div key={cur.id} className={cx('flex flex-col gap-6 p-5 sm:p-7',dir>0?'slide-r':'slide-l')}>{body}</div></section></div>
+  {subs.length>1&&<p className="mt-3 text-center text-[11px] text-muted sm:hidden">Swipe the card left or right to change subject</p>}</div>;
 
  /* ---- tracker body ---- */
   const BaseBox=s=>{const o=s.sbase,has=o!==undefined&&o!=='';return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Base<Tip t="The curve. It applies only to the semestral grade: (Raw ÷ 100) × (100 − Base) + Base. Leave blank to use the default."/></span><div className="flex items-center gap-2"><Num v={has?o:''} on={v=>setSBase(s.id,v)} ph={f2(C.base)} w="w-24"/><span className="text-xs text-muted">Blank uses the default ({f2(C.base)})</span></div></div>};
  const RetBox=s=>{const o=s.ret,has=o!==undefined&&o!==null&&o!=='',rt=retOf(s);return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Retention grade<Tip t="The lowest grade you must keep in this subject. Blank uses the default passing mark from Settings."/></span><div className="flex items-center gap-2"><Num v={has?o:''} on={v=>setRet(s.id,v)} ph={fg(retOf(null).g)} w="w-24"/><span className="text-xs text-muted">needs about {rt.pct>100?'more than 100':f2(rt.pct)}% semestral</span></div></div>};
+ const DetailsBox=s=><div className="flex flex-col gap-3"><span className="text-sm font-bold">Subject details</span>
+  <div className="grid grid-cols-[1fr_5.5rem] gap-3"><label className="text-xs font-semibold text-muted">Code<TextIn v={s.code} on={v=>setF(s.id,'code',v.toUpperCase())} cls="mt-1"/></label><label className="text-xs font-semibold text-muted">Units<Num v={s.units} on={v=>setF(s.id,'units',v)} w="mt-1 w-full"/></label></div>
+  <label className="text-xs font-semibold text-muted">Name<TextIn v={s.name} on={v=>setF(s.id,'name',v)} cls="mt-1"/></label></div>;
  const WeightsBox=s=>{const W=wts(s,P),tot=W.reduce((a,b)=>a+b,0),has=!!(s.pw&&Object.values(s.pw).some(v=>v!==''&&v!=null));return <div className="flex flex-col gap-2">
   <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold">Period weights<Tip t="How much each period counts toward the semestral grade. With two periods, the other one balances to 100 automatically."/></span>{has&&<button className="text-xs font-semibold text-accent-text underline" onClick={()=>resetPW(s.id)}>Reset to default</button>}</div>
   <div className="flex flex-wrap items-center gap-3">{P.map((p,i)=><label key={p.id} className="flex items-center gap-1.5 text-xs font-semibold text-muted">{p.name}<Num v={s.pw&&s.pw[p.id]!==undefined?s.pw[p.id]:String(p.w)} on={v=>setPW(s.id,i,v)} w="w-[4.5rem]"/>%</label>)}</div>
@@ -555,9 +558,9 @@ const Banners=()=><>
   <div className="grid grid-cols-3 gap-2 text-center"><div><div className="text-[10px] font-bold text-muted">Raw semestral{sc.raw==null&&R!=null?' (projected)':''}</div><div className="text-base font-black tabular-nums">{R==null?'—':f2(R)}</div></div><div><div className="text-[10px] font-bold text-muted">Base</div><div className="text-base font-black tabular-nums">{f2(B)}</div></div><div><div className="text-[10px] font-bold text-muted">After Base</div><div className="text-base font-black tabular-nums">{T==null?'—':f2(T)}</div></div></div>
   {R!=null&&<p className="text-xs text-muted">({f2(R)} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(T)}</b></p>}</div>};
  const Options=(s,p,isLast)=>{const o=!!opt[s.id];return <div className="rounded-2xl border border-line/60 bg-surface2/50">
-  <button onClick={()=>setOpt({...opt,[s.id]:!o})} aria-expanded={o} className="flex w-full items-center gap-3 rounded-2xl p-3.5 text-left transition hover:bg-surface2/70"><span className="flex-1"><span className="block text-sm font-extrabold">Options</span><span className="block text-xs text-muted">Weights, base, retention, reverse calculator</span></span><Chev open={o}/></button>
-  <div className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col gap-4 p-3.5 pt-1">
-   {WeightsBox(s)}{BaseBox(s)}{RetBox(s)}{isLast&&SemMath(s)}{Reverse(s,p)}
+  <button onClick={()=>setOpt({...opt,[s.id]:!o})} aria-expanded={o} className="flex w-full items-center gap-3 rounded-2xl p-4 text-left transition hover:bg-surface2/70"><span className="flex-1"><span className="block text-sm font-extrabold">Options</span><span className="block text-xs text-muted">Details, weights, base, retention, reverse calculator</span></span><Chev open={o}/></button>
+  <div className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col gap-5 p-4 pt-1">
+   {DetailsBox(s)}{WeightsBox(s)}{BaseBox(s)}{RetBox(s)}{isLast&&SemMath(s)}{Reverse(s,p)}
    <div className="flex gap-2"><button className={BTN+' flex-1'} onClick={()=>clearScores([s.id])}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>delSub(s.id)}>Delete subject</button></div></div></div></div></div>};
 
 const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=actsOf(s,p).some(a=>a.est),md=rvMode[k]||'r',B=sbaseOf(s);return <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line p-3">
@@ -567,11 +570,11 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
   <div className="flex flex-wrap items-center gap-2"><Num v={s.rel&&s.rel[p.id]} on={v=>setRel(s.id,p.id,v)} ph={'released '+p.name.toLowerCase()+' grade'} w="w-44"/><button className={BTNP} onClick={()=>rvFill(s,p)}>Fill possible scores</button>{hasEst&&<button className={BTN} onClick={()=>rvClear(s,p)}>Clear possible scores</button>}</div>
   {m&&<p className={cx('text-xs font-semibold',m.bad?'text-bad':'text-good')}>{m.msg}</p>}</div>};
  const PeriodBlock=(s,p)=>{const c=pcalc(s,p),acts=c.acts,pi=P.indexOf(p),w=wts(s,P)[pi],R=c.raw!=null?c.raw:c.soFar,wsum=acts.reduce((t,a)=>t+wgt(a),0);
-  return <div className="flex flex-col gap-3 rounded-2xl border border-line/60 bg-surface2/60 p-3 sm:p-4">
+  return <div className="flex flex-col gap-4 rounded-2xl border border-line/60 bg-surface2/60 p-4 sm:p-5">
    <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{p.name} <span className="ml-1 text-xs font-semibold text-muted">{f2(w)}% of semestral</span></h4><button className={BTN} onClick={()=>setEdit(!edit)}>{edit?'✓ Done':'Edit activities'}</button></div>
    {!acts.length&&<p className="text-sm text-muted">No activities yet. Add one below.</p>}
-   <div className="flex flex-col gap-2.5 sm:gap-3">{acts.map(a=>{const x=ap(a);return edit
-    ?<div key={a.id} className="flex items-center gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 min-w-0 flex-1 !text-left px-3 !text-sm')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-[4.5rem]"/><span className="text-muted">%</span><button className={BTNX+' !px-2.5'} onClick={()=>delAct(s.id,p.id,a.id)} aria-label="Remove activity">✕</button></div>
+   <div className="flex flex-col gap-3.5">{acts.map(a=>{const x=ap(a);return edit
+    ?<div key={a.id} className="flex items-center gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 min-w-0 flex-1 !text-left px-3')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-[4.5rem]"/><span className="text-muted">%</span><button className={BTNX+' !px-2.5'} onClick={()=>delAct(s.id,p.id,a.id)} aria-label="Remove activity">✕</button></div>
     :<div key={a.id} className="flex items-center gap-2 sm:gap-3"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{a.name||'Activity'}</div><div className="text-xs text-muted">{f2(wgt(a))}% · {x==null?'not entered':f2(x)+'%'}</div>{a.est&&<span className="mt-0.5 inline-block rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span>}</div>
      <Num nav v={a.s} on={v=>setAct(s.id,p.id,a.id,'s',v)} ph="score" bad={x!=null&&x>100} w={cx('w-[4.5rem] sm:w-20',a.est&&'!border-accent/60 !italic')}/><span className="text-muted">/</span><Num v={a.m} on={v=>setAct(s.id,p.id,a.id,'m',v)} ph="100" w="w-14 sm:w-16"/></div>})}</div>
    <button className={BTNP+' self-start'} onClick={()=>{addAct(s.id,p.id);setEdit(true)}}>＋ Add Extra Activity</button>
@@ -584,9 +587,8 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
   const TrackerBody=()=>{const s=cur,sem=semActual(s,P),sp=semProjC(s,P),eq=sem==null?null:eqv(sem),isLast=P.length<2||pcur.id===P[last0].id;
   const Bg=(l,v,sub,hi)=><div key={l} className={cx('rounded-3xl border p-4 sm:p-5',hi?'border-accent/40 bg-accent/15':'border-line/60 bg-surface2/60')}><div className="text-xs font-bold text-muted">{l}</div><div className="mt-1 text-4xl font-black tabular-nums tracking-tight sm:text-5xl">{v}</div>{sub&&<div className="mt-1 text-xs font-semibold text-muted">{sub}</div>}</div>;
   return <>
-   <div className="flex items-center gap-3"><span className="h-10 w-1.5 shrink-0 rounded-full bg-sa"/>
-    <div className="min-w-0 flex-1"><Txt v={s.code} on={v=>setF(s.id,'code',v.toUpperCase())} cls="w-full text-lg font-extrabold sm:text-xl"/><Txt v={s.name} on={v=>setF(s.id,'name',v)} cls="-mt-1 w-full text-sm text-muted"/></div>
-    <label className="text-center text-[11px] font-semibold text-muted sm:text-xs">Units<Num v={s.units} on={v=>setF(s.id,'units',v)} w="w-14 sm:w-16"/></label></div>
+   <div className="flex items-center gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span>
+    <div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-black tracking-tight">{s.code||'Subject'}</h2><p className="truncate text-sm text-muted">{s.name||'No name'} · {f2(+s.units||0)} unit{(+s.units||0)===1?'':'s'}</p></div></div>
    <div className="flex flex-wrap items-center gap-2"><Seg v={s.kind==='gen'?'gen':'major'} on={v=>setF(s.id,'kind',v)} opts={[['major','Major'],['gen','Gen Ed']]}/><Tip t="Tag a subject as Major or Gen Ed. The Majors GWA on the Overview only counts subjects tagged Major."/></div>
    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
     {P.map(p=>{const c=pcalc(s,p),v=c.grade!=null?c.grade:c.gradeSoFar;return Bg(p.name+' grade',v==null?'—':f2(v),c.grade!=null?'Raw · complete':v!=null?'Raw · so far':'No scores yet',p.id===pcur.id)})}
@@ -597,11 +599,10 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
      {Options(s,pcur,isLast)}</div></div></>};
  
 const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><button className={BTNP} onClick={()=>setAdding(true)}>＋ Add your first subject</button></div>;
- const TrackerView=()=><>{subs.length?Shell(TrackerBody()):EmptyCard()}</>;
+ const TrackerView=()=><div className="flex flex-col gap-6 pb-2">{subs.length?Shell(TrackerBody()):EmptyCard()}</div>;
 
  /* ---- forecaster (also one subject card at a time) ---- */
  const setMissing=pidv=>upd(x=>({...x,subs:x.subs.map(s=>{const pi=P.findIndex(p=>p.id===pidv),T=tFor(s,pi);if(T==null)return s;const r=pproj(s,P[pi],T),wi={...(s.wi||{})};r.miss.forEach(a=>{wi[a.id]=String(r.uni<=0?0:Math.min(100,Math.ceil(r.uni)))});return{...s,wi}})}));
- const setMax=pidv=>upd(x=>({...x,subs:x.subs.map(s=>{const p=P.find(q=>q.id===pidv),wi={...(s.wi||{})};pcalc(s,p).live.forEach(a=>{if(ap(a)==null)wi[a.id]='100'});return{...s,wi}})}));
  const ForecastBody=pi=>{const s=cur,p=P[pi],sp=semProjC(s,P),prj=sp.pr,W=sp.W,B=sp.B,T=tFor(s,pi),r=pproj(s,p,T),sem=sp.grade,met=T!=null&&r.proj!=null&&r.proj>=T-1e-9;
   let hint;if(!r.live.length)hint='No activities';else if(!r.miss.length)hint='All scores are in';else if(r.miss.length===1)hint='Need '+need(r.alone[0][1])[0]+' on '+r.miss[0].name;else hint='Need '+need(r.uni)[0]+' on each of '+r.miss.length+' scores';
   return <>
@@ -614,9 +615,9 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     {P.map((q,j)=>j===pi?null:<div key={q.id} className="text-muted">{q.name} ({f2(W[j])}%): <b className="text-ink">{prj[j].proj==null?'—':f2(prj[j].proj)}</b> ({prj[j].complete?'actual':'projected'})</div>)}</div>
    {(()=>{const rr=all.find(z=>z.s&&z.s.id===s.id),lv=rr?rLvl(rr):0;return lv?<div className={cx('rounded-xl border px-3 py-2 text-xs font-semibold',lv===2?'ins-bad':'ins-warn')}>{lv===2?'Projected below its '+fg(rr.rt.g)+' retention grade':'Retention at risk: needs '+Math.ceil(rr.sv.x-1e-9)+'% on what is left to stay at '+fg(rr.rt.g)}</div>:null})()}
    {r.miss.length>1&&<Tile l={`Same % on all ${r.miss.length} missing`} v={need(r.uni)[0]} bad={need(r.uni)[1]} vc={tlCls(r.uni)}/>}
-   <div className="flex flex-col gap-2.5 sm:gap-3">{r.acts.filter(a=>wgt(a)>0).map(a=>{const x=ap(a);if(x!=null)return <div key={a.id} className="flex items-center justify-between rounded-2xl bg-surface2/50 px-4 py-2.5 text-sm"><span className="font-semibold">{a.name} <span className="font-normal text-muted">{f2(wgt(a))}%</span></span><span className="font-bold">✓ {f2(x)}%{a.est&&<span className="ml-1 text-[10px] font-bold uppercase text-accent-text">possible</span>}</span></div>;
+   <div className="flex flex-col gap-3.5">{r.acts.filter(a=>wgt(a)>0).map(a=>{const x=ap(a);if(x!=null)return <div key={a.id} className="flex items-center justify-between rounded-2xl bg-surface2/50 px-4 py-2.5 text-sm"><span className="font-semibold">{a.name} <span className="font-normal text-muted">{f2(wgt(a))}%</span></span><span className="font-bold">✓ {f2(x)}%{a.est&&<span className="ml-1 text-[10px] font-bold uppercase text-accent-text">possible</span>}</span></div>;
     const v=r.alone.find(z=>z[0]===a.id)[1],[t,bad]=need(v),m=mxs(a);
-    return <div key={a.id} className="flex flex-col gap-2 rounded-2xl border border-line/60 bg-surface2/60 p-3 sm:p-4">
+    return <div key={a.id} className="flex flex-col gap-3 rounded-2xl border border-line/60 bg-surface2/60 p-4 sm:p-5">
      <div className="flex items-center justify-between"><span className="font-bold">{a.name} <span className="text-xs font-semibold text-muted">{f2(wgt(a))}%</span></span><span className="rounded-full bg-accent/25 px-2 py-0.5 text-xs font-bold">Not yet</span></div>
      <div><span className="text-xs text-muted">Score needed{r.miss.length>1?' (others at their sliders)':''}:</span><div className={cx('text-xl font-extrabold',tlCls(v)||(bad?'text-bad':'text-ink'))}>{t}{v>0&&v<=100&&<span className="text-sm font-semibold text-muted"> ≈ {f2(v/100*m)}/{m}</span>}</div></div>
      <div className="flex items-center gap-3"><span className="w-16 text-xs font-semibold">If I score</span><input type="range" min="0" max="100" step="1" value={Math.min(100,+wiv(s,a)||0)} onChange={e=>setWi(s.id,a.id,e.target.value)} className="min-w-0 flex-1"/><Num v={wiv(s,a)} on={v=>setWi(s.id,a.id,v)} w="w-16"/></div></div>})}</div>
@@ -671,10 +672,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
    <Seg v={fsub} on={setSub} opts={[...P.map(p=>[p.id,p.name]),['g','GWA']]} cls="w-full sm:w-auto"/>
    {fsub!=='g'&&pi<last0&&<label className="flex items-center gap-2 text-sm font-semibold">{P[pi].name} target<Num v={tg[fsub]} on={v=>setTg(fsub,v)} ph={String(C.pass)} w="w-20"/></label>}
    {fsub!=='g'&&pi===last0&&<label className="flex items-center gap-2 text-sm font-semibold">Semestral target<Num v={tg.s} on={v=>setTg('s',v)} ph={String(C.pass)} w="w-20"/></label>}
-   <div className="flex flex-wrap gap-2">{fsub!=='g'&&<><button className={BTN} onClick={()=>setMissing(fsub)}>Set missing to needed</button><button className={BTN} onClick={()=>setMax(fsub)}>Max</button></>}
-    <button className={BTN} onClick={()=>applyPlan('surv')} title="The lowest scores that keep every subject at its retention grade">Survival</button>
-    <button className={BTNP} onClick={()=>applyPlan('exc')} title="The scores that reach your Dean’s List target GWA">Excellence</button></div></div>
-  {plan&&<div className={cx('anim-rise flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold','ins-'+plan.t)} role="status"><span>{plan.x}</span><button className="shrink-0 text-muted" onClick={()=>setPlan(null)} aria-label="Dismiss">✕</button></div>}
+   {fsub!=='g'&&<button className={BTN} onClick={()=>{setMissing(fsub);FX.done()}}>Set missing to needed</button>}</div>
   {fsub==='g'?GwaView():subs.length?Shell(ForecastBody(pi)):EmptyCard()}</>};
 
  /* ---- settings sheet ---- */
@@ -686,7 +684,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
   return <>
    <section className="flex flex-col gap-3"><h3 className={LBL}>Appearance</h3><ThemePicker theme={theme} setTheme={setTheme}/></section>
    <section className="flex flex-col gap-3"><h3 className={LBL}>Sound and haptics</h3>
-    <Switch on={fxs.snd} onChange={()=>togFx('snd')} label="Sound effects" sub="Calculator clacks, swipe swooshes, success chimes and error thuds. Turn off to mute everything."/>
+    <Switch on={fxs.snd} onChange={()=>togFx('snd')} label="Sound effects" sub="Soft chimes when you reach your target or finish a calculation. Typing and taps stay silent."/>
     <Switch on={fxs.hap} onChange={()=>togFx('hap')} label="Haptic feedback" sub="Short vibrations on phones that support them."/></section>
    <section className="flex flex-col gap-3"><h3 className={LBL}>Grading periods and Base</h3>
     {rp.map((p,i)=><div key={p.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-surface2/60 p-3">
@@ -709,7 +707,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Academic year<TextIn v={Y.name} on={v=>rename('y',v)} cls="mt-1"/></label><label className="text-sm font-semibold">Semester<TextIn v={S.name} on={v=>rename('s',v)} cls="mt-1"/></label></div>
     <div className="flex flex-wrap gap-2"><select value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select><select value={S.id} onChange={e=>set(c=>({...c,s:e.target.value}))} className={SEL}>{Y.sems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select><button className={BTN} onClick={addYear}>＋ Year</button><button className={BTN} onClick={addSem}>＋ Semester</button></div></section>
    <section className="flex flex-col gap-3"><h3 className={LBL}>Data</h3>
-    <div className="flex flex-wrap gap-2"><button className={BTN} onClick={()=>clearScores()}>Clear all scores here</button>
+    <div className="flex flex-wrap gap-2"><button className={BTN} onClick={undo} disabled={!past.current.length}>Undo</button><button className={BTN} onClick={redo} disabled={!fut.current.length}>Redo</button><button className={BTN} onClick={()=>clearScores()}>Clear all scores here</button>
      {CAN_FILE&&<><button className={BTN} onClick={exportData}>Export data</button><label className={BTN+' cursor-pointer'}>Import data<input type="file" accept="application/json,.json" onChange={importData} className="hidden"/></label></>}</div>
     <p className="text-xs text-muted">Everything saves automatically. Every change here can be undone with the Undo button. Export a backup now and then.</p></section></>};
 
@@ -732,10 +730,10 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
  const SettingsView=()=><div className={cx(CARD,'p-5 sm:p-8')}><div className="grid gap-x-10 gap-y-8 lg:grid-cols-2">{Settings()}</div></div>;
 
  const showCalc=tab==='t'||(tab==='f'&&fsub!=='g'),calcKey=C.id+'|'+C.target+'|'+C.pass+'|'+JSON.stringify(C.table);
- return <div className="mx-auto max-w-[1240px] px-4 pb-40 pt-3 sm:px-8 md:pb-36">
-  <main className="flex flex-col gap-5 sm:gap-6">
+ return <div className="mx-auto max-w-[1240px] px-5 pb-44 pt-4 sm:px-8 md:pb-40">
+  <main className="flex flex-col gap-7 sm:gap-8">
    {Top()}{Banners()}
-   <div key={tab} className="anim-rise flex flex-col gap-5 sm:gap-6">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='f'?ForecastView():tab==='p'?ProfileView():SettingsView()}</div>
+   <div key={tab} className="anim-rise flex flex-col gap-8 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='f'?ForecastView():tab==='p'?ProfileView():SettingsView()}</div>
    <div className={showCalc?'':'hidden'}><Calc sk={calcKey}/></div></main>
   <BottomNav tab={tab} on={setTab}/>
   <Sheet open={adding} onClose={()=>setAdding(false)} title="Add subject">
@@ -747,7 +745,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
    <button className={BTNP} onClick={addSub}>Add subject</button></Sheet>
   <Sheet open={!!shr} onClose={closeShare} title="Share your grades">{shr&&<>
    <div className="mx-auto w-full max-w-[17rem] overflow-hidden rounded-[1.75rem] border border-line bg-surface2 shadow-xl" style={{aspectRatio:'9/16'}}>{shr.url?<img src={shr.url} alt="Preview of your story image" className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-sm text-muted">Creating image…</div>}</div>
-   <Switch on={shr.hide} onChange={()=>{const h=!shr.hide;setShr({...shr,hide:h});genStory(h)}} label="Hide raw scores" sub="Shows only your GWA and target status."/>
+   <Switch on={shr.hide} onChange={()=>{const h=!shr.hide;setShr({...shr,hide:h});genStory(h,shr.mode)}} label="Hide raw scores" sub={shr.mode==='actual'?'Shows only your GWAs, not each subject.':'Shows only your GWA and target status.'}/>
    <button className={BTNP} disabled={!shr.blob} onClick={sendStory}>Share or save image</button></>}</Sheet>
  </div>;
 }
@@ -786,7 +784,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',cloud:CLOUD,pass:'',rec:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({name:'',pass:''});setCm('');setSh({t:'joinGroup'})};
- const Top=<div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2.5"><TigerLogo className="h-10 w-11"/><span className="text-sm font-extrabold">Grades Tracker</span></div>
+ const Top=<div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2.5"><TigerLogo className="h-10 w-10"/><span className="text-sm font-extrabold">Grades Tracker</span></div>
   <div className="flex items-center gap-2"><span className="hidden text-[11px] text-muted sm:inline">{busy?'Updating from cloud…':at?'Updated '+rel(at):''}</span>{CLOUD&&<button className={BTN+' !px-3'} onClick={ctl.refresh} aria-label="Refresh from cloud"><span className={busy?'inline-block animate-spin':''}>↻</span></button>}<button className={BTN} onClick={()=>setSh({t:'theme'})}>Theme</button></div></div>;
  const Action=(title,sub,onClick,primary,disabled,d)=><button onClick={onClick} disabled={disabled} className={cx('lift relative flex flex-col items-start gap-10 overflow-hidden rounded-[2rem] p-6 text-left disabled:pointer-events-none disabled:opacity-50 sm:p-8',primary?'bg-accent text-accent-ink shadow-xl shadow-accent/25':'glass')}>
   <span className={cx('grid h-12 w-12 place-items-center rounded-2xl',primary?'bg-accent-ink/10':'bg-accent/15 text-accent-text')}><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg></span>
@@ -983,7 +981,7 @@ const ctl={open,guest,createGroup,joinGroup,editGroup,enableGroupCloud,deleteGro
   const a=cur.guest?{name:'Guest',emoji:''}:acc(cur.id);
   if(!a){setTimeout(()=>setCur(null),0);return null}
   const lbl=stat==='synced'?'Synced':stat==='syncing'?'Syncing…':stat==='offline'?'Offline · saved here':'Sync error · tap to retry';
-  const cl=a.cloud?{on:true,label:lbl,sync:()=>sync(cur.id),at:a.sy&&a.sy.at,pending:!!(a.sy&&a.sy.dirty)}:{on:false,label:cur.guest?'Not saved':'This device only',sync:()=>{}};
+  const cl=a.cloud?{on:true,state:stat,label:lbl,sync:()=>sync(cur.id),at:a.sy&&a.sy.at,pending:!!(a.sy&&a.sy.dirty)}:{on:false,state:'local',label:cur.guest?'Not saved':'This device only',sync:()=>{}};
   const onSave=n=>{if(cur.guest){gd.current=n;return}const x=acc(cur.id);bk.current.data[cur.id]=n;if(x&&x.cloud){x.sy={...(x.sy||{}),t:Date.now(),dirty:true};setStat(navigator.onLine?'syncing':'offline');later(cur.id)}saveBook(bk.current)};
   view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(a.gid),changeGroupPass:(o,n,n2)=>changeGroupPass(a.gid,o,n,n2),setRec:e=>editGroup(a.gid,{rec:e})}}/>;
  }
