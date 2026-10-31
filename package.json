@@ -1,0 +1,10 @@
+{
+  "name": "gradely",
+  "private": true,
+  "version": "28.0.0",
+  "scripts": {
+    "build": "esbuild src/app.jsx --bundle --minify --loader:.jsx=jsx --define:process.env.NODE_ENV='\"production\"' --target=es2018 --outfile=app.js"
+  },
+  "dependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" },
+  "devDependencies": { "esbuild": "^0.27.0" }
+}

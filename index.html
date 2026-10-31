@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="sun">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
 <title>Gradely</title>
-<meta name="theme-color" content="#F6F6F3">
+<meta name="theme-color" content="#0E0E11">
 <meta name="description" content="Gradely: track grades, forecast finals and plan your GWA.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="icons/tiger.svg">
@@ -17,7 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script>
 // apply the saved theme before the first paint (no flash)
-try{var t=localStorage.getItem('gtf-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
+try{var t=localStorage.getItem('gtf-theme');if(t==='red')t='maroon';if(t==='reddk')t='maroondk';if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
 </script>
 <script>
 ['gesturestart','gesturechange','gestureend'].forEach(function(e){document.addEventListener(e,function(ev){ev.preventDefault()},{passive:false})});
@@ -36,17 +36,22 @@ window.tailwind&&(tailwind.config={theme:{extend:{colors:{
 :root,[data-theme=sun]{--bg:246 246 243;--surface:255 255 255;--surface2:248 247 241;--ink:28 27 24;--muted:118 114 104;--line:233 230 218;--accent:250 204 21;--accent-ink:42 34 4;--accent-text:161 98 7;--good:22 150 74;--bad:220 38 38;--glow:.2;color-scheme:light}
 [data-theme=dark]{--bg:14 14 17;--surface:28 28 33;--surface2:40 40 47;--ink:246 246 248;--muted:152 152 165;--line:56 56 66;--accent:251 191 36;--accent-ink:30 22 2;--accent-text:252 211 77;--good:74 222 128;--bad:248 113 113;--glow:.12;color-scheme:dark}
 [data-theme=mono]{--bg:250 250 250;--surface:255 255 255;--surface2:242 242 242;--ink:17 17 17;--muted:115 115 115;--line:226 226 226;--accent:17 17 17;--accent-ink:255 255 255;--accent-text:17 17 17;--good:17 17 17;--bad:120 120 120;--glow:.05;color-scheme:light}
-[data-theme=lav]{--bg:247 245 255;--surface:255 255 255;--surface2:240 236 255;--ink:30 27 58;--muted:112 106 148;--line:226 220 248;--accent:124 58 237;--accent-ink:255 255 255;--accent-text:109 40 217;--good:5 150 105;--bad:225 29 72;--glow:.16;color-scheme:light}
+[data-theme=lav]{--bg:249 247 255;--surface:255 255 255;--surface2:241 236 255;--ink:36 28 66;--muted:118 108 156;--line:229 222 250;--accent:167 139 250;--accent-ink:36 18 84;--accent-text:109 40 217;--good:5 150 105;--bad:225 29 72;--glow:.18;color-scheme:light}
+[data-theme=lavdk]{--bg:15 12 26;--surface:27 22 45;--surface2:39 32 63;--ink:243 240 255;--muted:160 150 196;--line:56 48 88;--accent:196 181 253;--accent-ink:30 16 72;--accent-text:221 214 254;--good:74 222 128;--bad:251 146 160;--glow:.14;color-scheme:dark}
 [data-theme=blue]{--bg:244 248 255;--surface:255 255 255;--surface2:235 243 255;--ink:15 29 54;--muted:99 115 143;--line:214 227 247;--accent:37 99 235;--accent-ink:255 255 255;--accent-text:29 78 216;--good:5 150 105;--bad:220 38 38;--glow:.16;color-scheme:light}
 [data-theme=bluedk]{--bg:8 13 24;--surface:17 26 44;--surface2:26 38 62;--ink:238 244 255;--muted:140 158 190;--line:38 54 84;--accent:96 165 250;--accent-ink:6 18 40;--accent-text:147 197 253;--good:74 222 128;--bad:248 113 113;--glow:.14;color-scheme:dark}
-[data-theme=red]{--bg:255 247 247;--surface:255 255 255;--surface2:255 237 237;--ink:46 16 20;--muted:135 100 104;--line:247 220 222;--accent:220 38 38;--accent-ink:255 255 255;--accent-text:185 28 28;--good:22 150 74;--bad:127 29 29;--glow:.15;color-scheme:light}
-[data-theme=reddk]{--bg:20 9 11;--surface:34 17 20;--surface2:48 25 29;--ink:255 240 241;--muted:188 150 154;--line:70 38 43;--accent:248 113 113;--accent-ink:40 8 10;--accent-text:252 165 165;--good:74 222 128;--bad:253 186 116;--glow:.13;color-scheme:dark}
+[data-theme=maroon]{--bg:252 245 246;--surface:255 255 255;--surface2:248 234 237;--ink:43 10 20;--muted:125 88 96;--line:238 215 220;--accent:128 0 32;--accent-ink:255 255 255;--accent-text:128 0 32;--good:22 150 74;--bad:200 30 60;--glow:.15;color-scheme:light}
+[data-theme=maroondk]{--bg:18 8 11;--surface:33 16 21;--surface2:47 24 30;--ink:255 238 241;--muted:190 150 158;--line:72 38 46;--accent:168 38 66;--accent-ink:255 240 243;--accent-text:240 138 160;--good:74 222 128;--bad:253 186 116;--glow:.16;color-scheme:dark}
 [data-theme=green]{--bg:245 252 247;--surface:255 255 255;--surface2:232 247 237;--ink:14 40 26;--muted:94 128 108;--line:211 238 220;--accent:22 163 74;--accent-ink:255 255 255;--accent-text:21 128 61;--good:21 128 61;--bad:220 38 38;--glow:.15;color-scheme:light}
 [data-theme=greendk]{--bg:8 18 13;--surface:16 31 23;--surface2:24 44 33;--ink:236 252 241;--muted:140 176 152;--line:36 62 46;--accent:74 222 128;--accent-ink:5 30 15;--accent-text:134 239 172;--good:134 239 172;--bad:248 113 113;--glow:.13;color-scheme:dark}
+[data-theme=pink]{--bg:255 245 250;--surface:255 255 255;--surface2:255 232 243;--ink:56 14 36;--muted:145 98 120;--line:250 216 232;--accent:236 72 153;--accent-ink:255 255 255;--accent-text:190 24 93;--good:22 150 74;--bad:220 38 38;--glow:.16;color-scheme:light}
+[data-theme=pinkdk]{--bg:22 9 16;--surface:38 17 28;--surface2:54 26 40;--ink:255 238 247;--muted:196 150 174;--line:78 40 60;--accent:244 114 182;--accent-ink:48 6 28;--accent-text:249 168 212;--good:74 222 128;--bad:253 164 175;--glow:.13;color-scheme:dark}
+[data-theme=mint]{--bg:243 252 249;--surface:255 255 255;--surface2:228 247 240;--ink:10 42 34;--muted:88 128 117;--line:205 238 226;--accent:45 212 170;--accent-ink:3 44 31;--accent-text:4 120 87;--good:4 120 87;--bad:220 38 38;--glow:.17;color-scheme:light}
+[data-theme=mintdk]{--bg:7 19 17;--surface:14 33 29;--surface2:22 47 41;--ink:232 253 246;--muted:134 178 165;--line:31 66 58;--accent:110 231 195;--accent-ink:3 36 26;--accent-text:167 243 218;--good:110 231 195;--bad:248 113 113;--glow:.13;color-scheme:dark}
 /* ---------- soft glass: translucent surface, light blur, a gentle highlight and accent gradient, hairline edge ---------- */
-:root,[data-theme=sun],[data-theme=dark]{--amb2:245 158 11}[data-theme=mono]{--amb2:120 120 120}[data-theme=lav]{--amb2:192 132 252}[data-theme=blue],[data-theme=bluedk]{--amb2:56 189 248}[data-theme=red],[data-theme=reddk]{--amb2:251 146 60}[data-theme=green],[data-theme=greendk]{--amb2:163 230 53}
+:root,[data-theme=sun],[data-theme=dark]{--amb2:245 158 11}[data-theme=mono]{--amb2:120 120 120}[data-theme=lav]{--amb2:216 180 254}[data-theme=blue],[data-theme=bluedk]{--amb2:56 189 248}[data-theme=maroon],[data-theme=maroondk]{--amb2:244 114 128}[data-theme=pink],[data-theme=pinkdk]{--amb2:251 146 190}[data-theme=lavdk]{--amb2:216 180 254}[data-theme=mint],[data-theme=mintdk]{--amb2:103 232 249}[data-theme=green],[data-theme=greendk]{--amb2:163 230 53}
 :root{--gla:.68;--hl:.55;--gle:255 255 255;--glea:.75;--shd:0 1px 2px rgb(0 0 0/.04),0 10px 30px -14px rgb(0 0 0/.18);--shd2:0 2px 6px rgb(0 0 0/.06),0 26px 56px -20px rgb(0 0 0/.34)}
-[data-theme=dark],[data-theme=bluedk],[data-theme=reddk],[data-theme=greendk]{--gla:.62;--hl:.07;--gle:255 255 255;--glea:.12;--shd:0 1px 2px rgb(0 0 0/.4),0 12px 30px -14px rgb(0 0 0/.65);--shd2:0 2px 6px rgb(0 0 0/.5),0 28px 60px -20px rgb(0 0 0/.8)}
+[data-theme=dark],[data-theme=bluedk],[data-theme=maroondk],[data-theme=greendk],[data-theme=pinkdk],[data-theme=lavdk],[data-theme=mintdk]{--gla:.62;--hl:.07;--gle:255 255 255;--glea:.12;--shd:0 1px 2px rgb(0 0 0/.4),0 12px 30px -14px rgb(0 0 0/.65);--shd2:0 2px 6px rgb(0 0 0/.5),0 28px 60px -20px rgb(0 0 0/.8)}
 .glass,.gc{background:radial-gradient(130% 100% at 0% 0%,rgb(var(--accent)/.12),transparent 58%),linear-gradient(150deg,rgb(255 255 255/var(--hl)),rgb(255 255 255/0) 55%),rgb(var(--surface)/var(--gla));-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);border:1px solid rgb(var(--gle)/var(--glea));box-shadow:var(--shd),inset 0 1px 0 rgb(255 255 255/calc(var(--hl)*.7))}
 /* sheets, menus and tooltips: denser so text stays crisp */
 .gcs{background:linear-gradient(150deg,rgb(255 255 255/var(--hl)),rgb(255 255 255/0) 50%),rgb(var(--surface)/.9);-webkit-backdrop-filter:blur(28px) saturate(1.6);backdrop-filter:blur(28px) saturate(1.6);border:1px solid rgb(var(--gle)/var(--glea));box-shadow:var(--shd2)}

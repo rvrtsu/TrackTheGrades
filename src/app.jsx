@@ -42,7 +42,7 @@ const FX=(()=>{
 })();
 // theme-aware extras (traffic lights, insight banners, confetti), injected so this file stays self-contained
 (function(){try{if(document.getElementById('gtf-x'))return;const el=document.createElement('style');el.id='gtf-x';el.textContent=[
- ':root,[data-theme=sun],[data-theme=lav]{--warn:202 138 4}[data-theme=dark]{--warn:250 204 21}[data-theme=mono]{--warn:85 85 85}',
+ ':root,[data-theme=sun],[data-theme=lav],[data-theme=pink],[data-theme=maroon]{--warn:202 138 4}[data-theme=dark],[data-theme=bluedk],[data-theme=maroondk],[data-theme=greendk],[data-theme=pinkdk],[data-theme=lavdk],[data-theme=mintdk]{--warn:250 204 21}[data-theme=mono]{--warn:85 85 85}',
  '.tl-g{color:rgb(var(--good))}.tl-y{color:rgb(var(--warn))}.tl-r{color:rgb(var(--bad))}',
  '.tlb-g{background:rgb(var(--good)/.15);color:rgb(var(--good))}.tlb-y{background:rgb(var(--warn)/.16);color:rgb(var(--warn))}.tlb-r{background:rgb(var(--bad)/.15);color:rgb(var(--bad))}',
  '.ins-good{border-color:rgb(var(--good)/.45);background:rgb(var(--good)/.1)}.ins-warn{border-color:rgb(var(--warn)/.5);background:rgb(var(--warn)/.12)}.ins-bad{border-color:rgb(var(--bad)/.5);background:rgb(var(--bad)/.1)}.ins-idle{border-color:rgb(var(--line));background:rgb(var(--surface2)/.7)}',
@@ -140,7 +140,25 @@ const readSession=()=>{try{let s=null;try{s=JSON.parse(localStorage.getItem(SK))
  return s&&s.auth===true&&s.aid?{aid:s.aid,gid:s.gid||null}:null}catch(e){return null}};
 const writeSession=(aid,gid)=>{try{localStorage.setItem(SK,JSON.stringify({v:1,auth:true,persistence:AUTH_PERSISTENCE,aid,gid:gid||null,t:Date.now()}));localStorage.setItem('gtf-auth','1');localStorage.setItem('gtf-active-account',aid);if(gid)localStorage.setItem('gtf-active-group',gid);else localStorage.removeItem('gtf-active-group')}catch(e){}};
 const clearSession=()=>{try{[SK,'gtf-auth','gtf-active-account','gtf-active-group'].forEach(k=>localStorage.removeItem(k))}catch(e){}};
-const THEMES=[{"id":"sun","name":"Yellow Light","bar":"#F6F6F3","sw":["#FFFFFF","#FACC15","#1C1B18"]},{"id":"dark","name":"Yellow Dark","bar":"#0E0E11","sw":["#1C1C21","#FBBF24","#F6F6F8"]},{"id":"blue","name":"Blue Light","bar":"#F4F8FF","sw":["#FFFFFF","#2563EB","#0F1D36"]},{"id":"bluedk","name":"Blue Dark","bar":"#080D18","sw":["#111A2C","#60A5FA","#EEF4FF"]},{"id":"red","name":"Red Light","bar":"#FFF7F7","sw":["#FFFFFF","#DC2626","#2E1014"]},{"id":"reddk","name":"Red Dark","bar":"#140909","sw":["#221114","#F87171","#FFF0F1"]},{"id":"green","name":"Green Light","bar":"#F5FCF7","sw":["#FFFFFF","#16A34A","#0E281A"]},{"id":"greendk","name":"Green Dark","bar":"#08120D","sw":["#101F17","#4ADE80","#ECFCF1"]},{"id":"mono","name":"Monochrome","bar":"#FAFAFA","sw":["#FFFFFF","#111111","#737373"]},{"id":"lav","name":"Lavender","bar":"#F7F5FF","sw":["#FFFFFF","#7C3AED","#1E1B3A"]}];
+const THEMES=[
+ {id:'dark',fam:'Yellow',mode:'Dark',name:'Yellow Dark',bar:'#0E0E11',sw:['#1C1C21','#FBBF24','#F6F6F8']},
+ {id:'sun',fam:'Yellow',mode:'Light',name:'Yellow Light',bar:'#F6F6F3',sw:['#FFFFFF','#FACC15','#1C1B18']},
+ {id:'blue',fam:'Blue',mode:'Light',name:'Blue Light',bar:'#F4F8FF',sw:['#FFFFFF','#2563EB','#0F1D36']},
+ {id:'bluedk',fam:'Blue',mode:'Dark',name:'Blue Dark',bar:'#080D18',sw:['#111A2C','#60A5FA','#EEF4FF']},
+ {id:'maroon',fam:'Maroon',mode:'Light',name:'Maroon Light',bar:'#FCF5F6',sw:['#FFFFFF','#800020','#2B0A14']},
+ {id:'maroondk',fam:'Maroon',mode:'Dark',name:'Maroon Dark',bar:'#12080B',sw:['#211015','#A82642','#FFEEF1']},
+ {id:'green',fam:'Green',mode:'Light',name:'Green Light',bar:'#F5FCF7',sw:['#FFFFFF','#16A34A','#0E281A']},
+ {id:'greendk',fam:'Green',mode:'Dark',name:'Green Dark',bar:'#08120D',sw:['#101F17','#4ADE80','#ECFCF1']},
+ {id:'pink',fam:'Pink',mode:'Light',name:'Pink Light',bar:'#FFF5FA',sw:['#FFFFFF','#EC4899','#380E24']},
+ {id:'pinkdk',fam:'Pink',mode:'Dark',name:'Pink Dark',bar:'#160910',sw:['#26111C','#F472B6','#FFEEF7']},
+ {id:'lav',fam:'Lavender',mode:'Light',name:'Lavender Light',bar:'#F9F7FF',sw:['#FFFFFF','#A78BFA','#241C42']},
+ {id:'lavdk',fam:'Lavender',mode:'Dark',name:'Lavender Dark',bar:'#0F0C1A',sw:['#1B162D','#C4B5FD','#F3F0FF']},
+ {id:'mint',fam:'Mint',mode:'Light',name:'Mint Light',bar:'#F3FCF9',sw:['#FFFFFF','#2DD4AA','#0A2A22']},
+ {id:'mintdk',fam:'Mint',mode:'Dark',name:'Mint Dark',bar:'#071311',sw:['#0E211D','#6EE7C3','#E8FDF6']},
+ {id:'mono',fam:'Monochrome',mode:'Light',name:'Monochrome',bar:'#FAFAFA',sw:['#FFFFFF','#111111','#737373']}];
+const THEME_DEFAULT='dark',THEME_ALIAS={red:'maroon',reddk:'maroondk'};
+const THEME_FAMS=[...new Set(THEMES.map(t=>t.fam))];
+const themeOk=t=>{t=THEME_ALIAS[t]||t;return THEMES.some(x=>x.id===t)?t:THEME_DEFAULT};
 // Report card export looks (the canvas is drawn in buildStory)
 const RTHEMES=[
  {id:'light',name:'Minimalist Light',sub:'White, hairline rules',sw:['#FFFFFF','#111113','#E5E5EA','#111113']},
@@ -155,7 +173,7 @@ const ckey=(n,pw)=>sha('gtf1|'+n.trim().toLowerCase()+'|'+pw);
 const curl=k=>DB+'/sync/'+k+'.json';
 const cget=async k=>{const r=await fetch(curl(k),{cache:'no-store'});if(!r.ok)throw new Error('get '+r.status);return r.json()};
 const cput=async(k,o)=>{const r=await fetch(curl(k),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});if(!r.ok)throw new Error('put '+r.status)};
-const validDoc=r=>!!r&&typeof r.d==='string'&&typeof r.t==='number';
+const validDoc=r=>!!r&&r.x!==1&&typeof r.d==='string'&&typeof r.t==='number'; // x:1 is a tombstone left by the developer dashboard
 // A cloud group is a small public directory of cards. Each profile's data stays behind its own passcode.
 const gkey=(n,pw)=>sha('gtf-group|'+n.trim().toLowerCase()+'|'+pw);
 const gurl=(k,sub)=>DB+'/groups/'+k+(sub?'/'+sub:'')+'.json';
@@ -165,6 +183,36 @@ const gremove=async(k,sub)=>{const r=await fetch(gurl(k,sub),{method:'DELETE'});
 const gget=async(k,sub)=>{const r=await fetch(gurl(k,sub),{cache:'no-store'});if(!r.ok)throw new Error('get '+r.status);return r.json()};
 const gpatch=async(k,sub,o)=>{const r=await fetch(gurl(k,sub),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});if(!r.ok)throw new Error('put '+r.status)};
 const premove=async k=>{const r=await fetch(curl(k),{method:'DELETE'});if(!r.ok)throw new Error('del '+r.status)};
+/* ---- generic database helpers: join codes, bug reports and the developer tools ---- */
+const CODE_CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I, so a code is easy to read out loud
+const mkCode=()=>{const a=new Uint8Array(6);crypto.getRandomValues(a);return[...a].map(x=>CODE_CH[x%CODE_CH.length]).join('')};
+const normCode=c=>String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const fmtCode=c=>c&&c.length===6?c.slice(0,3)+'-'+c.slice(3):(c||'');
+/* ---- developer account ----
+   The username is fixed in the app. The password is NOT stored in this file: it is checked by Firebase Authentication
+   (email + password, see README Part 4), and the database rules only let that one signed-in user read or change everything. */
+const DEV_USER='dev_roeverjosh',DEV_EMAIL=DEV_USER+'@gradely.app',DEVK='gtf-dev-rt',APIKEY=String(CFG.apiKey||'').trim();
+const DEV={tok:'',exp:0,rt:(()=>{try{return localStorage.getItem(DEVK)||''}catch(e){return''}})()};
+const devOn=()=>!!DEV.rt;
+const devSignOut=()=>{DEV.tok='';DEV.rt='';DEV.exp=0;try{localStorage.removeItem(DEVK)}catch(e){}};
+const devTok=async()=>{if(!DEV.rt)return'';if(DEV.tok&&Date.now()<DEV.exp-60000)return DEV.tok;
+ const r=await fetch('https://securetoken.googleapis.com/v1/token?key='+APIKEY,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(DEV.rt)});
+ if(!r.ok){devSignOut();throw new Error('expired')}
+ const j=await r.json();DEV.tok=j.id_token;DEV.rt=j.refresh_token||DEV.rt;DEV.exp=Date.now()+(+j.expires_in||3600)*1000;try{localStorage.setItem(DEVK,DEV.rt)}catch(e){}return DEV.tok};
+const devSignIn=async(u,p)=>{
+ if(String(u||'').trim().toLowerCase()!==DEV_USER)return'Wrong developer username or password.';
+ if(!APIKEY)return'Developer sign-in needs your Firebase Web API key. Add apiKey to config.js (README, Part 4).';
+ if(!navigator.onLine)return'You need an internet connection for that.';
+ try{const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(APIKEY),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:DEV_EMAIL,password:String(p||''),returnSecureToken:true})});
+  if(!r.ok){let m='';try{const j=await r.json();m=(j&&j.error&&j.error.message)||''}catch(e){}
+   return /EMAIL_NOT_FOUND/.test(m)?'The developer user is not created in Firebase yet (README, Part 4).':/OPERATION_NOT_ALLOWED/.test(m)?'Turn on Email/Password sign-in in Firebase Authentication first (README, Part 4).':/API.?KEY/i.test(m)?'The apiKey in config.js is not valid.':/TOO_MANY/.test(m)?'Too many attempts. Try again later.':'Wrong developer username or password.'}
+  const j=await r.json();DEV.tok=j.idToken;DEV.rt=j.refreshToken;DEV.exp=Date.now()+(+j.expiresIn||3600)*1000;try{localStorage.setItem(DEVK,DEV.rt)}catch(e){}return'ok'}
+ catch(e){return'Could not reach Firebase. Check your connection.'}};
+const dq=async p=>{let t='';try{t=await devTok()}catch(e){}return DB+'/'+p+'.json'+(t?'?auth='+encodeURIComponent(t):'')};
+const dreq=async(m,p,o)=>{const r=await fetch(await dq(p),{method:m,cache:'no-store',...(o!==undefined?{headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}:{})});if(!r.ok)throw new Error(m.toLowerCase()+' '+r.status);return m==='GET'?r.json():null};
+const dget=p=>dreq('GET',p),dput=(p,o)=>dreq('PUT',p,o),dpatch=(p,o)=>dreq('PATCH',p,o),ddel=p=>dreq('DELETE',p);
+const freeCode=async()=>{for(let i=0;i<8;i++){const c=mkCode();if(!(await dget('codes/'+c)))return c}throw new Error('code')};
+const joinParam=()=>{try{const c=normCode(new URLSearchParams(location.search).get('join'));return c.length===6?c:''}catch(e){return''}}; // invite links: ?join=ABC123
 
 /* =====================================================================
    4. GRADE MATH
@@ -308,6 +356,13 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v28',notes:[
+ 'Everything is saved to the cloud now: the "local only" account and group options are gone',
+ 'Groups get a short join code. Tap Join Group on the home screen and enter it to join instantly',
+ 'The person who creates a group is its admin automatically, with no separate admin account',
+ 'Yellow Dark is the default theme, Red is now a deeper Maroon, and Pink, Lavender and Mint each have Light and Dark versions',
+ 'New Report a Problem button on the home screen, plus a developer dashboard for the team',
+ 'Hide Prelim Grades now lives only in the report card export. Meet the Creators is bigger, and the Tracker has a Replay Tutorial button']},
  {v:'v27',notes:[
  'Home: Create Group, Join Group and Individual Account are now equal rectangle buttons in one row',
  'Individual accounts get a Join a Group button in Profile, keeping all grades',
@@ -338,7 +393,7 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v27';
+const APP_VER='v28';
 /* ---- one-time contextual tab tutorials ---- */
 const tipSeen=k=>{try{return localStorage.getItem('gtf-tip-'+k)==='1'}catch(e){return false}};
 const tipDone=k=>{try{localStorage.setItem('gtf-tip-'+k,'1')}catch(e){}};
@@ -420,9 +475,10 @@ const BottomNav=({tab,on})=>{const i=NAV.findIndex(x=>x[0]===tab),N=NAV.length;r
   {i>=0&&<span aria-hidden="true" className="absolute bottom-1.5 top-1.5 rounded-[1.3rem] bg-accent shadow-sm transition-all duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{left:'calc(.375rem + '+i+' * (100% - .75rem) / '+N+')',width:'calc((100% - .75rem) / '+N+')'}}/>}
   {NAV.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-current={tab===k?'page':undefined} className={cx('relative z-10 flex min-w-0 flex-col items-center gap-0.5 rounded-[1.3rem] py-2 text-[9px] font-bold tracking-tight transition-colors duration-300 sm:text-[10px] md:text-xs',tab===k?'text-accent-ink':'text-muted hover:text-ink')}>
    <svg viewBox="0 0 24 24" className="h-[21px] w-[21px] md:h-[22px] md:w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={IC[k]}/></svg><span className="max-w-full truncate">{l}</span></button>)}</div></nav>};
-const ThemePicker=({theme,setTheme})=><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{THEMES.map(t=><button key={t.id} onClick={()=>setTheme(t.id)} className={cx('rounded-2xl border p-3 text-left transition-all duration-300 hover:-translate-y-0.5',theme===t.id?'border-accent ring-2 ring-accent/40 bg-ink/[.08]':'border-line bg-ink/[.06] hover:bg-ink/[.09]')}>
- <div className="mb-2 flex gap-1.5">{t.sw.map((c,i)=><span key={i} className="h-6 w-6 rounded-full border border-black/10" style={{background:c}}/>)}</div>
- <div className="text-sm font-bold">{t.name}</div><div className="text-xs text-muted">{theme===t.id?'Selected':'Tap to use'}</div></button>)}</div>;
+const ThemePicker=({theme,setTheme})=><div className="flex flex-col gap-4">{THEME_FAMS.map(f=>{const L=THEMES.filter(t=>t.fam===f);return <div key={f}><div className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-[.14em] text-muted">{f}</div>
+ <div className="grid grid-cols-2 gap-2.5">{L.map(t=><button key={t.id} onClick={()=>setTheme(t.id)} aria-pressed={theme===t.id} className={cx('rounded-2xl border p-3 text-left transition-all duration-300 hover:-translate-y-0.5',theme===t.id?'border-accent ring-2 ring-accent/40 bg-ink/[.08]':'border-line bg-ink/[.06] hover:bg-ink/[.09]')}>
+  <div className="mb-2 flex gap-1.5">{t.sw.map((c,i)=><span key={i} className="h-6 w-6 rounded-full border border-black/10" style={{background:c}}/>)}</div>
+  <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold">{f==='Monochrome'?'Classic':t.mode}</span>{theme===t.id&&<span className="text-[11px] font-bold text-accent-text">Selected</span>}</div></button>)}</div></div>})}</div>;
 
 // Tiger mark: a tiger paw whose main pad is an open book, framed by tiger stripes. Pass a className to size it, e.g. "h-10 w-10".
 function TigerLogo({className='h-10 w-10',title='Gradely: tiger paw and open book'}){
@@ -499,8 +555,8 @@ const tourSeen=()=>{try{return localStorage.getItem(TOUR_KEY)==='1'}catch(e){ret
 const tourDone=()=>{try{localStorage.setItem(TOUR_KEY,'1')}catch(e){}};
 const TSL=[
  {t:'Welcome to Gradely',d:'Track every score, see where each subject is heading and plan the finals you need to reach your target GWA.',logo:true},
- {t:'Start with a group, or on your own',d:'You can skip groups with an individual account. A group keeps classmates’ accounts together. Create one, or join an existing group with its name and passcode. Whoever creates a group is its admin and manages its members and passcode.',ic:IC.g,hint:'Home › Create group, or Join a group'},
- {t:'Add your account',d:'Open a group and add your account. A passcode syncs it across your devices, or keep it on this device only. Your grades stay behind that passcode.',ic:IC.p,hint:'Open a group › New Account'},
+ {t:'Start with a group, or on your own',d:'You can skip groups with an individual account. A group keeps classmates’ accounts together. Create one and you become its admin automatically, or join a classmate’s group with its short join code. Whoever creates a group manages its members and passcode.',ic:IC.g,hint:'Home › Create Group, or Join Group'},
+ {t:'Add your account',d:'Open a group and add your account. Your passcode keeps your grades private and syncs them across all your devices, because everything is saved to the cloud.',ic:IC.p,hint:'Open a group › New Account'},
  {t:'Add subjects and activities',d:'Add each subject in the Tracker, then list its quizzes and exams with their weights. A blank score counts as 0 until you enter it.',ic:IC.t,hint:'Tracker › Add subject'},
  {t:'Track and forecast',d:'Enter scores as they come in. The Overview shows your GWA, and every subject shows the score you still need to hit your target.',ic:IC.f,hint:'Overview, Tracker and Report'},
  {t:'Meet the Creators',creators:true,d:'Built with love (and a lot of caffeine) to help you survive and thrive this semester. Let’s get that GWA!'}];
@@ -843,12 +899,11 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
 
  /* ---- Report tab: a literal report card ---- */
 const ReportPage=()=>{
-  const hp=!single&&!!rcf.hp,RCG=hp?'grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-2 px-4 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-3 sm:px-7':'grid grid-cols-[minmax(0,1fr)_5.25rem_5.25rem] items-center gap-2 px-4 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] sm:gap-3 sm:px-7';
+  const hp=false,RCG=hp?'grid grid-cols-[minmax(0,1fr)_7rem] items-center gap-2 px-4 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-3 sm:px-7':'grid grid-cols-[minmax(0,1fr)_5.25rem_5.25rem] items-center gap-2 px-4 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] sm:gap-3 sm:px-7';
   const cols=[['a',P[0].name],['b',single?'Semestral':P[last0].name]].filter(([k])=>!hp||k==='b'),vs=m=>m==='p'?'text-[17px] sm:text-xl':'text-xl';
   return <div className="flex flex-col gap-3">
    <div className="flex flex-wrap items-center justify-between gap-3"><p className="min-w-0 flex-1 text-sm text-muted">{shortY(Y.name)} - {shortS(S.name)}<span className="hidden sm:inline"> · recorded grades only</span></p>
     <button className={BTNP+' !px-4 !py-2.5 sm:!px-5 sm:!py-3 sm:!text-base'} onClick={()=>openShare('report')}><svg viewBox="0 0 24 24" className="h-5 w-5" {...IS}><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Export as Image</button></div>
-   {!single&&rcAll.length>0&&<Switch on={hp} onChange={()=>setRcf('hp',!rcf.hp)} label="Hide Prelim Grades" sub="Show only subjects and the semestral grade, on screen and in the exported image."/>}
    {rcAll.length>0&&C.id!=='pct'&&<section className={cx(CARD,'overflow-hidden')}>
     <button onClick={()=>tog('rf')} aria-expanded={!!accO.rf} aria-controls="rc-format" className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-ink/[.09]">
      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-text"><svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" {...IS}><path d={IC.s}/></svg></span>
@@ -999,7 +1054,7 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
    <div className="mx-auto w-full max-w-3xl">{Options(s,pcur,isLast)}</div></>};
  
 const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><button className={BTNP} onClick={()=>setAdding(true)}>＋ Add your first subject</button></div>;
- const TrackerView=()=><div className="flex flex-col gap-6 pb-2">{subs.length?Shell(TrackerBody()):EmptyCard()}</div>;
+ const TrackerView=()=><div className="flex flex-col gap-6 pb-2">{prof&&prof.tour&&<div className="-mb-3 flex justify-end"><button onClick={prof.tour} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-ink/[.06] px-3 py-1.5 text-[11px] font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>Replay Tutorial</button></div>}{subs.length?Shell(TrackerBody()):EmptyCard()}</div>;
 
  /* ---- settings sheet ---- */
  const Settings=()=>{
@@ -1068,7 +1123,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
      <label className="text-sm font-semibold">Bio<TextIn v={acct.bio||''} on={v=>prof.rename({bio:v.slice(0,80)})} ph="Program and year (optional)" cls="mt-1"/></label>{g?<p className="text-xs font-semibold text-muted">Role in {g.name}: <span className="text-ink">{prof.admin.is?'Admin':'Member'}</span>{prof.admin.is?'':' · only admins manage members and the group passcode or name'}</p>:<div className="flex flex-col gap-2 rounded-2xl border border-accent/40 bg-accent/10 p-3"><p className="text-xs font-semibold text-muted">Individual account (not in a group)</p><button className={BTNP} onClick={()=>{setJf({name:'',pass:''});setJm('');setJgO(true)}}>Join a Group</button><p className="text-xs text-muted">Your grades and account stay exactly as they are. Joining only adds you to the group.</p></div>}</>}</section>
    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
     {Settings()}
-    {!guest&&A('un','Username & login','Change your sign-in username',cloudA?<><p className="text-sm text-muted">Your sign-in username is <b className="text-ink">{acct.cloud.sn}</b>. It works together with your passcode. After changing it, other devices must remove this account and unlock it again.</p><TextIn v={pf.un} on={v=>setPf({...pf,un:v})} ph="New username"/>{pw('up','Current passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeUsername(pf.un,pf.up),'Username changed.')}>Change username</button></>:<p className="text-sm text-muted">This is a local-only account, so it has no sign-in username or passcode. Change the display name above, or turn on cloud sync from Home › Edit account to get a login.</p>)}
+    {!guest&&A('un','Username & login','Change your sign-in username',cloudA?<><p className="text-sm text-muted">Your sign-in username is <b className="text-ink">{acct.cloud.sn}</b>. It works together with your passcode. After changing it, other devices must remove this account and unlock it again.</p><TextIn v={pf.un} on={v=>setPf({...pf,un:v})} ph="New username"/>{pw('up','Current passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeUsername(pf.un,pf.up),'Username changed.')}>Change username</button></>:<p className="text-sm text-muted">This older account is not in the cloud yet, so it has no sign-in username or passcode. Go to Home › Edit account › Move to the cloud to get a login.</p>)}
     {cloudA&&A('a','Account passcode','Change how you unlock this account',<><p className="text-sm text-muted">Signed in as <b className="text-ink">{acct.cloud.sn}</b>. After changing it, other devices must remove this account and unlock it again with the new passcode.</p>{pw('o','Current passcode')}{pw('n','New passcode (6+ characters)')}{pw('n2','Repeat new passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changePass(pf.o,pf.n,pf.n2),'Account passcode changed.')}>Change passcode</button></>)}
     {!guest&&g&&prof.admin.is&&A('mm','Manage members','Promote, demote or transfer adminship in '+g.name,MembersUI())}
     {!guest&&g&&prof.admin.is&&A('gname','Group name','Rename '+g.name,<><TextIn v={pf.gnm} on={v=>setPf({...pf,gnm:v})} ph="New group name"/>{gc&&<>{pw('gnp','Current group passcode')}<p className="text-xs text-muted">Members join a synced group with its name and passcode, so they must rejoin with the new name after you rename it.</p></>}<button className={BTNP} onClick={()=>run(()=>prof.changeGroupName(pf.gnm,pf.gnp),'Group name changed.')}>Change group name</button></>)}
@@ -1096,7 +1151,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     <button disabled={!mem} onClick={()=>{swc.setGroup(g.id);setSwO(false)}} aria-pressed={on} className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-default"><GroupIcon g={g} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{g.name}</span><span className="block truncate text-xs text-muted">{g.cloud?'cloud group':'this device'}{on?' · active':mem?'':' · not a member'}</span></span>{on&&<svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-accent-text" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}</button>
     {!mem&&<button onClick={()=>{swc.join(g.id)}} className={BTN+' !px-3 !py-1.5 !text-xs'}>Add</button>}</div>})}</div>
     {!swc.groups.length&&<p className="text-sm text-muted">No groups yet.</p>}</div>
-   {swc.cur&&swc.accts.length>1&&<div><div className={LBL}>Accounts in {swc.cur.name}</div><div className="mt-2 flex flex-col gap-2">{swc.accts.map(x=>{const on=x.id===swc.aid;return <button key={x.id} onClick={()=>{setSwO(false);if(!on)swc.pick(x.id)}} aria-pressed={on} className={cx('flex items-center gap-3 rounded-2xl border p-2.5 text-left transition',on?'border-accent bg-accent/15':'border-line bg-ink/[.04] hover:border-accent/60')}><Avatar a={x} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{x.name||'Untitled'}</span><span className="block truncate text-xs text-muted">{x.bio||(x.cloud?'Cloud account':'Local account')}</span></span>{on&&<span className="text-xs font-bold text-accent-text">Active</span>}</button>})}</div></div>}
+   {swc.cur&&swc.accts.length>1&&<div><div className={LBL}>Accounts in {swc.cur.name}</div><div className="mt-2 flex flex-col gap-2">{swc.accts.map(x=>{const on=x.id===swc.aid;return <button key={x.id} onClick={()=>{setSwO(false);if(!on)swc.pick(x.id)}} aria-pressed={on} className={cx('flex items-center gap-3 rounded-2xl border p-2.5 text-left transition',on?'border-accent bg-accent/15':'border-line bg-ink/[.04] hover:border-accent/60')}><Avatar a={x} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{x.name||'Untitled'}</span><span className="block truncate text-xs text-muted">{x.bio||(x.cloud?'Cloud account':'Not in the cloud yet')}</span></span>{on&&<span className="text-xs font-bold text-accent-text">Active</span>}</button>})}</div></div>}
    <button className={BTN} onClick={()=>{setSwO(false);onSwitch()}}>All groups and accounts</button>
    <p className="text-center text-xs text-muted">Switching never signs you out. Your session is remembered on this device.</p></>}</Sheet>
   <Sheet open={adding} onClose={()=>setAdding(false)} title="Add subject">
@@ -1119,19 +1174,101 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
 }
 
 
+// Home screen: a large, collapsible "Meet the Creators" card
+function CreatorsCard(){
+ const [o,setO]=useState(false);
+ return <section className={cx(CARD,'hero mx-auto w-full max-w-2xl overflow-hidden')}>
+  <button onClick={()=>setO(v=>!v)} aria-expanded={o} aria-controls="creators-panel" className="flex w-full items-center gap-4 px-5 py-5 text-left transition hover:bg-ink/[.05] sm:gap-5 sm:px-7 sm:py-6">
+   <span className="flex shrink-0 -space-x-4">{CREATORS.map(c=><img key={c.n} src={c.src} alt="" width="64" height="80" draggable="false" className="h-14 w-14 rounded-full object-cover shadow-md ring-[3px] ring-surface sm:h-16 sm:w-16"/>)}</span>
+   <span className="min-w-0 flex-1"><span className="block text-xl font-black tracking-tight sm:text-2xl">Meet the Creators</span><span className="mt-0.5 block text-sm text-muted">{o?'Tap to close':'The students behind Gradely · tap to meet them'}</span></span><Chev open={o}/></button>
+  <div id="creators-panel" className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col items-center gap-5 border-t border-line/50 px-5 pb-7 pt-6 sm:px-8">
+   <div className="grid w-full max-w-md grid-cols-2 gap-4 sm:gap-6">{CREATORS.map(c=><figure key={c.n} className="m-0 flex min-w-0 flex-col items-center gap-3"><img src={c.src} alt={c.n} width="480" height="600" draggable="false" className="aspect-[4/5] w-full rounded-3xl object-cover shadow-lg ring-1 ring-line"/><figcaption className="text-base font-extrabold leading-tight sm:text-lg">{c.n}</figcaption></figure>)}</div>
+   <span className="rounded-full bg-accent/20 px-4 py-1.5 text-sm font-bold text-accent-text">UST-AMV Students</span>
+   <p className="max-w-md text-center text-base leading-relaxed text-muted">{CREATORS_MSG}</p></div></div></div></section>}
+
+/* =====================================================================
+   8b. DEVELOPER DASHBOARD  (only shown after signing in with the developer account)
+   ===================================================================== */
+const fdate=t=>{try{return t?new Date(t).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}):'—'}catch(e){return'—'}};
+const TA=({v,on,ph,cls='',rows=4})=><textarea value={v} rows={rows} placeholder={ph} onChange={e=>on(e.target.value)} className={cx(INP,'w-full resize-y !text-left p-3.5',cls)}/>;
+const RSTAT=[['open','Open'],['prog','In progress'],['done','Resolved']],RCAT={bug:'Bug',ui:'Display',sync:'Sync / data',other:'Other'};
+function DevDashboard({onExit}){
+ const [tab,setTab]=useState('reports'),[D,setD]=useState({g:{},s:{},r:{}}),[ld,setLd]=useState(true),[er,setEr]=useState(''),[q,setQ]=useState(''),[flt,setFlt]=useState('all'),[sel,setSel]=useState(null),[f,setF]=useState({}),[bz,setBz]=useState(false),[note,setNote]=useState(''),[raw,setRaw]=useState(false);
+ const load=async()=>{setLd(true);setEr('');try{const[g,s,r]=await Promise.all([dget('groups'),dget('sync'),dget('reports')]);setD({g:g||{},s:s||{},r:r||{}})}catch(e){if(!devOn()){onExit();return}setEr('Could not load the database. Check your connection and that the database rules from the README (Part 1) are published.')}setLd(false)};
+ useEffect(()=>{load()},[]);
+ const run=async(fn,ok,after)=>{setBz(true);setNote('');try{await fn();setNote(ok||'Saved ✓');if(after)after();await load()}catch(e){setNote('That did not work ('+(e&&e.message||'error')+'). Check the database rules.')}setBz(false)};
+ const G=Object.entries(D.g).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,meta:v.meta||{},m:v.m||{},adm:admKeys(v.admins)})).sort((a,b)=>(a.meta.n||'').localeCompare(b.meta.n||''));
+ const A=Object.entries(D.s).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,n:v.n||'',b:v.b||'',t:v.t,x:v.x===1,d:v.d,size:typeof v.d==='string'?v.d.length:0})).sort((a,b)=>(a.n||'~').localeCompare(b.n||'~'));
+ const R=Object.entries(D.r).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,...v,s:v.s||'open'})).sort((a,b)=>(b.t||0)-(a.t||0));
+ const ql=q.trim().toLowerCase(),has=(...x)=>!ql||x.some(y=>String(y||'').toLowerCase().includes(ql));
+ const Gs=G.filter(g=>has(g.meta.n,g.meta.c,g.k)),As=A.filter(a=>has(a.n,a.b,a.k)),Rs=R.filter(r=>(flt==='all'||r.s===flt)&&has(r.m,r.ct,r.c,r.k)),openN=R.filter(r=>r.s!=='done').length;
+ const sg=sel&&sel.t==='g'?G.find(x=>x.k===sel.k):null,sa=sel&&sel.t==='a'?A.find(x=>x.k===sel.k):null,sr=sel&&sel.t==='r'?R.find(x=>x.k===sel.k):null;
+ const pick=(t,k,init)=>{setSel({t,k});setF(init);setNote('');setRaw(false)};
+ const close=()=>{setSel(null);setNote('')};
+ const Row=(key,onClick,a,b,c,right)=><button key={key} onClick={onClick} className={cx(CARD,'lift flex w-full items-center gap-3 p-3.5 text-left hover:border-accent/60')}><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{a}</span><span className="block truncate text-xs text-muted">{b}</span>{c&&<span className="mt-0.5 block line-clamp-2 text-xs text-muted">{c}</span>}</span>{right}</button>;
+ const Pill=(t,cls)=><span className={cx('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold',cls||'bg-ink/[.08] text-muted')}>{t}</span>;
+ const Msg=()=>note?<p className={cx('text-xs font-semibold',/did not work/.test(note)?'text-bad':'text-good')}>{note}</p>:null;
+ const stats=a=>{try{const d=JSON.parse(a.d),ys=d.years||[],ss=ys.flatMap(y=>y.sems||[]);return ys.length+' year'+(ys.length===1?'':'s')+' · '+ss.length+' semester'+(ss.length===1?'':'s')+' · '+ss.reduce((n,s)=>n+(s.subs||[]).length,0)+' subjects'}catch(e){return'No readable data'}};
+ const Tab=(id,l,n)=><button key={id} onClick={()=>{setTab(id);setQ('')}} className={cx('flex-1 rounded-xl px-3 py-2.5 text-sm font-bold transition',tab===id?'bg-accent text-accent-ink':'text-muted hover:bg-ink/[.07]')}>{l}{n!=null&&<span className="ml-1.5 text-xs opacity-80">{n}</span>}</button>;
+ return <div className="mx-auto max-w-3xl px-4 pb-20 pt-[var(--tp)] sm:px-8">
+  <div className="flex flex-wrap items-center gap-3 pb-4 pt-2"><TigerLogo className="h-10 w-10"/><div className="min-w-0 flex-1"><h1 className="text-xl font-black tracking-tight sm:text-2xl">Developer Dashboard</h1><p className="text-xs text-muted">Signed in as {DEV_USER} · {APP_VER}</p></div>
+   <button className={BTN} onClick={load} disabled={ld}>{ld?'Loading…':'↻ Refresh'}</button><button className={BTN} onClick={()=>{devSignOut();onExit()}}>Sign out</button></div>
+  <div className={cx(CARD,'mb-4 flex gap-1 p-1.5')}>{Tab('reports','Reports',openN)}{Tab('groups','Groups',G.length)}{Tab('accounts','Accounts',A.length)}</div>
+  <div className="mb-4 flex flex-col gap-2.5"><TextIn v={q} on={setQ} ph={'Search '+tab}/>
+   {tab==='reports'&&<div className="flex flex-wrap gap-1.5">{[['all','All'],...RSTAT].map(([k,l])=><button key={k} onClick={()=>setFlt(k)} className={cx('rounded-full border px-3 py-1.5 text-xs font-bold transition',flt===k?'border-accent bg-accent/20 text-accent-text':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{l}</button>)}</div>}</div>
+  {er&&<p className={cx(CARD,'mb-4 p-4 text-sm font-semibold text-bad')}>{er}</p>}
+  {ld&&!G.length&&!A.length&&!R.length&&!er&&<p className="py-10 text-center text-sm text-muted">Loading the database…</p>}
+  <div className="stagger flex flex-col gap-2.5">
+  {tab==='reports'&&(Rs.length?Rs.map(r=>Row(r.k,()=>pick('r',r.k,{dn:r.dn||''}),(RCAT[r.c]||'Report')+' · '+fdate(r.t),(r.ct||'No contact')+' · '+(r.v||''),r.m,Pill(RSTAT.find(x=>x[0]===r.s)?.[1]||'Open',r.s==='done'?'bg-good/15 text-good':r.s==='prog'?'bg-accent/20 text-accent-text':'bg-bad/15 text-bad'))):!ld&&<p className="py-8 text-center text-sm text-muted">No reports here.</p>)}
+  {tab==='groups'&&(Gs.length?Gs.map(g=>Row(g.k,()=>pick('g',g.k,{n:g.meta.n||'',i:g.meta.i||'',r:g.meta.r||''}),g.meta.n||'Unnamed group',Object.keys(g.m).length+' member card'+(Object.keys(g.m).length===1?'':'s')+' · '+g.adm.length+' admin'+(g.adm.length===1?'':'s'),'Key '+g.k.slice(0,8)+'…',g.meta.c?Pill(fmtCode(g.meta.c)):null)):!ld&&<p className="py-8 text-center text-sm text-muted">No groups here.</p>)}
+  {tab==='accounts'&&(As.length?As.map(a=>Row(a.k,()=>pick('a',a.k,{n:a.n,b:a.b,d:''}),a.n||(a.x?'Deleted account':'Unnamed account'),a.x?'Deleted by developer · '+fdate(a.t):(a.b||'No bio')+' · updated '+fdate(a.t),'Key '+a.k.slice(0,8)+'… · '+Math.round(a.size/1024*10)/10+' KB',a.x?Pill('Deleted','bg-bad/15 text-bad'):null)):!ld&&<p className="py-8 text-center text-sm text-muted">No accounts here.</p>)}
+  </div>
+
+  <Sheet open={!!sg} onClose={close} title="Group" wide>{sg&&<>
+   <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Name<TextIn v={f.n||''} on={v=>setF({...f,n:v})} ph="Group name" cls="mt-1"/></label><label className="text-sm font-semibold">Icon (emoji)<TextIn v={f.i||''} on={v=>setF({...f,i:v})} ph="📚" cls="mt-1"/></label></div>
+   <label className="text-sm font-semibold">Recovery email<TextIn v={f.r||''} on={v=>setF({...f,r:v})} ph="name@example.com" cls="mt-1"/></label>
+   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>dpatch('groups/'+sg.k+'/meta',{n:(f.n||'').trim()||sg.meta.n||'Group',i:f.i||'',r:(f.r||'').trim()||null,t:Date.now()}))}>Save changes</button><Msg/></div>
+   <div className="rounded-2xl border border-line bg-ink/[.06] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className={LBL}>Join code</div><div className="text-2xl font-black tabular-nums tracking-widest">{sg.meta.c?fmtCode(sg.meta.c):'None'}</div></div>
+    <div className="flex gap-2"><button disabled={bz} className={BTN} onClick={()=>run(async()=>{const old=sg.meta.c,prev=old?await dget('codes/'+old):null,c=await freeCode();await dput('codes/'+c,{k:sg.k,sn:(prev&&prev.sn)||sg.meta.n||'',t:Date.now()});await dpatch('groups/'+sg.k+'/meta',{c});if(old)await ddel('codes/'+old)},'New code made ✓')}>{sg.meta.c?'New code':'Make code'}</button>{sg.meta.c&&<button disabled={bz} className={BTNX} onClick={()=>ask({title:'Remove the join code?',msg:'Nobody can join this group with the code until a new one is made.',yes:'Remove code',onYes:()=>run(async()=>{await ddel('codes/'+sg.meta.c);await dpatch('groups/'+sg.k+'/meta',{c:null})},'Code removed ✓')})}>Remove</button>}</div></div></div>
+   <div><div className={LBL+' mb-2'}>Members ({Object.keys(sg.m).length})</div><div className="flex flex-col gap-2">{Object.entries(sg.m).map(([mid,m])=>{const ad=sg.adm.includes(mid);return <div key={mid} className="flex items-center gap-2 rounded-2xl border border-line bg-ink/[.04] p-2.5"><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{m.n||'Account'}{ad&&<span className="ml-2 text-[11px] font-bold text-accent-text">Admin</span>}</span><span className="block truncate text-xs text-muted">{m.sn||''}{m.b?' · '+m.b:''}</span></span>
+    <button disabled={bz} className={BTN+' !px-2.5 !py-1.5 !text-xs'} onClick={()=>run(()=>dpatch('groups/'+sg.k+'/admins',{[mid]:ad?null:true}))}>{ad?'Remove admin':'Make admin'}</button>
+    <button disabled={bz} className={BTNX+' !px-2.5 !py-1.5 !text-xs'} onClick={()=>ask({title:'Remove “'+(m.n||'this member')+'” from the group?',msg:'Only the member card is removed. Their account and grades are not deleted.',yes:'Remove member',onYes:()=>run(async()=>{await ddel('groups/'+sg.k+'/m/'+mid);await dpatch('groups/'+sg.k+'/admins',{[mid]:null})},'Member removed ✓')})}>Remove</button></div>})}{!Object.keys(sg.m).length&&<p className="text-sm text-muted">No member cards.</p>}</div></div>
+   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete “'+(sg.meta.n||'this group')+'” for everyone?',msg:'The group, its member list and its join code are erased from the cloud. Accounts and their grades are not deleted.',next:'Continue',final:'This cannot be undone. Delete the group anyway?',yes:'Yes, delete the group',onYes:()=>run(async()=>{if(sg.meta.c)await ddel('codes/'+sg.meta.c);await ddel('groups/'+sg.k)},'Group deleted ✓',close)})}>Delete group</button></>}</Sheet>
+
+  <Sheet open={!!sa} onClose={close} title="Account" wide>{sa&&<>
+   {sa.x?<><p className="text-sm text-muted">This account was deleted. Devices that still have it remove it the next time they sync. Remove the tombstone to free the sign-in for a new account.</p><button disabled={bz} className={BTNX} onClick={()=>ask({title:'Remove the tombstone?',msg:'Devices that have not synced yet may bring the account back.',yes:'Remove',onYes:()=>run(()=>ddel('sync/'+sa.k),'Removed ✓',close)})}>Remove permanently</button></>
+   :<><p className="text-sm text-muted">{stats(sa)} · {Math.round(sa.size/1024*10)/10} KB · updated {fdate(sa.t)} · key {sa.k.slice(0,8)}…</p>
+   <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Display name<TextIn v={f.n||''} on={v=>setF({...f,n:v})} ph="Name" cls="mt-1"/></label><label className="text-sm font-semibold">Bio<TextIn v={f.b||''} on={v=>setF({...f,b:v.slice(0,80)})} ph="Bio" cls="mt-1"/></label></div>
+   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>dpatch('sync/'+sa.k,{n:(f.n||'').trim()||sa.n,b:f.b||'',t:Date.now()}))}>Save changes</button><Msg/></div>
+   <div className="flex flex-col gap-2"><button className={BTN+' self-start'} onClick={()=>{if(!raw){let t='';try{t=JSON.stringify(JSON.parse(sa.d),null,1)}catch(e){t=sa.d||''}setF({...f,d:t})}setRaw(v=>!v)}}>{raw?'Hide raw data':'View / edit raw data'}</button>
+    {raw&&<><TA v={f.d||''} on={v=>setF({...f,d:v})} rows={14} cls="font-mono"/><button disabled={bz} className={BTN+' self-start'} onClick={()=>{let d;try{d=mig(JSON.parse(f.d))}catch(e){setNote('That did not work (the text is not valid JSON).');return}if(!okState(d)){setNote('That did not work (the data has no years or semesters).');return}run(()=>dpatch('sync/'+sa.k,{d:JSON.stringify(d),t:Date.now()}),'Raw data saved ✓')}}>Save raw data</button><p className="text-xs text-muted">Edit with care: a bad change can break the account. Devices pick the new copy up on their next sync.</p></>}</div>
+   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete “'+(sa.n||'this account')+'”?',msg:'Its grades are erased from the cloud and removed from every device on the next sync.',next:'Continue',final:'This cannot be undone. Delete the account anyway?',yes:'Yes, delete the account',onYes:()=>run(()=>dput('sync/'+sa.k,{x:1,t:Date.now(),d:''}),'Account deleted ✓',close)})}>Delete account</button>
+   <p className="text-xs text-muted">Deleting an account leaves a small marker so other devices drop it instead of uploading it again. Remove the member card from its group in the Groups tab if it should disappear from the member list too.</p></>}</>}</Sheet>
+
+  <Sheet open={!!sr} onClose={close} title="Report" wide>{sr&&<>
+   <div className="flex flex-wrap items-center gap-2">{Pill(RCAT[sr.c]||'Report')}{Pill(fdate(sr.t))}{sr.v&&Pill(sr.v)}{sr.th&&Pill('Theme: '+sr.th)}</div>
+   <p className="whitespace-pre-wrap break-words rounded-2xl border border-line bg-ink/[.06] p-4 text-sm leading-relaxed">{sr.m}</p>
+   <div className="text-xs text-muted"><div>Contact: <b className="text-ink">{sr.ct||'none given'}</b></div><div className="mt-1 break-words">Device: {sr.ua||'unknown'}</div></div>
+   <div><div className={LBL+' mb-2'}>Status</div><div className="flex flex-wrap gap-2">{RSTAT.map(([k,l])=><button key={k} disabled={bz} onClick={()=>run(()=>dpatch('reports/'+sr.k,{s:k,u:Date.now()}),'Marked '+l.toLowerCase()+' ✓')} className={cx('rounded-xl border px-3.5 py-2 text-sm font-bold transition',sr.s===k?'border-accent bg-accent/20 text-accent-text':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{l}</button>)}</div></div>
+   <label className="text-sm font-semibold">Developer note<TA v={f.dn||''} on={v=>setF({...f,dn:v.slice(0,1000)})} rows={3} ph="Private note (only developers can see this)" cls="mt-1"/></label>
+   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>dpatch('reports/'+sr.k,{dn:f.dn||null,u:Date.now()}))}>Save note</button><Msg/></div>
+   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete this report?',msg:'It is erased from the database.',yes:'Delete report',onYes:()=>run(()=>ddel('reports/'+sr.k),'Deleted ✓',close)})}>Delete report</button></>}</Sheet>
+</div>;
+}
+
 /* =====================================================================
    8. HOME  (cloud GROUPS first, then the accounts inside a group)
    ===================================================================== */
 function Home({book,theme,setTheme,ctl,busy,at}){
- const [gv,setGvS]=useState(()=>{try{const v=localStorage.getItem('gtf-hv');return book.groups.some(g=>g.id===v)?v:null}catch(e){return null}}),setGv=v=>{setGvS(v);try{v?localStorage.setItem('gtf-hv',v):localStorage.removeItem('gtf-hv')}catch(e){}},[sh,setSh]=useState(null),[arm,setArm]=useState(null),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
- const [ng,setNg]=useState({name:'',icon:'',pic:'',cloud:true,pass:'',rec:''}),[jf,setJf]=useState({name:'',pass:''}),[na,setNa]=useState({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false}),[uf,setUf]=useState({pass:''}),[sf,setSf]=useState({name:'',pass:''}),[ef,setEf]=useState({pass:''}),[gp,setGp]=useState('');
+ const [gv,setGvS]=useState(()=>{try{const v=localStorage.getItem('gtf-hv');return book.groups.some(g=>g.id===v)?v:null}catch(e){return null}}),setGv=v=>{setGvS(v);try{v?localStorage.setItem('gtf-hv',v):localStorage.removeItem('gtf-hv')}catch(e){}},[sh,setSh]=useState(()=>joinParam()?{t:'joinGroup'}:null),[arm,setArm]=useState(null),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
+ const [ng,setNg]=useState({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''}),[jf,setJf]=useState({code:joinParam(),name:'',pass:'',adv:false}),[rp,setRp]=useState({c:'bug',m:'',ct:'',done:false}),[dv,setDv]=useState({u:'',p:''}),[cp,setCp]=useState(''),[na,setNa]=useState({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false}),[uf,setUf]=useState({pass:''}),[sf,setSf]=useState({name:'',pass:''}),[ef,setEf]=useState({pass:''}),[gp,setGp]=useState('');
  const grp=book.groups.find(g=>g.id===gv)||null;
  const localsOf=g=>book.list.filter(a=>gidsOf(a).includes(g.id));
  const remotesOf=g=>{const mids=new Set(localsOf(g).flatMap(a=>[a.mid,...(a.alt||[])]).filter(Boolean));return Object.entries(g.members||{}).filter(([mid])=>!mids.has(mid)).map(([mid,m])=>({mid,...m}))};
  const countOf=g=>localsOf(g).length+remotesOf(g).length;
  const photo=(e,cb2)=>{const fl=e.target.files&&e.target.files[0];e.target.value='';if(!fl)return;resizeImg(fl).then(cb2).catch(()=>setMsg('Could not read that image.'))};
- const go=async(fn,after)=>{setCb(true);setCm('');try{const r=await fn();if(r==='ok'||String(r).startsWith('ok:')){setSh(null);if(after)after(String(r));}else setCm(r)}catch(e){setCm('Something went wrong. Try again.')}setCb(false)};
- const pickBackup=e=>{const fl=e.target.files&&e.target.files[0];e.target.value='';if(!fl||!grp)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result),d=j&&j.data?j.data:j;if(!okState(d))throw new Error('bad');ctl.imp(grp.id,j.account||'Imported account',d);setMsg('Backup added as a new local account ✓')}catch(x){setMsg('That file is not a valid backup.')}};r.onerror=()=>setMsg('Could not read that file.');r.readAsText(fl)};
+ const go=async(fn,after,keep)=>{setCb(true);setCm('');try{const r=await fn();if(r==='ok'||String(r).startsWith('ok:')){if(!keep)setSh(null);if(after)after(String(r));}else setCm(r)}catch(e){setCm('Something went wrong. Try again.')}setCb(false)};
+ const cloudAccts=book.list.filter(a=>a.cloud),copy=async(t,l)=>{try{await navigator.clipboard.writeText(t);setCp(l+' copied ✓')}catch(e){setCp('Could not copy. Select it and copy it by hand.')}setTimeout(()=>setCp(''),2400)},jlink=c=>location.origin+location.pathname+'?join='+c;
  const Photo=(o,onPic,onClear,Ico)=><div className="flex items-center gap-4">{Ico?Ico:<Avatar a={o} s="h-16 w-16" t="text-4xl"/>}<div className="flex flex-col gap-2"><label className={BTN+' cursor-pointer'}>{o.pic?'Change picture':'Upload picture'}<input type="file" accept="image/*" className="hidden" onChange={e=>photo(e,onPic)}/></label>{o.pic&&<button className={BTN} onClick={()=>ask({title:'Remove this picture?',yes:'Remove picture',onYes:onClear})}>Remove picture</button>}</div></div>;
  const Emojis=(list,v,on)=>!list.length?null:<div className="flex flex-wrap gap-2">{list.map(e=><button key={e} onClick={()=>on(e)} className={cx('h-10 w-10 rounded-xl text-xl transition',v===e?'bg-accent/30 ring-2 ring-accent':'bg-ink/[.06] hover:bg-line/60')}>{e}</button>)}</div>;
  const Err=()=>cm?<p className="text-xs font-semibold text-bad">{cm}</p>:null;
@@ -1142,19 +1279,19 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2.5 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editGroup',id:g.id});setArm(null);setCm('');setGp('')},'Edit group')}
   <GroupIcon g={g} s="h-14 w-14" t="text-3xl"/>
-  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{g.name}</div><div className="mt-0.5 truncate text-xs text-muted">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'this device'}</div></div></div>;
+  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{g.name}</div><div className="mt-0.5 truncate text-xs text-muted">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'not in the cloud'}</div></div></div>;
  const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})},'Edit account')}
   <Avatar a={a} s="h-16 w-16" t="text-3xl"/>
-  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{a.name||'Untitled'}</div><div className="text-[11px] font-semibold text-muted" title={a.cloud?'Cloud account':'Local-only account'}>{a.cloud?'Cloud':'Local'}{gidsOf(a).length?'':' · Individual'}</div></div>
+  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{a.name||'Untitled'}</div><div className="text-[11px] font-semibold text-muted" title={a.cloud?'Cloud account':'Not in the cloud yet'}>{a.cloud?'Cloud':'Not in the cloud'}{gidsOf(a).length?'':' · Individual'}</div></div>
   <div className="line-clamp-2 text-xs leading-snug text-muted">{a.bio||'No bio yet'}</div></div>;
  const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 border-dashed p-4 pt-5 text-center hover:border-accent/60 sm:w-48')} style={{animationDelay:i*40+'ms'}}>
   <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-16 w-16" t="text-3xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
   <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{m.n||'Account'}</div></div><div className="line-clamp-2 text-xs leading-snug text-muted">{m.b||'Tap to unlock with its passcode'}</div></div>;
 
  /* ---- screens ---- */
- const NewG=()=>{setNg({name:'',icon:'',pic:'',cloud:CLOUD,pass:'',rec:''});setCm('');setSh({t:'newGroup'})};
- const JoinG=()=>{setJf({name:'',pass:''});setCm('');setSh({t:'joinGroup'})};
+ const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
+ const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
  const Top=<div className="flex flex-col items-center gap-3 text-center"><div className="flex items-center gap-2.5"><TigerLogo className="h-11 w-11"/><span className="text-lg font-extrabold">Gradely</span></div>
   <div className="flex items-center justify-center gap-2"><span className="text-[11px] text-muted">{busy?'Updating from cloud…':at?'Updated '+rel(at):''}</span>{CLOUD&&<button className={BTN+' !px-3'} onClick={ctl.refresh} aria-label="Refresh from cloud"><span className={busy?'inline-block animate-spin':''}>↻</span></button>}<button className={BTN} onClick={()=>setSh({t:'theme'})}>Theme</button>{!isStandalone()&&<button className={BTN} onClick={ctl.a2hs}>Add to Home Screen</button>}</div></div>;
  const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <>
@@ -1163,61 +1300,78 @@ function Home({book,theme,setTheme,ctl,busy,at}){
    :<div className={cx(CARD,'mx-auto max-w-md p-6 text-center')}><p className="font-bold">No groups yet</p><p className="mt-1 text-sm text-muted">Create a group, or join one with its passcode, using the buttons below.</p></div>}
   {people.length>0&&<><h2 className="mb-3 mt-9 text-center text-lg font-extrabold">Profiles</h2><div className="flex flex-wrap justify-center gap-3">{people.map(AcctCard)}</div></>}
   <div className="mt-10 flex flex-col items-center gap-2.5 border-t border-line/60 pt-5 text-center"><div className={LBL}>Add a group or account</div>
-   <div className="flex w-full max-w-md flex-row gap-2"><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={NewG}>Create Group</button><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={JoinG} disabled={!CLOUD}>Join Group</button><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:!CLOUD})}}>Individual Account</button></div>
+   <div className="flex w-full max-w-md flex-row gap-2"><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={NewG} disabled={!CLOUD}>Create Group</button><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={JoinG} disabled={!CLOUD}>Join Group</button><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>Individual Account</button></div>
    <button className="mt-1 text-xs font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={ctl.tour}>How this app works</button>
-   {!CLOUD&&<p className="max-w-sm text-xs text-muted">Cloud sync is off. Add your database URL in config.js to join groups and sync between devices.</p>}</div></>};
+   {!CLOUD&&<p className="max-w-sm text-xs font-semibold text-bad">Gradely stores everything in the cloud. Add your database URL in config.js to create or join a group.</p>}</div></>};
  
 const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a.last||0)||(a.name||'').localeCompare(b.name||'')),rs=remotesOf(grp);return <>
-  <div className="anim-rise relative flex flex-col items-center gap-2 pb-5 pt-14 text-center sm:pt-14"><button className={BTN+' !px-3 absolute left-0 top-2'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-16 w-16" t="text-3xl"/><div className="min-w-0 max-w-full"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'this device only'}</div></div>
+  <div className="anim-rise relative flex flex-col items-center gap-2 pb-5 pt-14 text-center sm:pt-14"><button className={BTN+' !px-3 absolute left-0 top-2'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-16 w-16" t="text-3xl"/><div className="min-w-0 max-w-full"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'not in the cloud yet'}</div></div>
    <button className={BTN+' !px-3 absolute right-0 top-2'} onClick={()=>{setSh({t:'editGroup',id:grp.id});setArm(null);setCm('');setGp('')}} aria-label="Edit group">Edit</button></div>
-  <div className="mb-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2"><button className={BTNP} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:!CLOUD})}}>＋ New Account{CLOUD?' (cloud)':''}</button>{CLOUD&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:true})}}>or create a local-only account</button>}{book.list.some(a=>!gidsOf(a).includes(grp.id))&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>setSh({t:'addEx'})}>or add an existing account</button>}</div>
+  {grp.cloud&&<div className={cx(CARD,'mx-auto mb-5 flex max-w-md flex-col items-center gap-2 p-4 text-center')}><div className={LBL}>Join code</div>
+   {grp.code?<><div className="select-all text-3xl font-black tabular-nums tracking-[.18em]">{fmtCode(grp.code)}</div><div className="flex flex-wrap justify-center gap-2"><button className={BTN} onClick={()=>copy(grp.code,'Code')}>Copy code</button><button className={BTN} onClick={()=>copy(jlink(grp.code),'Invite link')}>Copy invite link</button></div><p className="text-xs text-muted">Classmates tap Join Group and enter this code.</p></>
+    :ctl.canAdmin(grp.id)?<><p className="text-xs text-muted">This group has no join code yet.</p>{Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.newCode(grp.id),()=>{})}>Generate join code</button></>:<p className="text-xs text-muted">No join code yet. Ask the group admin to make one.</p>}
+   {cp&&<p className="text-xs font-semibold text-good">{cp}</p>}</div>}
+  <div className="mb-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2"><button className={BTNP} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>＋ New Account</button>{book.list.some(a=>!gidsOf(a).includes(grp.id))&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>setSh({t:'addEx'})}>or add an existing account</button>}</div>
   {!ls.length&&!rs.length&&<p className={cx(CARD,'p-6 text-center text-sm text-muted')}>No accounts in this group yet. Tap “New Account” to add the first one.</p>}
   <div className="flex flex-wrap justify-center gap-3">{ls.map(AcctCard)}{rs.map(LockedCard)}</div>
   <div className="mt-8 flex flex-col items-center gap-3 text-center text-xs text-muted">
    {CLOUD&&<button className="font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign in with a sync name and passcode</button>}
-   {CAN_FILE&&<label className="cursor-pointer font-semibold underline decoration-dotted underline-offset-4 hover:text-ink">Import a backup into this group<input type="file" accept="application/json,.json" onChange={pickBackup} className="hidden"/></label>}
    {msg&&<p className="font-semibold text-ink">{msg}</p>}</div></>};
 
  return <div className="mx-auto max-w-6xl px-4 pb-20 pt-[var(--tp)] sm:px-8">
   {Top}
   <div key={gv||'groups'}>{grp?GroupScreen():GroupsScreen()}</div>
-  <div className="mt-10 text-center"><button onClick={()=>setSh({t:'creators'})} className="text-[11px] font-semibold text-muted/80 underline decoration-dotted underline-offset-4 transition hover:text-ink">Meet the Creators</button></div>
+  <div className="mt-10 flex flex-col items-center gap-4"><CreatorsCard/>
+   <button className={BTN} onClick={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}}><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Report a Problem</button>
+   <button onClick={()=>{setDv({u:'',p:''});setCm('');setSh({t:'dev'})}} className="text-[11px] font-semibold text-muted/70 underline decoration-dotted underline-offset-4 transition hover:text-ink">Developer sign-in</button></div>
 
   <Sheet open={!!sh&&sh.t==='newGroup'} onClose={()=>setSh(null)} title="Create New Group">
    {Photo(ng,pic=>setNg({...ng,pic}),()=>setNg({...ng,pic:''}),<GroupIcon g={ng} s="h-16 w-16" t="text-4xl"/>)}
    {!ng.pic&&Emojis(GEMO,ng.icon,e=>setNg({...ng,icon:e}))}
    <label className="text-sm font-semibold">Group name<TextIn v={ng.name} on={v=>setNg({...ng,name:v})} ph="e.g. Section 2A2" cls="mt-1"/></label>
-   {CLOUD&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><label className="flex items-start gap-2 text-sm font-semibold"><input type="checkbox" checked={ng.cloud} onChange={e=>setNg({...ng,cloud:e.target.checked})} className="mt-1 h-4 w-4 accent-[rgb(var(--accent))]"/><span>Sync this group to the cloud<span className="block text-xs font-normal text-muted">Its accounts then appear on all your devices.</span></span></label>
-    {ng.cloud&&<><TextIn type="password" v={ng.pass} on={v=>setNg({...ng,pass:v})} ph="Group passcode (6+ characters)"/><TextIn type="email" v={ng.rec} on={v=>setNg({...ng,rec:v})} ph="Recovery email (optional)"/><p className="text-xs text-muted">Members who forget a passcode can email you. It is stored with the group and visible to people who join it.</p></>}</div>}
-   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.createGroup({...ng,pass:ng.cloud?ng.pass:''}),r=>setGv(r.slice(3)))}>{cb?'Working…':'Create group'}</button></Sheet>
+   <TextIn type="password" v={ng.pass} on={v=>setNg({...ng,pass:v})} ph="Group passcode (6+ characters)"/>
+   <TextIn type="email" v={ng.rec} on={v=>setNg({...ng,rec:v})} ph="Recovery email (optional)"/>
+   <div className="flex flex-col gap-3 rounded-2xl border border-line bg-ink/[.06] p-3"><div><div className="text-sm font-bold">You will be the group admin</div><p className="text-xs text-muted">The account you use here becomes the admin automatically. You do not need a separate admin account.</p></div>
+    {cloudAccts.length>0&&<select value={ng.use} onChange={e=>setNg({...ng,use:e.target.value})} className={cx(INP,'selc h-11 w-full px-3.5 sm:h-12')}><option value="">Create a new account</option>{cloudAccts.map(a=><option key={a.id} value={a.id}>Use my account: {a.name||'Untitled'}</option>)}</select>}
+    {!ng.use&&<><TextIn v={ng.an} on={v=>setNg({...ng,an:v})} ph="Your name"/><TextIn type="password" v={ng.ap} on={v=>setNg({...ng,ap:v})} ph="Your account passcode (6+ characters)"/></>}</div>
+   <p className="text-xs text-muted">Gradely makes a short join code for the group. Share it so classmates can join instantly. Everything is saved to the cloud.</p>
+   {Err()}<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.createGroup(ng),r=>{const p=r.split(':');setGv(p[1]);ctl.open(p[2],p[1])})}>{cb?'Working…':'Create group'}</button></Sheet>
 
   <Sheet open={!!sh&&sh.t==='joinGroup'} onClose={()=>setSh(null)} title="Join a group">
-   <p className="text-sm text-muted">Enter the group’s name and passcode. Its accounts then load automatically every time you open the app.</p>
-   <TextIn v={jf.name} on={v=>setJf({...jf,name:v})} ph="Group name"/><TextIn type="password" v={jf.pass} on={v=>setJf({...jf,pass:v})} ph="Group passcode"/>
-   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.joinGroup(jf.name,jf.pass),r=>setGv(r.slice(3)))}>{cb?'Working…':'Join group'}</button><p className="text-center text-xs text-muted">Forgot the group passcode? Ask the person who created the group.</p></Sheet>
+   <p className="text-sm text-muted">Enter the 6-character join code from the group’s admin. You join instantly and its accounts load every time you open the app.</p>
+   <TextIn v={jf.code} on={v=>setJf({...jf,code:normCode(v).slice(0,6)})} ph="ABC123" cls="!text-center !text-2xl font-black uppercase tracking-[.3em]"/>
+   {!jf.adv&&Err()}{!jf.adv&&<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.joinByCode(jf.code),r=>setGv(r.slice(3)))}>{cb?'Working…':'Join group'}</button>}
+   <button className="self-center text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setCm('');setJf({...jf,adv:!jf.adv})}}>{jf.adv?'Use a join code instead':'No code? Use the group name and passcode'}</button>
+   {jf.adv&&<><TextIn v={jf.name} on={v=>setJf({...jf,name:v})} ph="Group name"/><TextIn type="password" v={jf.pass} on={v=>setJf({...jf,pass:v})} ph="Group passcode"/>
+    {Err()}<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.joinGroup(jf.name,jf.pass),r=>setGv(r.slice(3)))}>{cb?'Working…':'Join group'}</button></>}
+   <p className="text-center text-xs text-muted">Ask the person who created the group for its code.</p></Sheet>
 
-  <Sheet open={!!gg} onClose={()=>{setSh(null);setArm(null)}} title="Edit group">{gg&&<>
+  
+<Sheet open={!!gg} onClose={()=>{setSh(null);setArm(null)}} title="Edit group">{gg&&<>
    {Photo(gg,pic=>ctl.editGroup(gg.id,{pic}),()=>ctl.editGroup(gg.id,{pic:''}),<GroupIcon g={gg} s="h-16 w-16" t="text-4xl"/>)}
    {!gg.pic&&Emojis(GEMO,gg.icon,e=>ctl.editGroup(gg.id,{icon:e}))}
    <label className="text-sm font-semibold">Group name<TextIn v={gg.name} on={v=>ctl.editGroup(gg.id,{name:v})} ph="Group name" cls="mt-1"/></label>
-   {CLOUD&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">Cloud</div>
-    {gg.cloud?<><p className="text-sm text-muted">Synced as <b className="text-ink">{gg.cloud.sn}</b>. Accounts you create here as cloud accounts show up on every device that joins this group.</p>{ctl.canAdmin(gg.id)&&<label className="text-sm font-semibold">Recovery email<TextIn type="email" v={gg.rec||''} on={v=>ctl.editGroup(gg.id,{rec:v})} ph="name@example.com" cls="mt-1"/></label>}</>
-     :<><p className="text-xs text-muted">This group lives on this device only.</p><TextIn type="password" v={gp} on={setGp} ph="Group passcode (6+ characters)"/>{Err()}<button disabled={cb} className={BTN} onClick={()=>go(()=>ctl.enableGroupCloud(gg.id,gp),()=>setGp(''))}>Turn on cloud for this group</button></>}</div>}
-   <div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+gg.name+'” from this device?',msg:'The group leaves this device and its accounts move to another group. No account data is deleted.',yes:'Remove group',onYes:()=>{ctl.deleteGroup(gg.id,false);setSh(null);setGv(null)}})}>Remove group from this device</button>
+   {CLOUD&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">Cloud group</div>
+    {gg.cloud?<><p className="text-sm text-muted">Synced as <b className="text-ink">{gg.cloud.sn}</b>. Accounts created here show up on every device that joins this group.</p>
+     <div className="flex items-center justify-between gap-2 rounded-xl border border-line/60 bg-ink/[.06] px-3 py-2"><span className="text-xs font-semibold text-muted">Join code</span><b className="text-lg tabular-nums tracking-widest">{gg.code?fmtCode(gg.code):'None yet'}</b></div>
+     {ctl.canAdmin(gg.id)&&<>{Err()}<button disabled={cb} className={BTN} onClick={()=>go(()=>ctl.newCode(gg.id),()=>{})}>{gg.code?'Make a new join code':'Generate a join code'}</button><label className="text-sm font-semibold">Recovery email<TextIn type="email" v={gg.rec||''} on={v=>ctl.editGroup(gg.id,{rec:v})} ph="name@example.com" cls="mt-1"/></label></>}</>
+     :<><p className="text-xs text-muted">This older group is stored on this device only. Gradely is cloud-only now, so give it a passcode to move it to the cloud. You become its admin.</p><TextIn type="password" v={gp} on={setGp} ph="Group passcode (6+ characters)"/>{Err()}<button disabled={cb} className={BTN} onClick={()=>go(()=>ctl.enableGroupCloud(gg.id,gp),()=>setGp(''))}>Move group to the cloud</button></>}</div>}
+   
+<div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+gg.name+'” from this device?',msg:'The group leaves this device and its accounts move to another group. No account data is deleted.',yes:'Remove group',onYes:()=>{ctl.deleteGroup(gg.id,false);setSh(null);setGv(null)}})}>Remove group from this device</button>
     {gg.cloud&&ctl.canAdmin(gg.id)&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+gg.name+'” for everyone?',msg:'The group is deleted from the cloud, so nobody can join it or see its member list again.',next:'Continue',final:'This cannot be undone. Every member loses the group on every device the next time they open the app. Delete it anyway?',yes:'Yes, delete for everyone',onYes:()=>{ctl.deleteGroup(gg.id,true);setSh(null);setGv(null)}})}>Delete group from the cloud too</button>}
     <p className="text-xs text-muted">Accounts in a removed group move to another group. Account data is never deleted by removing a group.</p></div></>}</Sheet>
 
-  <Sheet open={!!sh&&sh.t==='newAcct'} onClose={()=>setSh(null)} title={(grp?'':'Individual account · ')+(sh&&sh.local?'New local-only account':'New Account (cloud)')}>
+  <Sheet open={!!sh&&sh.t==='newAcct'} onClose={()=>setSh(null)} title={(grp?'':'Individual account · ')+'New Account'}>
    {!grp&&<p className="text-sm text-muted">An individual account is not in any group. You can add it to a group later from Edit.</p>}
-   {CLOUD&&<button className="self-start text-xs font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>setSh({...sh,local:!sh.local})}>{sh&&sh.local?'Use a cloud account instead (syncs between devices)':'Use a local-only account instead'}</button>}
    {Photo(na,pic=>setNa({...na,pic}),()=>setNa({...na,pic:''}))}
    {!na.pic&&Emojis(EMO,na.emoji,e=>setNa({...na,emoji:e}))}
    <label className="text-sm font-semibold">Name<TextIn v={na.name} on={v=>setNa({...na,name:v})} ph="Your name" cls="mt-1"/></label>
    <label className="text-sm font-semibold">Bio <span className="text-xs font-normal text-muted">(optional)</span><TextIn v={na.bio} on={v=>setNa({...na,bio:v.slice(0,80)})} ph="Program and year (optional)" cls="mt-1"/></label>
-   {sh&&!sh.local&&<><TextIn type="password" v={na.pass} on={v=>setNa({...na,pass:v})} ph="Account passcode (6+ characters)"/><p className="-mt-3 text-xs text-muted">The name and passcode together sign you in on any device. Keep the passcode private.</p></>}
-   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.createAccount({...na,gid:grp?grp.id:null,local:sh.local}),r=>ctl.open(r.slice(3),grp&&grp.id))}>{cb?'Working…':sh&&sh.local?'Create local account':'Create cloud account'}</button></Sheet>
+   <TextIn type="password" v={na.pass} on={v=>setNa({...na,pass:v})} ph="Account passcode (6+ characters)"/><p className="-mt-3 text-xs text-muted">The name and passcode together sign you in on any device. Keep the passcode private.</p>
+   {Err()}<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.createAccount({...na,gid:grp?grp.id:null}),r=>ctl.open(r.slice(3),grp&&grp.id))}>{cb?'Working…':'Create account'}</button></Sheet>
 
-  <Sheet open={!!sh&&sh.t==='addEx'&&!!grp} onClose={()=>setSh(null)} title="Add an existing account">{grp&&<>
+  
+<Sheet open={!!sh&&sh.t==='addEx'&&!!grp} onClose={()=>setSh(null)} title="Add an existing account">{grp&&<>
    <p className="text-sm text-muted">Accounts already on this device can belong to more than one group. Pick one to add it to <b className="text-ink">{grp.name}</b>.</p>
    <div className="flex flex-col gap-2">{book.list.filter(a=>!gidsOf(a).includes(grp.id)).map(a=><button key={a.id} onClick={()=>{ctl.rename(a.id,{gids:[...gidsOf(a),grp.id]});setSh(null)}} className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.04] p-2.5 text-left transition hover:border-accent/60"><Avatar a={a} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{a.name||'Untitled'}</span><span className="block truncate text-xs text-muted">{a.bio||(a.cloud?'Cloud account':'Local account')}</span></span><span className="text-xs font-bold text-accent-text">Add</span></button>)}</div></>}</Sheet>
 
@@ -1237,14 +1391,24 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    <label className="text-sm font-semibold">Name<TextIn v={ga.name} on={v=>ctl.rename(ga.id,{name:v})} ph="Account name" cls="mt-1"/></label>
    <label className="text-sm font-semibold">Bio<TextIn v={ga.bio||''} on={v=>ctl.rename(ga.id,{bio:v.slice(0,80)})} ph="A short line about you" cls="mt-1"/></label>
    <div className="text-sm font-semibold">Groups<div className="mt-1.5 flex flex-col gap-1.5">{book.groups.map(g=>{const cur=gidsOf(ga),on=cur.includes(g.id);return <label key={g.id} className={cx('flex items-center gap-2.5 rounded-xl border px-3 py-2 text-sm font-semibold',on?'border-accent/70 bg-accent/10':'border-line bg-ink/[.04]',on&&cur.length===1&&'opacity-80')}><input type="checkbox" checked={on} onChange={e=>ctl.rename(ga.id,{gids:e.target.checked?[...cur,g.id]:cur.filter(x=>x!==g.id)})} className="h-4 w-4 accent-[rgb(var(--accent))]"/><span className="min-w-0 flex-1 truncate">{g.name}</span></label>})}</div><span className="mt-1 block text-xs font-normal text-muted">One account can belong to several groups, or to none (a personal account).</span></div>
-   {CLOUD&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">Cloud sync</div>
-    {ga.cloud?<><p className="text-sm text-muted">Syncing as <b className="text-ink">{ga.cloud.sn}</b></p><button className={BTN} onClick={()=>ctl.disable(ga.id)}>Turn off sync (keeps this copy)</button></>
-     :<><p className="text-xs text-muted">This account is stored on this device only.</p><TextIn type="password" v={ef.pass} on={v=>setEf({pass:v})} ph="Passcode (6+ characters)"/>{Err()}<button disabled={cb} className={BTN} onClick={()=>go(()=>ctl.enable(ga.id,ga.name,ef.pass),()=>{})}>Turn on cloud sync</button></>}</div>}
-   <div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+ga.name+'” from this device?',msg:ga.cloud?'The cloud copy is kept, so you can unlock the account again from its group.':'This account is stored only on this device and cannot be recovered once it is removed.',yes:'Remove account',onYes:()=>{ctl.del(ga.id,false);setSh(null)}})}>Remove from this device</button>
+   {CLOUD&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">{ga.cloud?'Cloud sync':'Move to the cloud'}</div>
+    {ga.cloud?<p className="text-sm text-muted">Syncing as <b className="text-ink">{ga.cloud.sn}</b></p>
+     :<><p className="text-xs text-muted">This older account is stored on this device only. Gradely is cloud-only now, so choose a passcode to move it to the cloud. Your grades are kept.</p><TextIn type="password" v={ef.pass} on={v=>setEf({pass:v})} ph="Passcode (6+ characters)"/>{Err()}<button disabled={cb} className={BTN} onClick={()=>go(()=>ctl.enable(ga.id,ga.name,ef.pass),()=>{})}>Move to the cloud</button></>}</div>}
+   
+<div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+ga.name+'” from this device?',msg:ga.cloud?'The cloud copy is kept, so you can unlock the account again from its group.':'This older account is not in the cloud, so it cannot be recovered once it is removed. Move it to the cloud first to keep it.',yes:'Remove account',onYes:()=>{ctl.del(ga.id,false);setSh(null)}})}>Remove from this device</button>
     {ga.cloud&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+ga.name+'” from the cloud too?',msg:'The account and all of its grades are erased from the cloud as well as this device.',next:'Continue',final:'This cannot be undone. The grades cannot be recovered on any device. Delete the account anyway?',yes:'Yes, delete everywhere',onYes:()=>{ctl.del(ga.id,true);setSh(null)}})}>Delete from the cloud too</button>}
-    <p className="text-xs text-muted">{ga.cloud?'Removing from this device keeps the cloud copy, so you can unlock it again from its group.':'A local-only account cannot be recovered after it is removed.'}</p></div></>}</Sheet>
+    <p className="text-xs text-muted">{ga.cloud?'Removing from this device keeps the cloud copy, so you can unlock it again from its group.':'An account that is not in the cloud cannot be recovered after it is removed.'}</p></div></>}</Sheet>
 
-  <Sheet open={!!sh&&sh.t==='creators'} onClose={()=>setSh(null)} title="Meet the Creators"><CreatorsBody/></Sheet>
+  <Sheet open={!!sh&&sh.t==='report'} onClose={()=>setSh(null)} title="Report a Problem">{rp.done?<><p className="text-base font-bold">Thank you! Your report was sent.</p><p className="text-sm text-muted">The developers will take a look. You can send another one any time.</p><button className={BTNP} onClick={()=>setSh(null)}>Done</button></>:<>
+   <p className="text-sm text-muted">Something not working? Tell us what happened and what you expected. The developers see your report in their dashboard.</p>
+   <div className="flex flex-wrap gap-2">{[['bug','Bug'],['ui','Display'],['sync','Sync / data'],['other','Other']].map(([k,l])=><button key={k} onClick={()=>setRp({...rp,c:k})} className={cx('rounded-full border px-3.5 py-1.5 text-sm font-bold transition',rp.c===k?'border-accent bg-accent/20 text-accent-text':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{l}</button>)}</div>
+   <TA v={rp.m} on={v=>setRp({...rp,m:v.slice(0,1500)})} rows={5} ph="Describe the problem…"/>
+   <TextIn v={rp.ct} on={v=>setRp({...rp,ct:v.slice(0,120)})} ph="Your name or email (optional)"/>
+   {Err()}<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.submitReport(rp),()=>setRp({...rp,done:true,m:''}),true)}>{cb?'Sending…':'Send report'}</button></>}</Sheet>
+  <Sheet open={!!sh&&sh.t==='dev'} onClose={()=>setSh(null)} title="Developer sign-in">
+   <p className="text-sm text-muted">For the Gradely developers only. This opens the dashboard for reports, groups and accounts.</p>
+   <TextIn v={dv.u} on={v=>setDv({...dv,u:v})} ph="Developer username"/><TextIn type="password" v={dv.p} on={v=>setDv({...dv,p:v})} ph="Password"/>
+   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.devLogin(dv.u,dv.p),()=>{})}>{cb?'Signing in…':'Sign in'}</button></Sheet>
   <Sheet open={!!sh&&sh.t==='theme'} onClose={()=>setSh(null)} title="Theme"><ThemePicker theme={theme} setTheme={setTheme}/></Sheet>
  </div>;
 }
@@ -1254,9 +1418,9 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    ===================================================================== */
 function Root(){
  const bk=useRef(null);if(!bk.current){bk.current=loadBook();saveBook(bk.current)}
- const [cur,setCur]=useState(()=>{const s0=readSession();if(!s0)return null;const a0=bk.current.list.find(x=>x.id===s0.aid);if(!a0){clearSession();return null}const g0=gidsOf(a0);return{id:a0.id,gid:g0.includes(s0.gid)?s0.gid:g0[0]}}),[ver,setVer]=useState(0),[,tick]=useState(0),[stat,setStat]=useState('synced'),[ext,setExt]=useState({n:0,data:null}),[busy,setBusy]=useState(false),[at,setAt]=useState(0),[theme,setTheme0]=useState(()=>{try{return localStorage.getItem('gtf-theme')||'sun'}catch(e){return'sun'}}),gd=useRef(null),curR=useRef(null),tm=useRef({}),pm=useRef({}),pg=useRef({}),bz=useRef({});
+ const [cur,setCur]=useState(()=>{const s0=readSession();if(!s0)return null;const a0=bk.current.list.find(x=>x.id===s0.aid);if(!a0){clearSession();return null}const g0=gidsOf(a0);return{id:a0.id,gid:g0.includes(s0.gid)?s0.gid:g0[0]}}),[ver,setVer]=useState(0),[,tick]=useState(0),[stat,setStat]=useState('synced'),[ext,setExt]=useState({n:0,data:null}),[busy,setBusy]=useState(false),[at,setAt]=useState(0),[theme,setTheme0]=useState(()=>{try{return themeOk(localStorage.getItem('gtf-theme'))}catch(e){return THEME_DEFAULT}}),gd=useRef(null),curR=useRef(null),tm=useRef({}),pm=useRef({}),pg=useRef({}),bz=useRef({});
  curR.current=cur;
- const upd=useSwUpdate();
+ const upd=useSwUpdate(),[dev,setDev]=useState(devOn);
  // welcome tour: opens once for a brand-new install; devices that already have accounts never see it unless they replay it
  const [a2,setA2]=useState(()=>!isStandalone()&&!a2Seen()),closeA2=()=>{a2Done();setA2(false)};
  const [tour,setTour]=useState(()=>!tourSeen()&&!bk.current.list.length);
@@ -1277,9 +1441,11 @@ function Root(){
  const push=async id=>{const a=acc(id);if(!a||!a.cloud||bz.current['p'+id])return;bz.current['p'+id]=1;const t=(a.sy&&a.sy.t)||Date.now();let again=false;setStat('syncing');
   try{await cput(a.cloud.k,docOf(a,id,t));const b=acc(id);if(b){b.sy={...b.sy,t:b.sy&&b.sy.t||t,base:t,dirty:!!(b.sy&&b.sy.t!==t),at:Date.now()};again=b.sy.dirty;saveBook(bk.current)}setStat('synced');tick(x=>x+1)}catch(e){fail(e)}
   bz.current['p'+id]=0;if(again)push(id)};
+ const dropLocal=id=>{bk.current.list=bk.current.list.filter(x=>x.id!==id);delete bk.current.data[id];if(curR.current&&curR.current.id===id){clearSession();setCur(null)}saveBook(bk.current);tick(x=>x+1)};
  const sync=async id=>{const a=acc(id);if(!a||!a.cloud||bz.current['s'+id])return;if(!navigator.onLine){setStat('offline');return}bz.current['s'+id]=1;
   try{const r=await cget(a.cloud.k),sy=a.sy||{t:0,base:0,dirty:false};
-   if(!validDoc(r)){a.sy={...sy,t:sy.t||Date.now(),dirty:true};await push(id)}
+   if(r&&r.x===1){dropLocal(id);setStat('synced')}
+   else if(!validDoc(r)){a.sy={...sy,t:sy.t||Date.now(),dirty:true};await push(id)}
    else if(r.t===sy.t){a.sy={...sy,base:r.t,dirty:false,at:Date.now()};saveBook(bk.current);setStat('synced')}
    else if(r.t>(sy.base||0)){
     if(sy.dirty){if(r.t>sy.t){a.loser={t:sy.t,d:JSON.stringify(bk.current.data[id])};apply(id,r)}else{a.loser={t:r.t,d:r.d};saveBook(bk.current);await push(id)}}
@@ -1295,10 +1461,10 @@ function Root(){
   const card={n:a.name,b:a.bio||'',e:a.emoji,p:a.pic||null,sn:a.cloud.sn,t:Date.now()};
   await Promise.all(gs.map(async g=>{try{await gwrite(g.cloud.k,'m/'+a.mid,card)}catch(e){}}))};
  const pubLater=id=>{clearTimeout(pm.current[id]);pm.current[id]=setTimeout(()=>pubM(id),900)};
- const pubG=async id=>{const g=grp(id);if(!g||!g.cloud||!navigator.onLine)return;try{await gwrite(g.cloud.k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,t:Date.now()});g.dirty=false;saveBook(bk.current)}catch(e){}};
+ const pubG=async id=>{const g=grp(id);if(!g||!g.cloud||!navigator.onLine)return;try{await gpatch(g.cloud.k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,t:Date.now()});g.dirty=false;saveBook(bk.current)}catch(e){}};
  const pubGLater=id=>{clearTimeout(pg.current[id]);pg.current[id]=setTimeout(()=>pubG(id),900)};
  const refresh=async()=>{if(!CLOUD||!navigator.onLine)return;const gs=bk.current.groups.filter(g=>g.cloud);if(!gs.length){setAt(Date.now());return}setBusy(true);
-  await Promise.all(gs.map(async g=>{try{const r=await gread(g.cloud.k);if(r&&r.meta){if(!g.dirty){g.name=r.meta.n||g.name;g.icon=r.meta.i||g.icon;g.rec=r.meta.r||'';if(r.meta.p)g.pic=r.meta.p;else delete g.pic}g.members=r.m||{};if(r.admins&&typeof r.admins==='object')g.adm=admKeys(r.admins);delete g.missing}else if(r===null){g.missing=true}g.fetched=Date.now()}catch(e){}}));
+  await Promise.all(gs.map(async g=>{try{const r=await gread(g.cloud.k);if(r&&r.meta){if(!g.dirty){g.name=r.meta.n||g.name;g.icon=r.meta.i||g.icon;g.rec=r.meta.r||'';if(r.meta.p)g.pic=r.meta.p;else delete g.pic}g.code=r.meta.c||'';g.members=r.m||{};if(r.admins&&typeof r.admins==='object')g.adm=admKeys(r.admins);delete g.missing}else if(r===null){g.missing=true}g.fetched=Date.now()}catch(e){}}));
   setBusy(false);setAt(Date.now());save()};
  useEffect(()=>{ADAPT.init()},[]);
  // on open: pull every cloud group directory and every cloud account
@@ -1352,22 +1518,51 @@ function Root(){
  const open=(id,gid)=>{const a=acc(id);if(a){a.last=Date.now();saveBook(bk.current)}const gs=gidsOf(a);setStat(navigator.onLine?'synced':'offline');setCur({id,gid:gs.includes(gid)?gid:gs[0]})};
  const addAcc=(o,d)=>{const id=uid();bk.current.list=[...bk.current.list,{id,name:(o.name||'').trim()||'New account',bio:o.bio||'',emoji:o.emoji||'',...(o.pic?{pic:o.pic}:{}),gid:o.gid||null,gids:o.gid?[o.gid]:[],...(o.extra||{})}];bk.current.data[id]=d;return id};
  const NOCLOUD='Cloud is not set up yet. Add your database URL in config.js.',NEEDNET='You need an internet connection for that.',BADNET='Could not reach the cloud database. Check config.js, your database rules and your internet.';
- const createGroup=async n=>{if(!(n.name||'').trim())return'Give the group a name.';const g={id:'g'+uid(),name:n.name.trim(),icon:n.icon||'',rec:(n.rec||'').trim(),adm:[],first:true};if(n.pic)g.pic=n.pic;if(g.rec&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g.rec))return'Enter a valid recovery email or leave it blank.';
-  if(n.pass){if(!CLOUD)return NOCLOUD;if(n.pass.length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
-   try{const k=await gkey(n.name,n.pass),ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Use “Join an existing group”.';await gwrite(k,'meta',{n:g.name,i:g.icon,p:g.pic||null,r:g.rec||null,t:Date.now()});g.cloud={k,sn:n.name.trim()};g.members={}}catch(e){return BADNET}}
-  bk.current.groups=[...bk.current.groups,g];save();return'ok:'+g.id};
+ const createGroup=async n=>{
+  if(!CLOUD)return NOCLOUD;
+  const gname=(n.name||'').trim();if(!gname)return'Give the group a name.';
+  if((n.pass||'').length<6)return'Use a group passcode of at least 6 characters.';
+  const rec=(n.rec||'').trim();if(rec&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rec))return'Enter a valid recovery email or leave it blank.';
+  let me=n.use?acc(n.use):null;if(me&&!me.cloud)me=null;
+  const an=(n.an||'').trim();
+  if(!me){if(!an)return'Enter your name.';if((n.ap||'').length<6)return'Use an account passcode of at least 6 characters.'}
+  if(!navigator.onLine)return NEEDNET;
+  const g={id:'g'+uid(),name:gname,icon:n.icon||'',rec,adm:[],first:false};if(n.pic)g.pic=n.pic;
+  let k=null,ak=null,code=null,newId=null,mid=null;
+  try{
+   k=await gkey(gname,n.pass);const ex=await gread(k);if(ex&&ex.meta){k=null;return'A group with that name and passcode already exists. Choose a different passcode.'}
+   if(!me){ak=await ckey(an,n.ap);if(validDoc(await cget(ak)))return'An account with that name and passcode already exists. Choose a different passcode.'}
+   code=await freeCode();
+   // the creator's own account becomes the admin: no separate admin account is needed
+   if(!me){const t=Date.now();newId=addAcc({name:an,bio:'',emoji:'',gid:null,extra:{mid:'m'+uid(),cloud:{k:ak,sn:an},sy:{t,base:t,dirty:false,at:t}}},blank());me=acc(newId);await cput(ak,docOf(me,newId,t))}
+   mid=ensureMid(me);
+   await gwrite(k,'meta',{n:gname,i:g.icon,p:g.pic||null,r:rec||null,c:code,t:Date.now()});
+   await gwrite(k,'admins/'+mid,true);
+   await dput('codes/'+code,{k,sn:gname,t:Date.now()});
+  }catch(e){
+   if(newId){bk.current.list=bk.current.list.filter(x=>x.id!==newId);delete bk.current.data[newId];try{await premove(ak)}catch(x){}}
+   try{if(k)await gremove(k)}catch(x){}try{if(code)await ddel('codes/'+code)}catch(x){}
+   return BADNET}
+  g.cloud={k,sn:gname};g.members={};g.adm=[mid];g.code=code;
+  bk.current.groups=[...bk.current.groups,g];me.gids=[...new Set([...gidsOf(me),g.id])];me.gid=me.gids[0];save();pubM(me.id,g.id);return'ok:'+g.id+':'+me.id};
+ const joinByCode=async raw=>{if(!CLOUD)return NOCLOUD;const c=normCode(raw);if(c.length!==6)return'Enter the 6-character join code.';if(!navigator.onLine)return NEEDNET;
+  try{const e=await dget('codes/'+c);if(!e||!e.k)return'That code does not match any group. Check it and try again.';const r=await gread(e.k);if(!r||!r.meta)return'That group no longer exists.';
+   const ex=bk.current.groups.find(g=>g.cloud&&g.cloud.k===e.k);if(ex){ex.code=c;save();return'ok:'+ex.id}
+   const g={id:'g'+uid(),name:r.meta.n||e.sn||'Group',icon:r.meta.i||'',rec:r.meta.r||'',code:c,cloud:{k:e.k,sn:e.sn||r.meta.n||'Group'},members:r.m||{},adm:admKeys(r.admins),joined:true,fetched:Date.now()};if(r.meta.p)g.pic=r.meta.p;
+   bk.current.groups=[...bk.current.groups,g];save();return'ok:'+g.id}catch(e){return BADNET}};
+ const newCode=async gid=>{const g=grp(gid);if(!g||!g.cloud)return'Group not found.';if(!canAdmin(gid))return'Only a group admin can make a join code.';if(!navigator.onLine)return NEEDNET;
+  try{const old=g.code,c=await freeCode();await dput('codes/'+c,{k:g.cloud.k,sn:g.cloud.sn,t:Date.now()});await gpatch(g.cloud.k,'meta',{c});if(old){try{await ddel('codes/'+old)}catch(x){}}g.code=c;save();return'ok'}catch(e){return BADNET}};
  const joinGroup=async(name,pw)=>{if(!CLOUD)return NOCLOUD;if(!(name||'').trim()||(pw||'').length<6)return'Enter the group name and its passcode (6+ characters).';if(!navigator.onLine)return NEEDNET;
   try{const k=await gkey(name,pw),r=await gread(k);if(!r||!r.meta)return'No group found with that name and passcode.';const ex=bk.current.groups.find(g=>g.cloud&&g.cloud.k===k);if(ex)return'ok:'+ex.id;
    const g={id:'g'+uid(),name:r.meta.n||name.trim(),icon:r.meta.i||'',rec:r.meta.r||'',cloud:{k,sn:name.trim()},members:r.m||{},adm:admKeys(r.admins),joined:true,fetched:Date.now()};if(r.meta.p)g.pic=r.meta.p;bk.current.groups=[...bk.current.groups,g];save();return'ok:'+g.id}catch(e){return BADNET}};
  const editGroup=(id,p)=>{const g=grp(id);if(!g)return;Object.assign(g,p);if(p.pic==='')delete g.pic;if(g.cloud){g.dirty=true;pubGLater(id)}save()};
  const enableGroupCloud=async(id,pw)=>{const g=grp(id);if(!g)return'Group not found.';if(!CLOUD)return NOCLOUD;if((pw||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
-  try{const k=await gkey(g.name,pw),ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose a different passcode.';await gwrite(k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,t:Date.now()});g.cloud={k,sn:g.name.trim()};g.members={};save();bk.current.list.filter(a=>gidsOf(a).includes(id)&&a.cloud).forEach(a=>pubM(a.id,id));return'ok'}catch(e){return BADNET}};
- const deleteGroup=async(id,everywhere)=>{const g=grp(id);if(!g)return;if(everywhere&&g.cloud){try{await gremove(g.cloud.k)}catch(e){}}
+  try{const k=await gkey(g.name,pw),ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose a different passcode.';const code=await freeCode();await gwrite(k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,c:code,t:Date.now()});await dput('codes/'+code,{k,sn:g.name.trim(),t:Date.now()});g.code=code;g.cloud={k,sn:g.name.trim()};g.members={};save();bk.current.list.filter(a=>gidsOf(a).includes(id)&&a.cloud).forEach(a=>pubM(a.id,id));return'ok'}catch(e){return BADNET}};
+ const deleteGroup=async(id,everywhere)=>{const g=grp(id);if(!g)return;if(everywhere&&g.cloud){try{await gremove(g.cloud.k)}catch(e){}if(g.code){try{await ddel('codes/'+g.code)}catch(e){}}}
   let gs=bk.current.groups.filter(x=>x.id!==id);bk.current.groups=gs;
   bk.current.list.forEach(a=>{const all=gidsOf(a),rest=all.filter(x=>x!==id);if(rest.length!==all.length){a.gids=rest;a.gid=rest[0]||null}});save()};
  const createAccount=async n=>{const name=(n.name||'').trim();if(!name)return'Enter a name.';const d=blank(n.pre),o={name,bio:n.bio,emoji:n.emoji,pic:n.pic,gid:n.gid};
-  if(n.local){const id=addAcc(o,d);save();return'ok:'+id}
-  if(!CLOUD)return NOCLOUD;if((n.pass||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET+' You can create a local-only account instead.';
+  if(!CLOUD)return NOCLOUD;if((n.pass||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(name,n.pass),ex=await cget(k);if(validDoc(ex))return'An account with that name and passcode already exists. Choose a different passcode.';const t=Date.now();
    const id=addAcc({...o,extra:{mid:'m'+uid(),cloud:{k,sn:name},sy:{t,base:t,dirty:false,at:t}}},d);await cput(k,docOf(acc(id),id,t));save();pubM(id);return'ok:'+id}catch(e){return BADNET}};
  const unlock=async(gid,mid,pw)=>{const g=grp(gid),m=g&&g.members&&g.members[mid];if(!m)return'That account is no longer in the group.';if((pw||'').length<6)return'Enter the account passcode (6+ characters).';if(!navigator.onLine)return NEEDNET;
@@ -1388,7 +1583,10 @@ function Root(){
  const disable=id=>{const a=acc(id);if(a){delete a.cloud;delete a.sy;delete a.loser;save()}};
  const del=async(id,everywhere)=>{const a=acc(id);if(!a)return;if(everywhere&&a.cloud){try{await premove(a.cloud.k)}catch(e){}for(const gx of gidsOf(a)){const g=grp(gx);if(a.mid&&g&&g.cloud){try{await gremove(g.cloud.k,'m/'+a.mid)}catch(e){}}}}
   bk.current.list=bk.current.list.filter(x=>x.id!==id);delete bk.current.data[id];save()};
- const imp=(gid,name,d)=>{addAcc({name,emoji:'',gid},mig(d));save()};
+ const submitReport=async o=>{if(!CLOUD)return NOCLOUD;const m=(o.m||'').trim();if(m.length<10)return'Please describe the problem in a few words (10+ characters).';if(!navigator.onLine)return NEEDNET;
+  try{if(Date.now()-(+localStorage.getItem('gtf-rpt')||0)<30000)return'Please wait a few seconds before sending another report.'}catch(e){}
+  try{await dput('reports/r'+Date.now().toString(36)+uid(),{t:Date.now(),c:o.c||'bug',m:m.slice(0,1500),ct:(o.ct||'').trim().slice(0,120),ua:(navigator.userAgent||'').slice(0,160),v:APP_VER,th:theme,s:'open'});try{localStorage.setItem('gtf-rpt',String(Date.now()))}catch(e){}return'ok'}catch(e){return BADNET}};
+ const devLogin=async(u,p)=>{const r=await devSignIn(u,p);if(r==='ok')setDev(true);return r};
  const guest=()=>{gd.current=blank(false);clearSession();setCur({guest:true})};
  const switchAcct=(id,gid)=>{const o=cur&&cur.id,oa=o&&acc(o);if(oa&&oa.cloud){clearTimeout(tm.current[o]);if(oa.sy&&oa.sy.dirty&&navigator.onLine)push(o)}open(id,gid)};
  const keep=name=>{const g0=bk.current.groups.find(x=>x.id===(cur&&cur.gid));const id=addAcc({name,emoji:'',gid:g0?g0.id:null},gd.current);save();open(id)};
@@ -1404,20 +1602,21 @@ function Root(){
   if(!g.cloud){g.name=nn;save();return'ok'}
   if(!navigator.onLine)return NEEDNET;if((pw||'').length<6)return'Enter the current group passcode.';
   try{if(await gkey(g.cloud.sn,pw)!==g.cloud.k)return'The current group passcode is wrong.';const k=await gkey(nn,pw);if(k===g.cloud.k){editGroup(gid,{name:nn});return'ok'}const ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose another name.';
-   const c0=await gread(g.cloud.k);if(!c0||!c0.meta)return'Group not found in the cloud.';const old=g.cloud.k;await gwrite(k,undefined,{...c0,meta:{...c0.meta,n:nn,t:Date.now()}});g.cloud={...g.cloud,k,sn:nn};g.name=nn;save();try{await gremove(old)}catch(x){}return'ok'}catch(x){return BADNET}};
+   const c0=await gread(g.cloud.k);if(!c0||!c0.meta)return'Group not found in the cloud.';const old=g.cloud.k;await gwrite(k,undefined,{...c0,meta:{...c0.meta,n:nn,t:Date.now()}});g.cloud={...g.cloud,k,sn:nn};g.name=nn;save();try{await gremove(old)}catch(x){}if(g.code){try{await dput('codes/'+g.code,{k,sn:nn,t:Date.now()})}catch(x){}}return'ok'}catch(x){return BADNET}};
  const changeGroupPass=async(gid,o,n,n2)=>{const g=grp(gid);if(!g||!g.cloud)return'This group is not synced.';if(!admMine(g,cur&&acc(cur.id)))return'Only a group admin can change the group passcode.';const e=chk(n,n2);if(e)return e;
   try{if(await gkey(g.cloud.sn,o)!==g.cloud.k)return'The current group passcode is wrong.';const k=await gkey(g.cloud.sn,n);if(k===g.cloud.k)return'Choose a different passcode.';const ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose another passcode.';
-   const c0=await gread(g.cloud.k);if(!c0||!c0.meta)return'Group not found in the cloud.';const old=g.cloud.k;await gwrite(k,undefined,{...c0,meta:{...c0.meta,t:Date.now()}});g.cloud={...g.cloud,k};save();try{await gremove(old)}catch(x){}return'ok'}catch(x){return BADNET}};
+   const c0=await gread(g.cloud.k);if(!c0||!c0.meta)return'Group not found in the cloud.';const old=g.cloud.k;await gwrite(k,undefined,{...c0,meta:{...c0.meta,t:Date.now()}});g.cloud={...g.cloud,k};save();try{await gremove(old)}catch(x){}if(g.code){try{await dput('codes/'+g.code,{k,sn:g.cloud.sn,t:Date.now()})}catch(x){}}return'ok'}catch(x){return BADNET}};
  
-const ctl={open,guest,createGroup,joinGroup,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,disable,del,imp,refresh,canAdmin,tour:()=>setTour(true),a2hs:()=>setA2(true)};
+const ctl={open,guest,createGroup,joinGroup,joinByCode,newCode,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,del,refresh,canAdmin,submitReport,devLogin,tour:()=>setTour(true),a2hs:()=>setA2(true)};
 
+ if(dev)return <><ErrorBoundary title="Something went wrong"><DevDashboard onExit={()=>setDev(false)}/></ErrorBoundary><ConfirmHost/></>;
  let view;
  if(!cur)view=<Home key="home" book={bk.current} theme={theme} setTheme={setTheme} ctl={ctl} busy={busy} at={at}/>;
  else{
   const a=cur.guest?{name:'Guest',emoji:''}:acc(cur.id);
   if(!a){clearSession();setTimeout(()=>setCur(null),0);return null}
   const lbl=stat==='synced'?'Synced':stat==='syncing'?'Syncing…':stat==='offline'?'Offline · saved here':'Sync error · tap to retry';
-  const cl=a.cloud?{on:true,state:stat,label:lbl,sync:()=>sync(cur.id),at:a.sy&&a.sy.at,pending:!!(a.sy&&a.sy.dirty)}:{on:false,state:'local',label:cur.guest?'Not saved':'This device only',sync:()=>{}};
+  const cl=a.cloud?{on:true,state:stat,label:lbl,sync:()=>sync(cur.id),at:a.sy&&a.sy.at,pending:!!(a.sy&&a.sy.dirty)}:{on:false,state:'local',label:cur.guest?'Not saved':'Not in the cloud yet',sync:()=>{}};
   const onSave=n=>{if(cur.guest){gd.current=n;return}const x=acc(cur.id);bk.current.data[cur.id]=n;if(x&&x.cloud){x.sy={...(x.sy||{}),t:Date.now(),dirty:true};setStat(navigator.onLine?'syncing':'offline');later(cur.id)}saveBook(bk.current)};
   const gO=cur.guest?null:grp(gNow),admin={is:!!(gO&&admMine(gO,a)),rows:gO?memRows(gO):[],set:(r,on)=>setRole(gNow,r,on),give:r=>giveAdmin(gNow,r),refresh};
   view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(gNow),changeGroupPass:(o,n,n2)=>changeGroupPass(gNow,o,n,n2),changeUsername:(nn,pw)=>changeUsername(cur.id,nn,pw),joinGroup:async(nm,pw)=>{const r=await joinGroup(nm,pw);if(String(r).startsWith('ok:')){const gid=r.slice(3),x=acc(cur.id);if(x&&!gidsOf(x).includes(gid))rename(cur.id,{gids:[...gidsOf(x),gid]});setCur(c=>({...c,gid}));return'ok'}return r},changeGroupName:(nn,pw)=>changeGroupName(gNow,nn,pw),setRec:e=>{if(admin.is)editGroup(gNow,{rec:e})},tour:()=>setTour(true),admin}} swc={cur.guest?null:{cur:grp(gNow),gid:gNow,mine:gidsOf(a),groups:bk.current.groups,accts:bk.current.list.filter(x=>gidsOf(x).includes(gNow)),aid:cur.id,setGroup:g=>setCur(c=>({...c,gid:g})),pick:id=>switchAcct(id,gNow),join:g=>rename(cur.id,{gids:[...gidsOf(a),g]})}}/>;
