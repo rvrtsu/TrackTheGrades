@@ -2,15 +2,15 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v13)
-- **New GWA tab** in the bottom bar: your actual, recorded grades only. A **Prelims GWA** section (recorded Prelims) and a **Finals GWA** section (Prelims + Finals combined, only for subjects with every period recorded), each with an Overall and a Majors GWA. No targets, projections or warnings. The Share image lives here too. The Overview tab now shows just your subject cards.
-- **Groups tab** in the bottom bar: one tap to switch account or group. (The bar now has 7 tabs: Overview, Tracker, Forecast, GWA, Groups, Profile, Settings.)
-- **Undo and Redo** are icon buttons in the top header, next to the cloud sync icon.
-- **Forecaster** only toggles between Prelims and Finals. The inner GWA toggle (projected grades table, Gen Eds list, Dean's List planner) and the **Set missing to needed** button are gone, so projecting is fully manual.
-- **Tracker**: the Manual Automatic Calculator is removed. The per-subject **Options** accordion (Subject details, Period weights, Base, Retention grade, Reverse calculator) now sits centred at the bottom of the subject view. Activities flow into two balanced columns on iPad and desktop, and everything stacks on phones.
-- **Ambient tiger background** behind every screen: soft blurred glows, faint tiger stripes along both edges and two faint paw prints. Colours follow the selected theme.
-- **iOS sound fix**: the audio engine is created and unlocked on the first touch, click or key press (including a silent primer sample), stays armed if iOS suspends it again, and asks iOS to play even with the ringer switch on silent (iOS 16.4 and newer). Sounds are soft pops, only on big moments: a finished calculation, a target reached, or "not possible". Typing and taps are silent. **Settings → Sound and haptics** has a **Play test sound** button.
-- Everything else (formulas, Firebase sync, passcodes, groups) is unchanged.
+## What's new in this version (v14)
+- **iOS audio force-unlock.** `touchstart`, `touchend` (plus click, pointer and key events) are bound on `document.body`. On the first tap the app resumes the audio engine, starts a silent oscillator and a silent buffer, and plays a short silent HTML5 `<audio>` clip, which also lets sound play with the ringer switch on silent. The listeners stay armed until the engine is really running and re-arm if iOS suspends it. Sounds still play only on big moments (finished calculation, target reached, "not possible"); **Settings → Sound and haptics → Play test sound** checks it.
+- **Smaller, subtler tiger background.** Many small stripes are packed along both edges (fading inward) and tiny paw prints repeat across the screen, all at very low opacity.
+- **Apple-style glass everywhere.** Cards, the header, the bottom bar, sheets and menus are translucent with a strong blur and a hairline edge, so the ambient glow bleeds through (white glass in light themes, black glass in dark themes).
+- **Anti-zoom viewport.** `maximum-scale=1, user-scalable=0` (plus `viewport-fit=cover` so the header clears the notch), an iOS pinch-gesture block, and a root locked to the screen width with no sideways scrolling.
+- **Groups moved to the header.** The bottom bar has 6 tabs (Overview, Tracker, Forecast, GWA, Profile, Settings). The round people icon in the header, next to the cloud sync icon, opens the account/group switcher.
+- **Compact year/semester pill** at the top centre of the header. Tap it to switch year and semester, or add a year or semester. The page title (Overview, Tracker, ...) is now separate, below the header.
+- **GWA tab report card.** Below the Overall/Majors cards: every subject with a recorded grade, showing code, description, Prelims grade and Finals (semestral) grade. No units.
+- Formulas, Firebase sync, passcodes and groups are unchanged.
 
 **Important:** the Firebase rules above do not need to change. Changing an account or group passcode moves its cloud copy to a new key, so other devices must remove that account (or rejoin that group) and unlock it again with the new passcode.
 
@@ -62,7 +62,7 @@ Files (already in `icons/`): `tiger.svg` (vector), `icon-192.png`, `icon-512.png
 **To change or refresh the icon:**
 1. Replace the PNG files in `icons/` with your new artwork using the **same file names and sizes** (192, 512, 512 with ~20% padding for *maskable*, and 180 with no transparency for `apple-touch-icon.png`). To re-export from the SVG: `npx sharp-cli -i icons/tiger.svg -o icons/icon-512.png resize 512` or any editor.
 2. `manifest.json` already points to them, so no edit is needed unless you rename a file. If you do, update the `src` entries in the `icons` array and the matching `<link rel="apple-touch-icon">` / `<link rel="icon">` lines in `index.html`. Colours: `background_color` is `#FFFFFF`, `theme_color` is `#FACC15`.
-3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v13'` to `'gtf-v14'`) so devices download the new icons.
+3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v14'` to `'gtf-v15'`) so devices download the new icons.
 4. Upload, then on each device **delete the old Home Screen icon and add it again** (iPhone/iPad: Share → Add to Home Screen; Android: Install app). iOS keeps the old icon until you re-add it.
 
 **Inline SVG for the UI** (this is the `TigerLogo` component in `src/app.jsx`; paste this anywhere in HTML and size it with CSS):

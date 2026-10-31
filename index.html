@@ -2,7 +2,7 @@
 <html lang="en" data-theme="sun">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
 <title>Grades Tracker and Forecaster</title>
 <meta name="theme-color" content="#FFFFFF">
 <meta name="description" content="Track grades, forecast finals and plan your GWA.">
@@ -18,6 +18,9 @@
 <script>
 // apply the saved theme before the first paint (no flash)
 try{var t=localStorage.getItem('gtf-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}
+</script>
+<script>
+['gesturestart','gesturechange','gestureend'].forEach(function(e){document.addEventListener(e,function(ev){ev.preventDefault()},{passive:false})});
 </script>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script>
@@ -40,7 +43,12 @@ window.tailwind&&(tailwind.config={theme:{extend:{colors:{
 [data-theme=reddk]{--bg:20 9 11;--surface:34 17 20;--surface2:48 25 29;--ink:255 240 241;--muted:188 150 154;--line:70 38 43;--accent:248 113 113;--accent-ink:40 8 10;--accent-text:252 165 165;--good:74 222 128;--bad:253 186 116;--glow:.13;color-scheme:dark}
 [data-theme=green]{--bg:245 252 247;--surface:255 255 255;--surface2:232 247 237;--ink:14 40 26;--muted:94 128 108;--line:211 238 220;--accent:22 163 74;--accent-ink:255 255 255;--accent-text:21 128 61;--good:21 128 61;--bad:220 38 38;--glow:.15;color-scheme:light}
 [data-theme=greendk]{--bg:8 18 13;--surface:16 31 23;--surface2:24 44 33;--ink:236 252 241;--muted:140 176 152;--line:36 62 46;--accent:74 222 128;--accent-ink:5 30 15;--accent-text:134 239 172;--good:134 239 172;--bad:248 113 113;--glow:.13;color-scheme:dark}
-.glass{background:rgb(var(--surface)/.7);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);border:1px solid rgb(var(--line)/.8);box-shadow:0 14px 44px -10px rgb(var(--ink)/.22)}
+/* ---------- Apple-style glass: translucent fill, strong blur + saturation, hairline edge, soft depth ---------- */
+:root{--gl:255 255 255;--gla:.34;--gle:255 255 255;--glea:.65}
+[data-theme=dark],[data-theme=bluedk],[data-theme=reddk],[data-theme=greendk]{--gl:0 0 0;--gla:.4;--gle:255 255 255;--glea:.14}
+.glass,.gc{background:rgb(var(--gl)/var(--gla));-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);border:1px solid rgb(var(--gle)/var(--glea));box-shadow:0 10px 34px -14px rgb(var(--ink)/.28),inset 0 1px 0 rgb(255 255 255/.28)}
+/* denser glass for sheets, menus and tooltips, where text must stay easy to read */
+.gcs{background:rgb(var(--bg)/.72);-webkit-backdrop-filter:blur(34px) saturate(1.8);backdrop-filter:blur(34px) saturate(1.8);border:1px solid rgb(var(--gle)/var(--glea));box-shadow:0 26px 60px -22px rgb(0 0 0/.5),inset 0 1px 0 rgb(255 255 255/.22)}
 .orb{position:absolute;border-radius:9999px;background:radial-gradient(circle,rgb(var(--accent)/.38),transparent 70%);filter:blur(12px);pointer-events:none}
 input:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid rgb(var(--accent));outline-offset:2px}
 /* iOS Safari zooms the page when a field under 16px gets focus: force exactly 16px on all of them */
@@ -57,21 +65,20 @@ input,textarea{caret-color:rgb(var(--accent))}
 .amb-b1{width:58rem;height:58rem;left:-24rem;top:-26rem;background:radial-gradient(closest-side,rgb(var(--accent)/calc(var(--glow)*1.7)),transparent 72%);animation:ambA 32s ease-in-out infinite alternate}
 .amb-b2{width:50rem;height:50rem;right:-22rem;top:26%;background:radial-gradient(closest-side,rgb(var(--amb2)/calc(var(--glow)*1.25)),transparent 72%);animation:ambB 40s ease-in-out infinite alternate}
 .amb-b3{width:56rem;height:56rem;left:-8rem;bottom:-34rem;background:radial-gradient(closest-side,rgb(var(--accent)/calc(var(--glow)*1.1)),transparent 72%);animation:ambA 46s ease-in-out infinite alternate-reverse}
-.amb-edge{position:absolute;top:0;height:100%;width:auto;max-width:46vw;aspect-ratio:1/4;filter:blur(1.6px)}
+.amb-edge{position:absolute;top:0;height:100%;width:110px;filter:blur(.4px);-webkit-mask-image:linear-gradient(90deg,#000 25%,transparent);mask-image:linear-gradient(90deg,#000 25%,transparent)}
 .amb-l{left:0}.amb-r{right:0;transform:scaleX(-1)}
-.amb-s{fill:rgb(var(--ink)/.05)}
+.amb-s{fill:rgb(var(--ink)/.045)}
 [data-theme=dark] .amb-s,[data-theme=bluedk] .amb-s,[data-theme=reddk] .amb-s,[data-theme=greendk] .amb-s{fill:rgb(var(--accent)/.07)}
-.amb-paw{position:absolute;filter:blur(2.5px)}
-.amb-paw .amb-s{fill:rgb(var(--ink)/.035)}
-[data-theme=dark] .amb-paw .amb-s,[data-theme=bluedk] .amb-paw .amb-s,[data-theme=reddk] .amb-paw .amb-s,[data-theme=greendk] .amb-paw .amb-s{fill:rgb(var(--accent)/.05)}
-.amb-paw1{width:min(58vw,560px);right:-9%;bottom:7%;transform:rotate(-18deg)}
-.amb-paw2{width:min(30vw,300px);left:-5%;top:34%;transform:rotate(22deg)}
+.amb-paws{position:absolute;inset:0;width:100%;height:100%}
+.amb-paws .amb-s{fill:rgb(var(--ink)/.04)}
+[data-theme=dark] .amb-paws .amb-s,[data-theme=bluedk] .amb-paws .amb-s,[data-theme=reddk] .amb-paws .amb-s,[data-theme=greendk] .amb-paws .amb-s{fill:rgb(var(--accent)/.055)}
 @keyframes ambA{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(5rem,3rem,0) scale(1.08)}}
 @keyframes ambB{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-4rem,-5rem,0) scale(1.1)}}
 /* ---------- base ---------- */
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 4.5rem);min-height:100%;-webkit-text-size-adjust:100%}
-body{margin:0;min-height:100vh;font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:rgb(var(--ink));background:rgb(var(--bg));overflow-x:hidden;-webkit-font-smoothing:antialiased;transition:background-color .45s ease,color .3s ease}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 4.5rem);width:100%;max-width:100vw;min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-text-size-adjust:100%;overscroll-behavior-x:none}
+#root{width:100%;max-width:100vw;min-height:100vh;min-height:100dvh;overflow-x:clip}
+body{margin:0;width:100%;max-width:100vw;min-height:100vh;min-height:100dvh;font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:rgb(var(--ink));background:rgb(var(--bg));overflow-x:clip;-webkit-font-smoothing:antialiased;transition:background-color .45s ease,color .3s ease}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:rgb(var(--bg)/.85);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);z-index:40}
 button,input,select{font-family:inherit}
 input[type=range]{accent-color:rgb(var(--accent));height:1.75rem}
