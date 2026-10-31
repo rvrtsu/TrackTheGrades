@@ -213,19 +213,19 @@ const premove=async k=>{const r=await fetch(curl(k),{method:'DELETE'});if(!r.ok)
    Semestral grade  = (Raw / 100) * (100 - Base) + Base        <- the curve is applied HERE
    Needed raw       = (Target - Base) / (100 - Base) * 100      <- its inverse, used by the Forecaster
    ===================================================================== */
-const ap=a=>{if(!a||a.s===''||a.s==null)return null;const m=a.m===''||a.m==null?100:+a.m;return m>0?+a.s/m*100:null};
-const wgt=a=>Math.max(0,+a.w)||0;
-const trans=(R,B)=>Math.min(100,(R/100)*(100-B)+B);
-const untrans=(T,B)=>(T-B)/(100-B)*100;
-const actsOf=(s,p)=>(s.acts&&s.acts[p.id])||[];
-const sbaseOf=s=>{const o=s.sbase,v=o===undefined||o===null||o===''||!Number.isFinite(+o)?CUR.base:+o;return Math.min(99,Math.max(0,v))};
-const wts=(s,P)=>P.map(p=>{const o=s.pw&&s.pw[p.id],v=o===undefined||o===null||o===''||!Number.isFinite(+o)?p.w:+o;return Math.max(0,v)});
-const wiv=(s,a)=>s.wi&&s.wi[a.id]!==undefined?s.wi[a.id]:'85';
+const ap=a=>{if(!a||a.s===''||a.s==null)return null;const m=a.m===''||a.m==null?100:+a.m,x=m>0?+a.s/m*100:null;return x!=null&&Number.isFinite(x)?x:null};
+const wgt=a=>Math.max(0,+(a&&a.w))||0;
+const trans=(R,B)=>{if(R==null||!Number.isFinite(+R))return null;const b=Number.isFinite(+B)?+B:0;return Math.min(100,(+R/100)*(100-b)+b)};
+const untrans=(T,B)=>{if(T==null||!Number.isFinite(+T))return null;const b=Number.isFinite(+B)?Math.min(99,+B):0;return (+T-b)/(100-b)*100};
+const actsOf=(s,p)=>{const l=s&&p&&s.acts?s.acts[p.id]:null;return Array.isArray(l)?l.filter(Boolean):[]};
+const sbaseOf=s=>{const o=s&&s.sbase,v=o===undefined||o===null||o===''||!Number.isFinite(+o)?CUR.base:+o;return Math.min(99,Math.max(0,v))};
+const wts=(s,P)=>P.map(p=>{const o=s&&s.pw&&s.pw[p.id],v=o===undefined||o===null||o===''||!Number.isFinite(+o)?p.w:+o;return Math.max(0,v)});
+const wiv=(s,a)=>s&&s.wi&&a&&s.wi[a.id]!==undefined?s.wi[a.id]:'85';
 const mxs=a=>+a.m||100;
 // one grading period of one subject (raw), using only what has been entered
 // ZERO-ASSUMPTION: an activity with a weight but a blank score counts as 0 in the grade (K only adds entered scores, so a blank adds 0 and W still includes its weight).
 // "allIn" tells whether every score is really entered. The forecaster below still treats blank scores as the open slots it solves for.
-const pcalc=(s,p)=>{const acts=actsOf(s,p),live=acts.filter(a=>wgt(a)>0);let W=0,K=0,Wk=0,n=0;
+const pcalc=(s,p)=>{if(!s||!p)return{acts:[],live:[],W:0,K:0,Wk:0,n:0,total:0,touched:false,complete:false,allIn:false,raw:null,soFar:null,grade:null,gradeSoFar:null};const acts=actsOf(s,p),live=acts.filter(a=>wgt(a)>0);let W=0,K=0,Wk=0,n=0;
  live.forEach(a=>{const w=wgt(a),x=ap(a);W+=w;if(x!=null){K+=w*x;Wk+=w;n++}});
  const total=live.length,allIn=total>0&&n===total,touched=n>0,complete=total>0&&touched,raw=W>0?K/W:null,soFar=Wk>0?K/Wk:null;
  return{acts,live,W,K,n,total,touched,complete,allIn,raw,soFar,grade:raw,gradeSoFar:soFar}};
@@ -235,11 +235,11 @@ const pproj=(s,p,T)=>{const c=pcalc(s,p),wi=a=>+wiv(s,a)||0,miss=c.live.filter(a
  const alone=miss.map(a=>{const o=miss.reduce((t,x)=>x===a?t:t+wgt(x)*wi(x),0);return[a.id,(pts-o)/wgt(a)]});
  let Kp=c.K;miss.forEach(a=>{Kp+=wgt(a)*wi(a)});const Rp=c.W>0?Kp/c.W:null;
  return{...c,miss,Wm,uni,alone,Rneed:T,proj:Rp}};
-const wavg=(vals,W)=>{let t=0,w=0;vals.forEach((v,i)=>{if(v!=null){t+=W[i]*v;w+=W[i]}});return w>0?t/w:null};
+const wavg=(vals,W)=>{let t=0,w=0;(vals||[]).forEach((v,i)=>{const wi=+(W&&W[i])||0;if(v!=null&&Number.isFinite(+v)){t+=wi*v;w+=wi}});return w>0?t/w:null};
 // BASE APPLICATION (per subject): 'end' (default) = combine the raw period grades first, then apply the Base once;
 // 'term' = apply the Base to each period grade first, then combine the transmuted grades with the period weights.
 const bmodeOf=s=>s&&s.bmode==='term'?'term':'end';
-const gradeOf=(s,vals,W,B)=>{if(bmodeOf(s)==='term'){const t=vals.map(v=>v==null?null:trans(v,B));return wavg(t,W)}const r=wavg(vals,W);return r==null?null:trans(r,B)};
+const gradeOf=(s,vals,W,B)=>{if(bmodeOf(s)==='term'){const t=(vals||[]).map(v=>v==null?null:trans(v,B));return wavg(t,W)}const r=wavg(vals,W);return r==null?null:trans(r,B)};
 // semestral grade from real scores only (needs every period complete); the Base is applied here
 const semCalc=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),cc=P.map(p=>pcalc(s,p)),act=cc.filter(c=>c.total>0),done=act.length>0&&act.every(c=>c.raw!=null&&c.touched),raw=done?wavg(cc.map(c=>c.total>0?c.raw:null),W):null;
  const vals=cc.map(c=>c.total>0?c.raw:null);return{W,B,cc,done,raw,vals,grade:done?gradeOf(s,vals,W,B):null}};
@@ -278,7 +278,7 @@ const linSub=(s,P)=>{const w=wts(s,P);let a=0,b=0,Wt=0;
  P.forEach((p,i)=>{const c=pcalc(s,p);if(!(c.W>0))return;const Wm=c.live.reduce((t,q)=>ap(q)==null?t+wgt(q):t,0);a+=w[i]*c.K/c.W;b+=w[i]*Wm/c.W;Wt+=w[i]});
  return Wt>0?{a:a/Wt,b:b/Wt,B:sbaseOf(s)}:null};
 // what the missing scores must average so the semestral grade (after Base) reaches Sx
-const needX=(l,Sx)=>{if(!l)return null;if(l.b<1e-9)return{done:true,x:null,ok:trans(l.a,l.B)>=Sx-1e-9};return{done:false,x:(untrans(Sx,l.B)-l.a)/l.b}};
+const needX=(l,Sx)=>{if(!l)return null;if(l.b<1e-9){const t=trans(l.a,l.B);return{done:true,x:null,ok:t!=null&&t>=Sx-1e-9}}const u=untrans(Sx,l.B);if(u==null)return null;return{done:false,x:(u-l.a)/l.b}};
 const missOf=(s,P)=>[].concat(...P.map(p=>pcalc(s,p).live.filter(a=>ap(a)==null)));
 // traffic light: green under 75, yellow 75 to 89, red 90 and up (or out of reach)
 const tlX=x=>x==null?'':x<=0?'g':x>100?'r':(c=>c<75?'g':c<90?'y':'r')(Math.ceil(x-1e-9));
@@ -317,6 +317,16 @@ const Acc=({open,onToggle,head,children,cls='',sa})=><section className={cx(CARD
  <div className={cx('acc',open&&'open')} inert={!open}><div><div className="flex flex-col gap-4 p-4 pt-1">{children}</div></div></div></section>;
 
 // Modal sheet (bottom sheet on phones, centred card on larger screens)
+/* ---- Error boundary: a section that fails to render shows a message instead of white-screening the whole app ---- */
+class ErrorBoundary extends React.Component{
+ constructor(p){super(p);this.state={err:null}}
+ static getDerivedStateFromError(err){return{err}}
+ componentDidCatch(err,info){try{console.error('Section failed to render:',err,info&&info.componentStack)}catch(e){}}
+ render(){if(!this.state.err)return this.props.children;
+  return <div role="alert" className="gc flex flex-col items-center gap-3 rounded-[1.75rem] p-8 text-center"><div className="text-3xl" aria-hidden="true">⚠️</div><h2 className="text-lg font-extrabold">{this.props.title||'Failed to load this section'}</h2><p className="max-w-sm text-sm text-muted">Something went wrong while showing this part of the app. Your data is safe. Try again, or switch to another tab.</p><div className="flex flex-wrap justify-center gap-2"><button onClick={()=>this.setState({err:null})} className="rounded-xl bg-accent px-4 py-2 text-sm font-extrabold text-accent-ink transition active:scale-95">Try again</button><button onClick={()=>window.location.reload()} className="rounded-xl border border-line bg-ink/[.06] px-4 py-2 text-sm font-bold transition active:scale-95">Reload app</button></div></div>}}
+// calls a tab's render function inside its own component so an error is caught by the boundary above it
+const TabBody=({f})=>f();
+
 /* ---- PWA auto-update: detect a waiting service worker, show a banner, activate it on tap and reload once ---- */
 function useSwUpdate(){
  const [waiting,setWaiting]=useState(null),rl=useRef(false);
@@ -336,12 +346,28 @@ function useSwUpdate(){
   setTimeout(()=>{if(!rl.current){rl.current=true;window.location.reload()}},4000)};
  return{on:!!waiting,apply,dismiss:()=>setWaiting(null)};
 }
-const UpdateBanner=({u})=>!u.on?null:createPortal(<div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 z-[80] flex justify-center px-4" style={{top:'calc(var(--tp) + 3.9rem)'}}>
- <div className="gcs anim-sheet pointer-events-auto flex w-full max-w-sm items-center gap-1.5 rounded-full py-1.5 pl-4 pr-1.5">
-  <span className="relative mr-1 flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60"/><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent"/></span>
-  <button onClick={u.apply} className="min-w-0 flex-1 truncate text-left text-sm font-extrabold">Update Available! <span className="font-semibold text-muted">Tap to refresh</span></button>
-  <button onClick={u.apply} className="shrink-0 rounded-full bg-accent px-3.5 py-1.5 text-xs font-extrabold text-accent-ink transition active:scale-95">Refresh</button>
-  <button onClick={u.dismiss} aria-label="Dismiss update notice" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted transition hover:bg-ink/[.09]"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>,document.body);
+// shown in the required update dialog (newest first); edit this list for each release
+const RELEASE_NOTES=[
+ 'Per-subject Base toggle: apply the Base at the end or per term',
+ 'Prelims or Finals with no scores yet now show a dash instead of 5.00',
+ 'Fixed the Tracker tab going blank',
+ 'A section that fails to load now shows a message instead of a white screen',
+ 'The update prompt is now a required dialog with these release notes'];
+const APP_VER='v21';
+const UpdateBanner=({u})=>{const [busy,setBusy]=useState(false),btn=useRef(null);
+ useEffect(()=>{if(!u.on)return;const o=document.body.style.overflow;document.body.style.overflow='hidden';const t=setTimeout(()=>{try{btn.current&&btn.current.focus()}catch(e){}},50);return()=>{clearTimeout(t);document.body.style.overflow=o}},[u.on]);
+ if(!u.on)return null;
+ const go=()=>{if(busy)return;setBusy(true);u.apply()};
+ // no close button, no backdrop dismiss and Escape is ignored: the update is required
+ return createPortal(<div role="alertdialog" aria-modal="true" aria-labelledby="upd-t" aria-describedby="upd-d" className="anim-fade fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-md" style={{paddingTop:'max(1rem,env(safe-area-inset-top,0px))',paddingBottom:'max(1rem,env(safe-area-inset-bottom,0px))'}} onKeyDown={e=>{if(e.key==='Escape')e.preventDefault()}}>
+  <div className="gcs anim-sheet my-auto flex w-full max-w-md flex-col gap-5 rounded-[2rem] p-6 sm:p-8">
+   <div className="flex flex-col items-center gap-3 text-center">
+    <div className="relative grid h-16 w-16 place-items-center rounded-2xl bg-accent text-accent-ink"><span className="absolute inset-0 animate-ping rounded-2xl bg-accent opacity-25"/><svg viewBox="0 0 24 24" className="relative h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg></div>
+    <h2 id="upd-t" className="text-2xl font-black tracking-tight">Update Available</h2>
+    <p id="upd-d" className="text-sm text-muted">A new version ({APP_VER}) is ready. Please update to keep your grades and sync working correctly. Your data and session are kept.</p></div>
+   <div className="rounded-2xl border border-line/60 bg-ink/[.06] p-4"><h3 className="mb-2 text-xs font-extrabold uppercase tracking-wider text-muted">What’s New</h3>
+    <ul className="flex max-h-[34vh] flex-col gap-2 overflow-y-auto text-sm font-semibold">{RELEASE_NOTES.map((n,i)=><li key={i} className="flex gap-2"><span className="text-accent-text" aria-hidden="true">•</span><span className="min-w-0">{n}</span></li>)}</ul></div>
+   <button ref={btn} onClick={go} disabled={busy} className="w-full rounded-2xl bg-accent px-5 py-4 text-base font-black text-accent-ink shadow-lg transition active:scale-[.98] disabled:opacity-70">{busy?'Updating…':'Refresh & Update Now'}</button></div></div>,document.body)};
 
 function Sheet({open,onClose,title,children,wide}){
  useEffect(()=>{if(!open)return;const k=e=>e.key==='Escape'&&onClose();window.addEventListener('keydown',k);const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{window.removeEventListener('keydown',k);document.body.style.overflow=o}},[open]);
@@ -888,6 +914,34 @@ const Banners=()=><>
   <div className="grid grid-cols-3 gap-2 text-center"><div><div className="text-[10px] font-bold text-muted">Raw semestral{!real&&R!=null?' (projected)':''}</div><div className="text-base font-black tabular-nums">{R==null?'—':f2(R)}</div></div><div><div className="text-[10px] font-bold text-muted">Base</div><div className="text-base font-black tabular-nums">{f2(B)}</div></div><div><div className="text-[10px] font-bold text-muted">After Base</div><div className="text-base font-black tabular-nums">{T==null?'—':f2(T)}</div></div></div>
   {R!=null&&bm==='end'&&<p className="text-xs text-muted">Base at the end: ({f2(R)} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(T)}</b></p>}
   {R!=null&&bm==='term'&&<div className="flex flex-col gap-0.5 text-xs text-muted"><span>Base per term, then combined by weight:</span>{P.map((p,i)=>vals[i]==null?null:<span key={p.id}>{p.name}: ({f2(vals[i])} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(trans(vals[i],B))}</b> × {f2(sc.W[i])}%</span>)}<span>Semestral = <b className="text-ink">{f2(T)}</b></span></div>}</div>};
+const Options=(s,p,isLast)=>{const o=!!opt[s.id];return <div className="overflow-hidden rounded-3xl border border-line/60 bg-ink/[.06] shadow-[0_8px_30px_-14px_rgb(var(--ink)/.2)]">
+  <button onClick={()=>setOpt({...opt,[s.id]:!o})} aria-expanded={o} className="flex w-full items-center gap-3.5 p-4 text-left transition hover:bg-ink/[.09] sm:p-5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC.s}/></svg></span><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">Options</span><span className="block text-xs text-muted">Details, weights, base, retention, reverse calculator</span></span><Chev open={o}/></button>
+  <div className={cx('acc',o&&'open')} inert={!o}><div><div className="grid gap-5 border-t border-line/50 p-4 sm:p-5 md:grid-cols-2 md:gap-x-8 md:gap-y-6">
+   {DetailsBox(s)}{WeightsBox(s)}{BaseBox(s)}{RetBox(s)}
+   {isLast&&<div className="md:col-span-2">{SemMath(s)}</div>}<div className="md:col-span-2">{Reverse(s,p)}</div>
+   <div className="flex gap-2 md:col-span-2"><button className={BTN+' flex-1'} onClick={()=>ask({title:'Clear scores?',msg:'Every score in '+(s.code||'this subject')+' will be emptied. Blank scores count as 0.',yes:'Clear scores',onYes:()=>clearScores([s.id])})}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>ask({title:'Delete '+(s.code||'this subject')+'?',msg:'The subject, all of its activities and every score will be removed. You can undo this with the Undo button.',yes:'Delete subject',onYes:()=>delSub(s.id)})}>Delete subject</button></div></div></div></div></div>};
+
+const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=actsOf(s,p).some(a=>a.est),md=rvMode[k]||'r',B=sbaseOf(s);return <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line p-3">
+  <div className="text-sm font-bold">Reverse calculator <span className="text-xs font-semibold text-muted">for {p.name}</span></div>
+  <p className="text-xs text-muted">Know the released {p.name.toLowerCase()} grade but not the scores? Enter it and the blank scores are worked out. {md==='r'?'The grade is used as a raw period grade (the curve is applied later, on the semestral grade).':'The grade already includes the Base, so raw = (grade − Base) ÷ (100 − Base) × 100.'}</p>
+  <Seg v={md} on={x=>setRvMode({...rvMode,[k]:x})} opts={[['r','Raw grade'],['b','Includes Base '+f2(B)]]} cls="w-full sm:w-auto sm:self-start"/>
+  <div className="flex flex-wrap items-center gap-2"><Num v={s.rel&&s.rel[p.id]} on={v=>setRel(s.id,p.id,v)} ph={'released '+p.name.toLowerCase()+' grade'} w="w-44"/><button className={BTNP} onClick={()=>rvFill(s,p)}>Fill possible scores</button>{hasEst&&<button className={BTN} onClick={()=>rvClear(s,p)}>Clear possible scores</button>}</div>
+  {m&&<p className={cx('text-xs font-semibold',m.bad?'text-bad':'text-good')}>{m.msg}</p>}</div>};
+ const PeriodBlock=(s,p)=>{const c=pcalc(s,p),acts=c.acts,pi=P.indexOf(p),w=wts(s,P)[pi],R=c.touched?(c.raw!=null?c.raw:c.soFar):null,wsum=acts.reduce((t,a)=>t+wgt(a),0);
+  return <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line/60 bg-ink/[.06] p-3 sm:gap-4 sm:p-5">
+   <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{p.name} <span className="ml-1 text-xs font-semibold text-muted">{f2(w)}%<span className="hidden sm:inline"> of semestral</span></span></h4><button className={BTN+' !py-1.5'} onClick={()=>setEdit(!edit)}>{edit?'✓ Done':'Edit activities'}</button></div>
+   {!acts.length&&<p className="text-sm text-muted">No activities yet. Add one below.</p>}
+   <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-4">{acts.map(a=>{const x=ap(a);return edit
+    ?<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 w-0 min-w-0 flex-1 !text-left px-3')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-14 shrink-0 !px-1 sm:w-[4.5rem]"/><span className="shrink-0 text-muted">%</span><button className={BTNX+' !h-11 !w-11 shrink-0 !p-0'} onClick={()=>ask({title:'Delete this activity?',msg:'“'+(a.name||'Activity')+'” and its score will be removed from '+p.name+'. You can undo this with the Undo button.',yes:'Delete activity',onYes:()=>delAct(s.id,p.id,a.id)})} aria-label="Remove activity" title="Remove activity">✕</button></div>
+    :<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-3"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{a.name||'Activity'}</div><div className="text-xs text-muted">{f2(wgt(a))}% · {x==null?'blank · counts as 0':f2(x)+'%'}</div>{a.est&&<span className="mt-0.5 inline-block rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span>}</div>
+     <Num nav v={a.s} on={v=>setAct(s.id,p.id,a.id,'s',v)} ph="score" bad={x!=null&&x>100} w={cx('w-16 shrink-0 !px-1 sm:w-20',a.est&&'!border-accent/60 !italic')}/><span className="shrink-0 text-muted">/</span><Num v={a.m} on={v=>setAct(s.id,p.id,a.id,'m',v)} ph="100" w="w-14 shrink-0 !px-1 sm:w-16"/></div>})}</div>
+   <button className={BTNP+' self-start'} onClick={()=>{addAct(s.id,p.id);setEdit(true)}}>＋ Add Extra Activity</button>
+   {acts.length>0&&<p className={cx('text-xs',Math.abs(wsum-100)>.005?'text-bad':'text-muted')}>Activity weights total {f2(wsum)}%{Math.abs(wsum-100)>.005?' · the grade is scaled to 100%':''}</p>}
+   <div className="grid grid-cols-3 gap-2 rounded-xl bg-ink/[.06] p-2 text-center sm:p-3">
+    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">{p.name} grade{c.raw==null&&R!=null?' so far':''}</div><div className="text-base font-black tabular-nums sm:text-lg">{R==null?'—':f2(R)}</div></div>
+    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Weight</div><div className="text-base font-black tabular-nums sm:text-lg">{f2(w)}%</div></div>
+    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Activities</div><div className="text-base font-black tabular-nums sm:text-lg">{c.n}/{c.total}</div></div></div>
+   </div>};
   const TrackerBody=()=>{const s=cur,sem=semActual(s,P),sp=semProjC(s,P),eq=sem==null?null:eqv(sem),isLast=P.length<2||pcur.id===P[last0].id;
   const Bg=(l,v,sub,hi,cls,big)=><div key={l} className={cx('min-w-0 rounded-2xl border px-3 py-2.5 sm:rounded-3xl sm:p-4',hi?'border-accent/40 bg-accent/15':'border-line/60 bg-ink/[.06]',cls)}><div className="truncate text-[11px] font-bold text-muted sm:text-xs">{l}</div><div className={cx('mt-0.5 truncate font-black leading-none tabular-nums tracking-tight',big?'text-3xl sm:text-5xl':'text-2xl sm:text-4xl')}>{v}</div>{sub&&<div className="mt-1 line-clamp-2 text-[10px] font-semibold leading-snug text-muted sm:text-xs">{sub}</div>}</div>;
   const two=P.length===2,semV=eq!=null?fg(eq):sp.grade!=null?fg(eqv(sp.grade)):'—',semSub=sem!=null?<>{f2(sem)+'%'}<br/>{sem>=retOf(s).pct-1e-9?'Meets retention':'Below '+fg(retOf(s).g)}</>:sp.grade!=null?'Projected · '+f2(sp.grade)+'%':'Complete every period',nCards=P.length>1?P.length+1:P.length;
@@ -895,7 +949,7 @@ const Banners=()=><>
    <div className="flex items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text sm:h-12 sm:w-12 sm:rounded-2xl"><svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span>
     <div className="min-w-0 flex-1"><h2 className="truncate text-xl font-black leading-tight tracking-tight sm:text-2xl">{s.code||'Subject'}</h2><p className="truncate text-xs text-muted sm:text-sm">{s.name||'No name'} · {f2(+s.units||0)} unit{(+s.units||0)===1?'':'s'}</p></div></div>
    <div className="grid gap-2 sm:gap-3" style={{gridTemplateColumns:'repeat('+Math.min(nCards,3)+',minmax(0,1fr))'}}>
-    {P.map(p=>{const c=pcalc(s,p),v=c.grade!=null?c.grade:c.gradeSoFar;return Bg(p.name,v==null?'—':f2(v),c.grade!=null?'Raw · complete':v!=null?'Raw · so far':'No scores yet',p.id===pcur.id)})}
+    {P.map(p=>{const c=pcalc(s,p),v=c.touched?(c.grade!=null?c.grade:c.gradeSoFar):null;return Bg(p.name,v==null?'—':f2(v),!c.touched?'No scores yet':c.allIn?'Raw · complete':'Raw · blanks count as 0',p.id===pcur.id)})}
     {P.length>1&&Bg('Semestral',semV,semSub,true,cx('!border-accent/60 !bg-accent/20',nCards>3&&'col-span-full'),true)}</div>
    <Seg v={pcur.id} on={x=>{setPid(x);setEdit(false)}} opts={P.map(p=>[p.id,p.name])} cls="w-full"/>
    {PeriodBlock(s,pcur)}
@@ -982,7 +1036,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
   return <div className="mx-auto w-full max-w-[1240px] overflow-x-clip px-5 pb-44 pt-[var(--tp)] sm:px-8 md:pb-40">
   <main className="flex flex-col gap-4 sm:gap-7">
    {Top()}{tab!=='o'&&<h1 className="px-1 pt-2 text-[2.1rem] font-black leading-none tracking-tight sm:text-5xl">{TITLES[tab]||'Overview'}</h1>}{Banners()}
-   <div key={tab} className="anim-rise flex flex-col gap-5 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='w'?ReportPage():ProfileView()}</div></main>
+   <ErrorBoundary key={tab}><div className="anim-rise flex flex-col gap-5 sm:gap-10"><TabBody f={tab==='o'?Ov:tab==='t'?TrackerView:tab==='w'?ReportPage:ProfileView}/></div></ErrorBoundary></main>
   <BottomNav tab={tab} on={k=>{setPill(false);setTab(k)}}/>
 
   <Sheet open={swO&&!!swc} onClose={()=>setSwO(false)} title="Switch group or account">{swc&&<>
@@ -1303,6 +1357,6 @@ const ctl={open,guest,createGroup,joinGroup,editGroup,enableGroupCloud,deleteGro
   const gO=cur.guest?null:grp(gNow),admin={is:!!(gO&&admMine(gO,a)),rows:gO?memRows(gO):[],set:(r,on)=>setRole(gNow,r,on),give:r=>giveAdmin(gNow,r),refresh};
   view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(gNow),changeGroupPass:(o,n,n2)=>changeGroupPass(gNow,o,n,n2),setRec:e=>{if(admin.is)editGroup(gNow,{rec:e})},tour:()=>setTour(true),admin}} swc={cur.guest?null:{cur:grp(gNow),gid:gNow,mine:gidsOf(a),groups:bk.current.groups,accts:bk.current.list.filter(x=>gidsOf(x).includes(gNow)),aid:cur.id,setGroup:g=>setCur(c=>({...c,gid:g})),pick:id=>switchAcct(id,gNow),join:g=>rename(cur.id,{gids:[...gidsOf(a),g]})}}/>;
  }
- return <><div key={cur?'app':'home'} className="anim-rise">{view}</div><UpdateBanner u={upd}/><ConfirmHost/><Onboarding open={tour} onClose={closeTour}/></>;
+ return <><ErrorBoundary title="Something went wrong"><div key={cur?'app':'home'} className="anim-rise">{view}</div></ErrorBoundary><UpdateBanner u={upd}/><ConfirmHost/><Onboarding open={tour} onClose={closeTour}/></>;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);

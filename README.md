@@ -2,7 +2,14 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v20)
+## What's new in this version (v21)
+- **Tracker blank-screen fix.** The v20 edit accidentally removed three Tracker functions (`Options`, `Reverse`, `PeriodBlock`), so opening the Tracker crashed. They are restored, and the whole file was scanned for any other undefined names.
+- **Safer grade math.** Same formulas, but every step now tolerates missing subjects, periods, activities and NaN values (`null` instead of a crash). A period with no scores shows a dash on the Tracker cards too.
+- **Error boundary.** Each tab (and the app as a whole) is wrapped, so a failure shows "Failed to load this section" with **Try again** and **Reload app** instead of a white screen.
+- **Required update dialog.** A new version now opens a full-screen blocking dialog (`z-[9999]`) with release notes and a single **Refresh & Update Now** button. There is no close button, and tapping outside or pressing Escape does nothing. Edit the `RELEASE_NOTES` array in `src/app.jsx` for each release.
+- Service worker cache is `gtf-v21`. The Firebase rules do not need to change.
+
+### Earlier (v20)
 - **Base application toggle (per subject).** In a subject's Options, directly beside the Base box, choose **At the end** (default) or **Per term**.
   - *At the end:* Raw Combined = (Prelim × Prelim weight) + (Final × Final weight), then Final Semestral = (Raw Combined / 100) × (100 − Base) + Base.
   - *Per term:* Transmuted Prelim = (Prelim / 100) × (100 − Base) + Base, the same for Finals, then Final Semestral = (Transmuted Prelim × Prelim weight) + (Transmuted Final × Final weight).
