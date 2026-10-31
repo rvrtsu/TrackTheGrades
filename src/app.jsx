@@ -11,52 +11,16 @@ const CFG=window.GTF_CONFIG||{},DB=String(CFG.databaseURL||'').trim().replace(/\
 const ADAPT={init(){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}};
 
 /* =====================================================================
-   1b. SOUND, HAPTICS AND CONFETTI
-   Every sound is synthesised live with the Web Audio API (no audio files).
-   Sound and haptics each have a switch in Settings and are remembered on this device.
+   1b. HAPTICS AND CONFETTI
+   Haptics and confetti only. There is deliberately no audio of any kind (no <audio>, AudioContext or media session).
+   Haptics has a switch in Settings and is remembered on this device.
    ===================================================================== */
 const FX=(()=>{
- let ctx=null,master=null,conv=null,lastS=0,lastD=0,lastL=0,lastC=0,hooked=false;
- const rd=k=>{try{return localStorage.getItem(k)!=='0'}catch(e){return true}},S={snd:rd('gtf-snd'),hap:rd('gtf-hap')};
- // a small generated "room" so every pop blooms softly instead of stopping dead (no audio files)
- const room=c=>{const n=Math.floor(c.sampleRate*.9),b=c.createBuffer(2,n,c.sampleRate);for(let k=0;k<2;k++){const d=b.getChannelData(k);let lp=0;for(let i=0;i<n;i++){lp+=((Math.random()*2-1)-lp)*.3;d[i]=lp*Math.pow(1-i/n,3)}}return b};
- // iOS 16.4+: let Web Audio play even when the ringer switch is on silent
- const session=()=>{try{if(navigator.audioSession&&navigator.audioSession.type!=='playback')navigator.audioSession.type='playback'}catch(e){}};
- // A short silent WAV built at runtime. Playing it through a real HTML5 <audio> tag moves iOS into the "playback" audio category (this is what makes sound work with the silent switch on).
- let el=null;
- const silentWav=()=>{const n=4000,b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
-  w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,16000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
-  return URL.createObjectURL(new Blob([b],{type:'audio/wav'}))};
- const tag=()=>{try{if(!el){el=document.createElement('audio');el.setAttribute('playsinline','');el.setAttribute('webkit-playsinline','');el.preload='auto';el.loop=false;el.src=silentWav();el.style.cssText='position:fixed;width:0;height:0;opacity:0;pointer-events:none';(document.body||document.documentElement).appendChild(el)}
-  el.currentTime=0;const p=el.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}};
- // Create the audio engine (only ever called from a real tap, click or key press) and make sure it is running.
- const boot=()=>{try{
-  if(!ctx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;session();ctx=new A();
-   master=ctx.createGain();master.gain.value=.95;const cp=ctx.createDynamicsCompressor();cp.threshold.value=-18;cp.ratio.value=3;master.connect(cp);cp.connect(ctx.destination);
-   conv=ctx.createConvolver();conv.buffer=room(ctx);const wet=ctx.createGain();wet.gain.value=.3;conv.connect(wet);wet.connect(master);
-   ctx.onstatechange=()=>{if(ctx.state!=='running')hook()}}
-  if(ctx.state!=='running'){const p=ctx.resume();if(p&&p.then)p.then(()=>{},()=>{})}
-  return ctx}catch(e){return null}};
- // FORCE UNLOCK: inside the gesture, (1) resume the context, (2) start a silent oscillator and a silent one-sample buffer, (3) play a silent HTML5 <audio>.
- // iOS only treats the page as "allowed to play" once something has really been started inside a touch.
- const prime=()=>{session();tag();const c=boot();if(!c)return;
-  try{const b=c.createBuffer(1,1,22050),n=c.createBufferSource();n.buffer=b;n.connect(c.destination);n.start(0)}catch(e){}
-  try{const o=c.createOscillator(),g=c.createGain();g.gain.value=0;o.connect(g);g.connect(c.destination);o.start(0);o.stop(c.currentTime+.05)}catch(e){}
-  try{const p=c.resume();if(p&&p.then)p.then(()=>{if(c.state==='running')unhook()},()=>{})}catch(e){}
-  if(c.state==='running')unhook()};
- // listeners sit on document.body (touchstart + touchend + friends) and stay armed until the engine is really running; they re-arm if iOS suspends it again
- const EV=['touchstart','touchend','mousedown','pointerup','click','keydown'],un=()=>prime();let tgt=null;
- const hook=()=>{if(hooked)return;hooked=true;tgt=document.body||document;EV.forEach(e=>tgt.addEventListener(e,un,{capture:true,passive:true}))};
- const unhook=()=>{if(!hooked)return;hooked=false;EV.forEach(e=>tgt.removeEventListener(e,un,{capture:true}))};
- try{hook();document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ctx&&ctx.state!=='running')hook()});window.addEventListener('pageshow',()=>{if(ctx&&ctx.state!=='running')hook()})}catch(e){}
- const set=(k,v)=>{S[k]=!!v;try{localStorage.setItem('gtf-'+k,v?'1':'0')}catch(e){}if(k==='snd'&&v)prime()};
- // run a sound once the engine is running (resumes it first if iOS put it to sleep)
- const go=fn=>{if(!S.snd)return;const c=boot();if(!c||c.state==='closed')return;tag();if(c.state==='running'){fn(c);return}const p=c.resume();if(p&&p.then)p.then(()=>{if(c.state==='running')fn(c)},()=>{})};
- // one soft "pop": a sine that settles quickly from a slightly higher pitch, with a faint overtone and a short, smooth tail
- const pop=(f,t,pk,dc,f0)=>{const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=3200;lp.Q.value=.4;
-  [[1,1],[2,.12],[3,.04]].forEach(([m,a])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime((f0||f)*m,t);if(f0)o.frequency.exponentialRampToValueAtTime(f*m,t+.045);
-   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(pk*a,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+dc);o.connect(g);g.connect(lp);o.start(t);o.stop(t+dc+.05)});
-  lp.connect(master);lp.connect(conv)};
+ // NO AUDIO: this app never creates an <audio> element, an AudioContext or a media session, so iOS never shows lock-screen media controls.
+ // Only vibration and confetti remain. The old sound switch value is ignored (snd is always off).
+ let lastS=0,lastD=0,lastL=0,lastC=0;
+ const rd=k=>{try{return localStorage.getItem(k)!=='0'}catch(e){return true}},S={snd:false,hap:rd('gtf-hap')};
+ const set=(k,v)=>{if(k==='snd')return;S[k]=!!v;try{localStorage.setItem('gtf-'+k,v?'1':'0')}catch(e){}};
  const vib=p=>{if(!S.hap)return;try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
  const confetti=()=>{try{
   if(typeof document==='undefined'||(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches))return;
@@ -69,16 +33,12 @@ const FX=(()=>{
    s.background=cols[i%cols.length];s.width=(6+Math.random()*5)+'px';s.height=(9+Math.random()*7)+'px';if(i%3===0)s.borderRadius='50%';
    s.animationDuration=(1.2+Math.random()*.8)+'s';s.animationDelay=Math.round(Math.random()*80)+'ms';box.appendChild(p)}
   document.body.appendChild(box);setTimeout(()=>box.remove(),2400)}catch(e){}};
- const done=()=>{const n=Date.now();if(n-lastD<300)return;lastD=n;vib(8);go(c=>{const t=c.currentTime+.02;pop(784,t,.26,.3,960);pop(1174.7,t+.09,.22,.42,1380)})};
- // Sound is reserved for big moments. Typing, taps and navigation are always silent.
- return{S,set,confetti,done,unlock:prime,
-  // a target was reached: a gentle four-pop arpeggio, a double-tap of haptics, optional confetti
-  success(withConfetti){const n=Date.now();if(n-lastS<1500)return;lastS=n;vib([10,70,10]);if(withConfetti!==false)confetti();
-   go(c=>{const t=c.currentTime+.02;[[523.25,0],[659.25,.09],[783.99,.18],[1046.5,.27]].forEach(([f,d],i)=>pop(f,t+d,.22+i*.015,.5+i*.06,f*1.18))})},
-  // something is not possible: one quiet falling pop
-  low(){const n=Date.now();if(n-lastL<600)return;lastL=n;vib(16);go(c=>{const t=c.currentTime+.02;pop(330,t,.24,.34,392);pop(262,t+.1,.19,.46,300)})},
-  // Settings "Play test sound" button (always an explicit tap)
-  test(){prime();go(c=>{const t=c.currentTime+.02;pop(659.25,t,.26,.34,800);pop(987.77,t+.09,.22,.5,1180)})}}
+ const done=()=>{const n=Date.now();if(n-lastD<300)return;lastD=n;vib(8)};
+ return{S,set,confetti,done,unlock(){},
+  // a target was reached: a double-tap of haptics, optional confetti
+  success(withConfetti){const n=Date.now();if(n-lastS<1500)return;lastS=n;vib([10,70,10]);if(withConfetti!==false)confetti()},
+  // something is not possible: one short haptic
+  low(){const n=Date.now();if(n-lastL<600)return;lastL=n;vib(16)}}
 })();
 // theme-aware extras (traffic lights, insight banners, confetti), injected so this file stays self-contained
 (function(){try{if(document.getElementById('gtf-x'))return;const el=document.createElement('style');el.id='gtf-x';el.textContent=[
@@ -353,8 +313,10 @@ const RELEASE_NOTES=[
  'Fixed the Tracker tab going blank',
  'A section that fails to load now shows a message instead of a white screen',
  'The update prompt is now a required dialog with these release notes',
- 'Fixed Base grade calculation: Per term now shows each period grade after Base'];
-const APP_VER='v22';
+ 'Fixed Base grade calculation: Per term now shows each period grade after Base',
+ 'Removed the lock screen media controls (the app no longer uses any audio)',
+ 'Added a Home button to the Tracker header'];
+const APP_VER='v23';
 const UpdateBanner=({u})=>{const [busy,setBusy]=useState(false),btn=useRef(null);
  useEffect(()=>{if(!u.on)return;const o=document.body.style.overflow;document.body.style.overflow='hidden';const t=setTimeout(()=>{try{btn.current&&btn.current.focus()}catch(e){}},50);return()=>{clearTimeout(t);document.body.style.overflow=o}},[u.on]);
  if(!u.on)return null;
@@ -762,7 +724,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
     {ok&&<path d="M9.3 12.8l2.2 2.2 4.1-4.5" stroke="currentColor" strokeWidth="2.1" className="text-good"/>}
     {k==='error'&&<path d="M12 8.5v4M12 15.4h.01" strokeWidth="2.1"/>}
     {(k==='offline'||k==='local')&&<path d="M4.5 4.5l15 15" strokeWidth="2"/>}</svg></button>};
- const HB='grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink/[.07] text-ink transition active:scale-95 disabled:pointer-events-none disabled:opacity-35 sm:h-10 sm:w-10';
+ const HB='grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink/[.07] text-ink transition active:scale-95 disabled:pointer-events-none disabled:opacity-35 max-[359px]:h-8 max-[359px]:w-8 sm:h-10 sm:w-10';
  const TITLES={o:'Overview',t:'Tracker',w:'Report Card',p:'Profile & Settings'};
  const IS={fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':'true'};
  const pickYS=(yid,sid)=>{set(c=>({...c,y:yid,s:sid}));setPill(false)};
@@ -771,11 +733,12 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const shortS=n=>{n=String(n||'');return n.replace(/\s*[\(\[].*$/,'').replace(/\bsemester\b/ig,'Sem').trim()||n};
  // flat header: undo/redo on the left, the compact year-and-semester pill in the middle, cloud sync and the account/group switcher on the right
  const Top=()=><header className="sticky z-30" style={{top:'var(--tp)'}}>
-  <div className="gc hdr grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-full p-1.5">
+  <div className={cx("gc hdr grid items-center gap-2 rounded-full p-1.5 max-[359px]:gap-1",tab==='t'?"grid-cols-[auto_minmax(0,1fr)_auto]":"grid-cols-[1fr_auto_1fr]")}>
    <div className="flex items-center gap-1 justify-self-start">
     <button onClick={undo} disabled={!past.current.length} aria-label="Undo" title="Undo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button onClick={redo} disabled={!fut.current.length} aria-label="Redo" title="Redo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button></div>
-   <button onClick={()=>setPill(v=>!v)} aria-haspopup="dialog" aria-expanded={pill} aria-label={'Year and semester: '+Y.name+', '+S.name} className="flex h-9 max-w-[44vw] items-center gap-1 rounded-full bg-ink/[.07] pl-3.5 pr-2.5 text-[13px] font-extrabold leading-none transition active:scale-95 sm:h-10 sm:max-w-sm sm:text-sm"><span className="truncate">{shortY(Y.name)} - {shortS(S.name)}</span><svg viewBox="0 0 20 20" className={cx('h-4 w-4 shrink-0 text-muted transition-transform duration-300',pill&&'rotate-180')} {...IS} strokeWidth="2"><path d="M5 7.5l5 5 5-5"/></svg></button>
+   <div className="flex min-w-0 items-center justify-center gap-2 max-[359px]:gap-1">{tab==='t'&&<button onClick={()=>{setPill(false);setTab('o')}} aria-label="Home" title="Home" className="grid h-10 w-10 min-h-[40px] min-w-[40px] shrink-0 place-items-center rounded-full bg-ink/[.07] text-ink transition active:scale-95"><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="M4 11 12 4l8 7"/><path d="M6 10v9a1 1 0 0 0 1 1h3.5v-5h3V20H17a1 1 0 0 0 1-1v-9"/></svg></button>}
+   <button onClick={()=>setPill(v=>!v)} aria-haspopup="dialog" aria-expanded={pill} aria-label={'Year and semester: '+Y.name+', '+S.name} className="flex h-9 min-w-0 max-w-[44vw] items-center gap-1 rounded-full bg-ink/[.07] pl-3.5 pr-2.5 text-[13px] font-extrabold leading-none transition active:scale-95 sm:h-10 sm:max-w-sm sm:text-sm"><span className="truncate">{shortY(Y.name)} - {shortS(S.name)}</span><svg viewBox="0 0 20 20" className={cx('h-4 w-4 shrink-0 text-muted transition-transform duration-300',pill&&'rotate-180')} {...IS} strokeWidth="2"><path d="M5 7.5l5 5 5-5"/></svg></button></div>
    <div className="flex items-center gap-1 justify-self-end">{SyncBtn()}
     <button onClick={()=>swc?setSwO(true):onSwitch()} aria-haspopup="dialog" aria-label="Switch account or group" title={swc&&swc.cur?'Group: '+swc.cur.name+' · switch account or group':'Switch account or group'} className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d={IC.g}/></svg></button></div></div>
   {pill&&<><div className="fixed inset-0 z-40" onClick={()=>setPill(false)}/>
@@ -971,9 +934,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     <p className="text-sm text-muted">How many decimals every GWA shows: Overview, Report card, Target GWA and exported images. Subject grades such as 1.75 are not affected.</p>
     <Seg v={GD} on={v=>setCfg({gd:v},'cfggd')} opts={[[2,'2'],[3,'3'],[4,'4']]} cls="w-full"/>
     <div className="flex items-center justify-between rounded-2xl border border-line/60 bg-ink/[.06] px-3 py-2.5 text-sm"><span className="font-semibold text-muted">Preview</span><b className="text-lg tabular-nums">{fw(ayAll!=null?ayAll:1.66432)}</b></div></>)}
-   {A('sd','Sound and haptics','Effects and vibration',<>
-    <Switch on={fxs.snd} onChange={()=>togFx('snd')} label="Sound effects" sub="Soft pops when you reach your target or finish a calculation. Typing and taps stay silent."/>
-    {fxs.snd&&<button className={BTN+' self-start'} onClick={()=>FX.test()}>Play test sound</button>}
+   {A('sd','Haptics','Vibration feedback',<>
     <Switch on={fxs.hap} onChange={()=>togFx('hap')} label="Haptic feedback" sub="Short vibrations on phones that support them."/></>)}
    {A('gp','Grading periods and Base','Weights and the curve',<>
     {rp.map((p,i)=><div key={p.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-ink/[.06] p-3">

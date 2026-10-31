@@ -2,7 +2,12 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v22)
+## What's new in this version (v23)
+- **No more lock screen media controls.** The sound engine is removed completely: no hidden `<audio>` element (the silent-WAV trick), no `navigator.audioSession`, no Web Audio context, and no media session. iOS no longer sees the app as an audio source. The "Sound effects" switch and "Play test sound" button are gone from Settings; haptics (vibration) and confetti stay.
+- **Home button in the Tracker header.** A 40x40 house icon sits beside the year/semester pill and returns to the Overview tab. The pill truncates long names, and on screens under 360px the side buttons shrink slightly so nothing squeezes.
+- Release notes and update dialog list both changes. Service worker cache is `gtf-v23`. Calculation logic is unchanged.
+
+### Earlier (v22)
 - **Base check.** The Base value and the At the end / Per term switch were audited end to end (input, saved subject, semestral math, breakdown, Report, forecaster). With valid scores and a Base the formulas run correctly in both modes (for example Prelim 80, Final 90, 40/60, Base 50 gives 93).
 - **Per term is now visible.** In Per term mode the Tracker's Prelims and Finals cards show each period grade after Base (80 shows as 90, with "After Base · raw 80"). Both modes still reach the same semestral grade because the formula is linear and weights are scaled to 100%.
 - "Fixed Base grade calculation" added to the release notes. Service worker cache is `gtf-v22`.
