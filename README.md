@@ -2,11 +2,16 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v31)
-- **Home header redesign.** The pill is replaced by a flush, full-width Material-style app bar (soft translucency, slight tint, elevation, no glow). It is large at the top of the page (big icon, divider, **Gradely** and the tagline) and condenses as you scroll, swapping the tagline for your sync status. A quick-action row holds **How it works** (tutorial), **Join with code**, **Install app** (when not installed) and **Report a problem**; Refresh and Theme are icon buttons. It keeps clear of the notch and Dynamic Island. Service worker cache is `gradely-v31`.
+## What's new in this version (v33)
+- **Home header fix.** Quick actions now wrap onto extra lines instead of running past the edge, the bar clips anything that would spill out, it respects the left and right safe areas, and there is more space under the status bar and notch.
+- **Developer dashboard: Undo, Redo and History.** Every edit or delete in the dashboard is recorded. **Undo** and **Redo** buttons sit at the top, and a new **History** tab lists every change with **Restore** (for deleted groups, accounts and reports), **Undo** and **Redo**. History is kept in your database under `devhist` and `devdata` (the newest 80 changes) and only the developer user can read it, so the Part 1 rules do not need to change. Restoring an account refreshes its timestamp so devices pick it up on the next sync.
+- Service worker cache is `gradely-v33`.
 
-### Earlier (v30)
-- **Developer sign-in fix.** The username box now accepts either `dev_roeverjosh` or the full email `dev_roeverjosh@gradely.app`. Before, typing the full email always showed "Wrong developer username or password" without contacting Firebase. A blocked API key (website restrictions) now has its own message. Service worker cache is `gradely-v30`.
+### Earlier (v32)
+- **Tracker tutorial.** A guided tour that spotlights the real controls: swiping between subjects (also tabs, arrows and the ← → keys), the grade cards, adding and editing scores, Options, and the **Reverse Calculator** (what it is for, plus a numbered how-to). It opens once the first time the Tracker is shown. The **Replay Tutorial** button at the top of the Tracker now replays this tour (the general welcome tour is still in Profile and on the home screen). Swipe the tutorial card, use Next/Back or the arrow keys. Service worker cache is `gradely-v32`.
+
+### Earlier (v31)
+- **Home header redesign.** The pill is replaced by a flush, full-width Material-style app bar (soft translucency, slight tint, elevation, no glow). It is large at the top of the page (big icon, divider, **Gradely** and the tagline) and condenses as you scroll, swapping the tagline for your sync status. A quick-action row holds **How it works** (tutorial), **Join with code**, **Install app** (when not installed) and **Report a problem**; Refresh and Theme are icon buttons. It keeps clear of the notch and Dynamic Island. Service worker cache is `gradely-v31`.
 
 ### Earlier (v29)
 - **New home header.** The top of the home screen is now a floating glass pill: tiger icon, a hairline divider, **Gradely** and the tagline "Track, Forecast, and Ace your Sem". It sticks below the status bar and respects the notch and Dynamic Island (safe-area inset, with a 3rem minimum when installed on a phone).
@@ -18,7 +23,7 @@ Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**
 - **Creator = admin.** Creating a group also creates (or reuses) your account and makes it the group admin. There is no separate admin account to set up.
 - **Themes.** **Yellow Dark** is the default for new installs (devices that already picked a theme keep it). Red is now a deeper **Maroon**. **Pink**, **Lavender** and **Mint** are new, each with a Light and a Dark version. The theme picker groups them by colour.
 - **Report a Problem.** A button on the home screen sends a bug report to `reports/` in your database.
-- **Developer dashboard.** Sign in from the small **Developer sign-in** link (username `dev_roeverjosh`). The dashboard lists bug reports (status, notes, delete), groups (rename, join code, members, admins, delete) and accounts (name, bio, raw data, delete). See **Part 4**. **You must publish the new rules in Part 1 and do Part 4 for it to work.**
+- **Developer dashboard.** Sign in from the small **Developer sign-in** link (see **Part 4**). The dashboard lists bug reports (status, notes, delete), groups (rename, join code, members, admins, delete) and accounts (name, bio, raw data, delete). See **Part 4**. **You must publish the new rules in Part 1 and do Part 4 for it to work.**
 - **UI.** **Hide Prelim Grades** now appears only in the report card export. **Meet the Creators** on the home screen is a large collapsible card. The Tracker has a small **Replay Tutorial** button.
 - Service worker cache is `gradely-v28`. Open the app twice on each device so the update loads.
 

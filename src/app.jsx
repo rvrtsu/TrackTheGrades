@@ -200,7 +200,7 @@ const devTok=async()=>{if(!DEV.rt)return'';if(DEV.tok&&Date.now()<DEV.exp-60000)
  if(!r.ok){devSignOut();throw new Error('expired')}
  const j=await r.json();DEV.tok=j.id_token;DEV.rt=j.refresh_token||DEV.rt;DEV.exp=Date.now()+(+j.expires_in||3600)*1000;try{localStorage.setItem(DEVK,DEV.rt)}catch(e){}return DEV.tok};
 const devSignIn=async(u,p)=>{
- if(String(u||'').trim().toLowerCase().replace(/@gradely\.app$/,'')!==DEV_USER)return'Wrong developer username or password.'; // accepts "dev_roeverjosh" or the full email
+ if(String(u||'').trim().toLowerCase().replace(/@gradely\.app$/,'')!==DEV_USER)return'Wrong developer username or password.';
  if(!APIKEY)return'Developer sign-in needs your Firebase Web API key. Add apiKey to config.js (README, Part 4).';
  if(!navigator.onLine)return'You need an internet connection for that.';
  try{const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(APIKEY),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:DEV_EMAIL,password:String(p||''),returnSecureToken:true})});
@@ -356,11 +356,14 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v33',notes:[
+ 'Home header: everything now stays inside the bar on every screen size, with more space below the status bar and notch']},
+ {v:'v32',notes:[
+ 'New Tracker tutorial: a guided tour that highlights swiping between subjects, the grade cards, adding scores, Options and the Reverse Calculator (with step-by-step instructions)',
+ 'It opens the first time you use the Tracker, and the Replay Tutorial button at the top of the Tracker plays it again']},
  {v:'v31',notes:[
  'New home header: a bigger, flush app bar with a Material look. It shrinks as you scroll and shows your sync status',
  'Quick actions in the header: How it works (tutorial), Join with code, Install app and Report a problem, plus Refresh and Theme buttons']},
- {v:'v30',notes:[
- 'Developer sign-in now accepts the full email (dev_roeverjosh@gradely.app) as well as the username, and shows a clearer message if the API key is blocked by website restrictions']},
  {v:'v29',notes:[
  'New home header: a floating glass pill with the Gradely icon, a divider, the name and a short tagline, kept clear of the notch and Dynamic Island']},
  {v:'v28',notes:[
@@ -368,7 +371,7 @@ const RELEASE_NOTES=[
  'Groups get a short join code. Tap Join Group on the home screen and enter it to join instantly',
  'The person who creates a group is its admin automatically, with no separate admin account',
  'Yellow Dark is the default theme, Red is now a deeper Maroon, and Pink, Lavender and Mint each have Light and Dark versions',
- 'New Report a Problem button on the home screen, plus a developer dashboard for the team',
+ 'New Report a Problem button on the home screen',
  'Hide Prelim Grades now lives only in the report card export. Meet the Creators is bigger, and the Tracker has a Replay Tutorial button']},
  {v:'v27',notes:[
  'Home: Create Group, Join Group and Individual Account are now equal rectangle buttons in one row',
@@ -400,22 +403,59 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v31';
+const APP_VER='v33';
 /* ---- one-time contextual tab tutorials ---- */
 const tipSeen=k=>{try{return localStorage.getItem('gtf-tip-'+k)==='1'}catch(e){return false}};
 const tipDone=k=>{try{localStorage.setItem('gtf-tip-'+k,'1')}catch(e){}};
-const TUT={
- t:{title:'Swipe to switch subjects',body:'In the Tracker, swipe the subject card left or right to jump to the next or previous subject. On a computer, use the arrow buttons or the ← → keys.',demo:'swipe'},
- rev:{title:'Meet the Reverse Calculator',body:'Use this to forecast the Finals score you need when only your Prelim grade is available. Enter the grade you are aiming for and it works out the score required.',demo:'rev'}};
-function TabTutorial({id,onClose}){
- const t=TUT[id];useLock(!!t);if(!t)return null;
- return <div className="fixed inset-0 z-[65] flex items-end justify-center p-4 sm:items-center" role="dialog" aria-modal="true" aria-label={t.title}>
-  <div className="anim-fade absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose}/>
-  <div className="anim-sheet gcs relative flex w-full max-w-sm flex-col gap-4 rounded-[2rem] p-6 text-center" style={{marginBottom:'env(safe-area-inset-bottom,0px)'}}>
-   {t.demo==='swipe'?<div className="relative mx-auto h-16 w-44 overflow-hidden rounded-2xl bg-ink/[.06]" aria-hidden="true"><div className="absolute inset-y-2 left-1/2 w-28 -ml-14 rounded-xl border border-accent/60 bg-accent/25" style={{animation:'swipeHint 2.4s ease-in-out infinite'}}/><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl text-muted">‹</span><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xl text-muted">›</span></div>
-    :<div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent text-accent-ink" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={IC.f}/></svg></div>}
-   <div><h2 className="text-xl font-black tracking-tight">{t.title}</h2><p className="mt-1.5 text-sm text-muted">{t.body}</p></div>
-   <button className={BTNP+' !py-3'} onClick={onClose} autoFocus>Got it</button></div></div>;
+/* ---- Tracker tutorial: a guided tour that spotlights the real controls (swipe, grades, scores, options, reverse calculator) ---- */
+const TT=[
+ {t:'Welcome to the Tracker',d:'A one-minute tour of how to track a subject, move between subjects and forecast the grade you need. You can replay it any time from the Replay Tutorial button at the top of the Tracker.',logo:true},
+ {t:'Swipe to change subject',d:'Swipe the subject card left or right to jump to the next or previous subject. You can also tap a subject tab, use the ‹ › buttons, or press the ← → keys on a computer.',demo:true,sel:'[data-tt="tabs"]'},
+ {t:'Your grades at a glance',d:'These cards show the raw grade of each period and your Semestral grade. The highlighted period is the one you are editing. Blank scores count as 0 until you enter them.',ic:IC.f,sel:'[data-tt="grades"]'},
+ {t:'Add and edit scores',d:'Pick a period with the switch (Prelims or Finals). Tap Edit Activities to add activities and set their weights, tap Done, then type a score for each one.',ic:'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',sel:'[data-tt="period"]',prep:'close'},
+ {t:'Options',d:'Options holds the subject details, period weights, the lowest grade you must keep (retention), the Base curve and the forecasting tools. Tap it to open or close it.',ic:IC.s,sel:'[data-tt="options"]',prep:'close'},
+ {t:'The Reverse Calculator',d:'This highlighted box is the Reverse Calculator. It works out the scores you still need. Use it when only your Prelim grade is out and you want to forecast the Finals score, or when you know a released period grade but not the individual scores.',ic:IC.f,sel:'[data-rev]',prep:'open'},
+ {t:'How to use it',ic:IC.f,sel:'[data-rev]',prep:'open',list:[
+  'Switch to the period you want to forecast, for example Finals.',
+  'Choose Raw grade, or Includes Base if the grade you were given already has the Base added.',
+  'Type the grade you are aiming for or the released grade in the box.',
+  'Tap Fill possible scores. Blank scores are worked out and tagged Possible score.',
+  'Tap Clear possible scores to remove them and go back to your real scores.']},
+ {t:'You are all set',d:'Tap the Replay Tutorial button at the top of the Tracker whenever you want to see this again.',ic:'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',sel:'[data-tt="replay"]',prep:'close'}];
+function TrackerTour({open,onClose,openOpts,closeOpts}){
+ const [i,setI]=useState(0),[dir,setDir]=useState(1),[rect,setRect]=useState(null),cardR=useRef(null),t0=useRef(null),n=TT.length,st=TT[i],last=i===n-1;
+ useLock(open);
+ useEffect(()=>{if(open){setI(0);setDir(1)}},[open]);
+ const go=d=>{const j=Math.max(0,Math.min(n-1,i+d));if(j===i)return;setDir(d);setI(j)};
+ useEffect(()=>{if(!open)return;const k=e=>{if(e.key==='Escape'){e.stopImmediatePropagation();onClose()}else if(e.key==='ArrowRight')go(1);else if(e.key==='ArrowLeft')go(-1)};window.addEventListener('keydown',k,true);return()=>window.removeEventListener('keydown',k,true)},[open,i]);
+ // each step: open/close Options if needed, scroll the target into the free area above the card, then keep the spotlight on it
+ useEffect(()=>{if(!open)return;let raf=0,live=true,t1,t2;const q=()=>st.sel?document.querySelector(st.sel):null;
+  const measure=()=>{const el=q();if(!el){setRect(null);return}const r=el.getBoundingClientRect(),vh=window.innerHeight;setRect({l:Math.max(4,r.left-6),t:Math.max(4,r.top-6),w:Math.min(window.innerWidth-8,r.width+12),h:Math.max(24,Math.min(r.height+12,vh-8-Math.max(4,r.top-6)))})};
+  const loop=(until)=>{const f=()=>{if(!live)return;measure();if(Date.now()<until)raf=requestAnimationFrame(f)};f()};
+  if(st.prep==='open')openOpts();else if(st.prep==='close')closeOpts();
+  const wait=st.prep==='open'?520:st.prep==='close'?380:60;
+  t1=setTimeout(()=>{const el=q();if(el){const r=el.getBoundingClientRect(),vh=window.innerHeight,cardH=(cardR.current&&cardR.current.offsetHeight)||300,top0=84,avail=vh-cardH-top0-12,want=r.height<=avail?top0+(avail-r.height)/2:top0;window.scrollBy({top:r.top-want,behavior:REDUCED()?'auto':'smooth'})}loop(Date.now()+900)},wait);
+  const on=()=>measure();window.addEventListener('resize',on);window.addEventListener('scroll',on,{passive:true});
+  return()=>{live=false;clearTimeout(t1);clearTimeout(t2);cancelAnimationFrame(raf);window.removeEventListener('resize',on);window.removeEventListener('scroll',on)}},[open,i]);
+ if(!open)return null;
+ return createPortal(<div className="fixed inset-0 z-[90]" role="dialog" aria-modal="true" aria-label="Tracker tutorial" style={{touchAction:'none',overscrollBehavior:'contain'}}>
+  <div className="absolute inset-0"/>
+  {rect?<div aria-hidden="true" className="pointer-events-none absolute rounded-3xl transition-all duration-300 ease-out" style={{left:rect.l,top:rect.t,width:rect.w,height:rect.h,boxShadow:'0 0 0 9999px rgb(0 0 0/.62),0 0 0 2px rgb(var(--accent)),0 0 0 7px rgb(var(--accent)/.28)'}}/>:<div aria-hidden="true" className="anim-fade pointer-events-none absolute inset-0 bg-black/60 backdrop-blur-[2px]"/>}
+  <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-6">
+   <div ref={cardR} className="anim-sheet gcs pointer-events-auto relative flex w-full max-w-md select-none flex-col overflow-hidden rounded-[1.75rem]" style={{marginBottom:'env(safe-area-inset-bottom,0px)',touchAction:'pan-y'}}
+    onTouchStart={e=>{const t=e.touches[0];t0.current={x:t.clientX,y:t.clientY}}}
+    onTouchEnd={e=>{const a=t0.current,t=e.changedTouches[0];t0.current=null;if(!a)return;const dx=t.clientX-a.x,dy=t.clientY-a.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.3)go(dx<0?1:-1)}}>
+    <div className="flex h-12 items-center justify-between px-5"><span className="text-xs font-bold text-muted">Tracker tutorial · {i+1} of {n}</span>{!last&&<button onClick={onClose} className="rounded-full px-3 py-1.5 text-sm font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink">Skip</button>}</div>
+    <div key={i} className={cx('flex flex-col gap-3 px-5 pb-3',dir>0?'slide-r':'slide-l')}>
+     <div className="flex items-start gap-3.5">
+      {st.logo?<TigerLogo className="h-12 w-12 shrink-0"/>:st.demo?<div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-xl bg-ink/[.07]" aria-hidden="true"><div className="absolute inset-y-1.5 left-1/2 -ml-7 w-14 rounded-lg border border-accent/60 bg-accent/25" style={{animation:'swipeHint 2.4s ease-in-out infinite'}}/></div>
+       :<span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/20 text-accent-text ring-1 ring-accent/30" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={st.ic}/></svg></span>}
+      <div className="min-w-0"><h2 className="text-xl font-black leading-tight tracking-tight">{st.t}</h2>{st.d&&<p className="mt-1.5 text-sm leading-relaxed text-muted">{st.d}</p>}</div></div>
+     {st.list&&<ol className="flex flex-col gap-2">{st.list.map((x,k)=><li key={k} className="flex items-start gap-2.5 text-sm leading-snug"><span className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent text-[11px] font-black text-accent-ink">{k+1}</span><span>{x}</span></li>)}</ol>}
+    </div>
+    <div className="flex items-center justify-center gap-1.5 pb-3 pt-1" role="tablist" aria-label="Tutorial steps">{TT.map((_,k)=><button key={k} role="tab" aria-selected={k===i} aria-label={'Step '+(k+1)} onClick={()=>{setDir(k>i?1:-1);setI(k)}} className={cx('h-1.5 rounded-full transition-all duration-300',k===i?'w-5 bg-accent':'w-1.5 bg-ink/20 hover:bg-ink/30')}/>)}</div>
+    <div className="flex gap-2.5 px-5 pb-5">{i>0&&<button onClick={()=>go(-1)} className={BTN+' !py-3'}>Back</button>}<button onClick={last?onClose:()=>go(1)} className={BTNP+' flex-1 !py-3 !text-base'} autoFocus>{last?'Done':'Next'}</button></div>
+   </div></div></div>,document.body);
 }
 /* ---- Add to Home Screen ---- */
 window.__gtfBIP=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__gtfBIP=e});
@@ -986,7 +1026,7 @@ const Banners=()=><>
   {msg&&<div className="anim-rise flex items-center justify-between gap-3 rounded-2xl border border-line bg-ink/[.06] px-4 py-2 text-sm font-semibold">{msg}<button className="text-muted" onClick={()=>setMsg('')}>✕</button></div>}</>;
 
  /* ---- ONE subject card: tab bar lives in the card header, the card swipes ---- */
- const CardTabs=()=><div data-noswipe className="flex items-center gap-2 border-b border-line/60 bg-ink/[.06] px-3 py-2">
+ const CardTabs=()=><div data-tt="tabs" data-noswipe className="flex items-center gap-2 border-b border-line/60 bg-ink/[.06] px-3 py-2">
   <div className="min-w-0 flex-1 overflow-x-auto" style={{scrollbarWidth:'none'}}><div className="flex w-max gap-1.5">
    {subs.map(s=><button key={s.id} id={'tab-'+s.id} onClick={()=>goTo(subs.indexOf(s))} className={cx('flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all duration-300 sm:text-sm',cur&&cur.id===s.id?'border-accent bg-accent text-accent-ink shadow-sm':'border-transparent text-muted hover:bg-ink/[.09] hover:text-ink')}>{s.code||'Subject'}</button>)}
    <button onClick={()=>setAdding(true)} className="shrink-0 rounded-xl border border-dashed border-accent/60 px-3 py-1.5 text-xs font-bold text-accent-text transition hover:bg-accent/10 sm:text-sm" aria-label="Add subject">＋</button></div></div>
@@ -1012,12 +1052,14 @@ const Banners=()=><>
   <div className="grid grid-cols-3 gap-2 text-center"><div><div className="text-[10px] font-bold text-muted">Raw semestral{!real&&R!=null?' (projected)':''}</div><div className="text-base font-black tabular-nums">{R==null?'—':f2(R)}</div></div><div><div className="text-[10px] font-bold text-muted">Base</div><div className="text-base font-black tabular-nums">{f2(B)}</div></div><div><div className="text-[10px] font-bold text-muted">After Base</div><div className="text-base font-black tabular-nums">{T==null?'—':f2(T)}</div></div></div>
   {R!=null&&bm==='end'&&<p className="text-xs text-muted">Base at the end: ({f2(R)} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(T)}</b></p>}
   {R!=null&&bm==='term'&&<div className="flex flex-col gap-0.5 text-xs text-muted"><span>Base per term, then combined by weight:</span>{P.map((p,i)=>vals[i]==null?null:<span key={p.id}>{p.name}: ({f2(vals[i])} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(trans(vals[i],B))}</b> × {f2(sc.W[i])}%</span>)}<span>Semestral = <b className="text-ink">{f2(T)}</b></span></div>}</div>};
-const [tip,setTip]=useState(null);
-useEffect(()=>{if(tab==='t'&&!tipSeen('t')){const i=setTimeout(()=>setTip('t'),450);return()=>clearTimeout(i)}},[tab]);
-useEffect(()=>{if(tab==='t'&&!tip&&tipSeen('t')&&!tipSeen('rev')&&Object.values(opt).some(Boolean)){const i=setTimeout(()=>setTip('rev'),500);return()=>clearTimeout(i)}},[opt,tab,tip]);
-const closeTip=()=>{const k=tip;tipDone(k);setTip(null);if(k==='rev')setTimeout(()=>{const e=document.querySelector('[data-rev]');e&&e.scrollIntoView({block:'center',behavior:REDUCED()?'auto':'smooth'})},250)};
+const [tt,setTt]=useState(false),ttInit=useRef(false);
+const startTt=()=>{ttInit.current=!!(cur&&opt[cur.id]);setTt(true)};
+const openOpts=()=>{cur&&setOpt(o=>o[cur.id]?o:{...o,[cur.id]:true})},closeOpts=()=>{cur&&setOpt(o=>o[cur.id]?{...o,[cur.id]:false}:o)};
+const closeTt=()=>{tipDone('tt');setTt(false);ttInit.current?openOpts():closeOpts();setTimeout(()=>{try{window.scrollTo({top:0,behavior:REDUCED()?'auto':'smooth'})}catch(e){}},60)};
+// the tutorial opens once, the first time the Tracker is shown; Replay Tutorial reopens it
+useEffect(()=>{if(tab==='t'&&!tt&&!tipSeen('tt')){const i=setTimeout(()=>{if(!tipSeen('tt'))startTt()},700);return()=>clearTimeout(i)}},[tab]);
 const Pill=(t,sub,ic,kids,wide)=><section className="flex flex-col gap-3.5 rounded-[1.75rem] border border-line/60 bg-ink/[.035] p-4 shadow-[0_6px_24px_-16px_rgb(var(--ink)/.25)] sm:p-5"><header className="flex items-center gap-2.5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent-text" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ic}/></svg></span><div className="min-w-0"><h4 className="text-sm font-extrabold leading-tight">{t}</h4><p className="text-xs leading-snug text-muted">{sub}</p></div></header>{kids}</section>;
-const Options=(s,p,isLast)=>{const o=!!opt[s.id];return <div className="overflow-hidden rounded-3xl border border-line/60 bg-ink/[.06] shadow-[0_8px_30px_-14px_rgb(var(--ink)/.2)]">
+const Options=(s,p,isLast)=>{const o=!!opt[s.id];return <div data-tt="options" className="overflow-hidden rounded-3xl border border-line/60 bg-ink/[.06] shadow-[0_8px_30px_-14px_rgb(var(--ink)/.2)]">
   <button onClick={()=>setOpt({...opt,[s.id]:!o})} aria-expanded={o} className="flex w-full items-center gap-3.5 p-4 text-left transition hover:bg-ink/[.09] sm:p-5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC.s}/></svg></span><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">Options</span><span className="block text-xs text-muted">Details, weights, base, retention, reverse calculator</span></span><Chev open={o}/></button>
   <div className={cx('acc',o&&'open')} inert={!o}><div><div className="grid gap-5 border-t border-line/50 p-4 sm:p-5 md:grid-cols-2 md:gap-x-8 md:gap-y-6">
    {Pill('Subject','Name, code and units',IC.w,DetailsBox(s))}
@@ -1053,15 +1095,15 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
   return <>
    <div className="flex items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text sm:h-12 sm:w-12 sm:rounded-2xl"><svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span>
     <div className="min-w-0 flex-1"><h2 className="truncate text-xl font-black leading-tight tracking-tight sm:text-2xl">{s.code||'Subject'}</h2><p className="truncate text-xs text-muted sm:text-sm">{s.name||'No name'} · {f2(+s.units||0)} unit{(+s.units||0)===1?'':'s'}</p></div></div>
-   <div className="grid gap-2 sm:gap-3" style={{gridTemplateColumns:'repeat('+Math.min(nCards,3)+',minmax(0,1fr))'}}>
+   <div data-tt="grades" className="grid gap-2 sm:gap-3" style={{gridTemplateColumns:'repeat('+Math.min(nCards,3)+',minmax(0,1fr))'}}>
     {P.map(p=>{const c=pcalc(s,p),rv=c.touched?(c.grade!=null?c.grade:c.gradeSoFar):null,tm=bmodeOf(s)==='term',v=tm&&rv!=null?trans(rv,sbaseOf(s)):rv;return Bg(p.name,v==null?'—':f2(v),!c.touched?'No scores yet':tm?'After Base · raw '+f2(rv):c.allIn?'Raw · complete':'Raw · blanks count as 0',p.id===pcur.id)})}
     {P.length>1&&Bg('Semestral',semV,semSub,true,cx('!border-accent/60 !bg-accent/20',nCards>3&&'col-span-full'),true)}</div>
-   <Seg v={pcur.id} on={x=>{setPid(x);setEdit(false)}} opts={P.map(p=>[p.id,p.name])} cls="w-full"/>
-   {PeriodBlock(s,pcur)}
+   <div data-tt="period" className="flex flex-col gap-3.5 sm:gap-6"><Seg v={pcur.id} on={x=>{setPid(x);setEdit(false)}} opts={P.map(p=>[p.id,p.name])} cls="w-full"/>
+   {PeriodBlock(s,pcur)}</div>
    <div className="mx-auto w-full max-w-3xl">{Options(s,pcur,isLast)}</div></>};
  
 const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><button className={BTNP} onClick={()=>setAdding(true)}>＋ Add your first subject</button></div>;
- const TrackerView=()=><div className="flex flex-col gap-6 pb-2">{prof&&prof.tour&&<div className="-mb-3 flex justify-end"><button onClick={prof.tour} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-ink/[.06] px-3 py-1.5 text-[11px] font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>Replay Tutorial</button></div>}{subs.length?Shell(TrackerBody()):EmptyCard()}</div>;
+ const TrackerView=()=><div className="flex flex-col gap-6 pb-2"><div className="-mb-3 flex justify-end"><button data-tt="replay" onClick={startTt} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-ink/[.06] px-3 py-1.5 text-[11px] font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>Replay Tutorial</button></div>{subs.length?Shell(TrackerBody()):EmptyCard()}</div>;
 
  /* ---- settings sheet ---- */
  const Settings=()=>{
@@ -1151,7 +1193,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     <button disabled={jb} className={BTNP} onClick={async()=>{setJb(true);setJm('');try{const r=await prof.joinGroup(jf.name,jf.pass);if(String(r).startsWith('ok')){setJgO(false);setPm('You joined the group.')}else setJm(r)}catch(e){setJm('Something went wrong. Try again.')}setJb(false)}}>{jb?'Working…':'Join group'}</button></>
     :<p className="text-sm text-muted">Cloud sync is off, so groups can only be joined from this device. Add your database URL in config.js to join a group with a passcode.</p>}
    {swc&&swc.groups.length>0&&<div><div className={LBL}>Groups already on this device</div><div className="mt-2 flex flex-col gap-2">{swc.groups.map(g=><button key={g.id} onClick={()=>{swc.join(g.id);setJgO(false);setPm('You joined '+g.name+'.')}} className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.04] p-2.5 text-left transition hover:border-accent/60"><GroupIcon g={g} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1 truncate text-sm font-extrabold">{g.name}</span><span className="text-xs font-bold text-accent-text">Add</span></button>)}</div></div>}</Sheet>
-  {tip&&<TabTutorial id={tip} onClose={closeTip}/>}
+  <TrackerTour open={tt&&tab==='t'} onClose={closeTt} openOpts={openOpts} closeOpts={closeOpts}/>
   <Sheet open={swO&&!!swc} onClose={()=>setSwO(false)} title="Switch group or account">{swc&&<>
    <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.06] p-3"><Avatar a={acct} s="h-12 w-12" t="text-2xl"/><div className="min-w-0 flex-1"><div className="truncate font-extrabold">{acct.name||'Account'}</div><div className="truncate text-xs text-muted">{swc.cur?'Viewing '+swc.cur.name:''}{swc.mine.length>1?' · in '+swc.mine.length+' groups':''}</div></div></div>
    <div><div className={LBL}>Your groups</div><div className="mt-2 flex flex-col gap-2">{swc.groups.slice().sort((x,y)=>(swc.mine.includes(y.id)?1:0)-(swc.mine.includes(x.id)?1:0)).map(g=>{const mem=swc.mine.includes(g.id),on=mem&&g.id===swc.gid;return <div key={g.id} className={cx('flex items-center gap-3 rounded-2xl border p-2.5 transition',on?'border-accent bg-accent/15':'border-line bg-ink/[.04]')}>
@@ -1200,15 +1242,33 @@ const fdate=t=>{try{return t?new Date(t).toLocaleString([],{dateStyle:'medium',t
 const TA=({v,on,ph,cls='',rows=4})=><textarea value={v} rows={rows} placeholder={ph} onChange={e=>on(e.target.value)} className={cx(INP,'w-full resize-y !text-left p-3.5',cls)}/>;
 const RSTAT=[['open','Open'],['prog','In progress'],['done','Resolved']],RCAT={bug:'Bug',ui:'Display',sync:'Sync / data',other:'Other'};
 function DevDashboard({onExit}){
- const [tab,setTab]=useState('reports'),[D,setD]=useState({g:{},s:{},r:{}}),[ld,setLd]=useState(true),[er,setEr]=useState(''),[q,setQ]=useState(''),[flt,setFlt]=useState('all'),[sel,setSel]=useState(null),[f,setF]=useState({}),[bz,setBz]=useState(false),[note,setNote]=useState(''),[raw,setRaw]=useState(false);
- const load=async()=>{setLd(true);setEr('');try{const[g,s,r]=await Promise.all([dget('groups'),dget('sync'),dget('reports')]);setD({g:g||{},s:s||{},r:r||{}})}catch(e){if(!devOn()){onExit();return}setEr('Could not load the database. Check your connection and that the database rules from the README (Part 1) are published.')}setLd(false)};
+ const [tab,setTab]=useState('reports'),[D,setD]=useState({g:{},s:{},r:{},h:{}}),[ld,setLd]=useState(true),[er,setEr]=useState(''),[q,setQ]=useState(''),[flt,setFlt]=useState('all'),[sel,setSel]=useState(null),[f,setF]=useState({}),[bz,setBz]=useState(false),[note,setNote]=useState(''),[raw,setRaw]=useState(false);
+ const load=async()=>{setLd(true);setEr('');try{const[g,s,r,h]=await Promise.all([dget('groups'),dget('sync'),dget('reports'),dget('devhist').catch(()=>({}))]);setD({g:g||{},s:s||{},r:r||{},h:h||{}})}catch(e){if(!devOn()){onExit();return}setEr('Could not load the database. Check your connection and that the database rules from the README (Part 1) are published.')}setLd(false)};
  useEffect(()=>{load()},[]);
  const run=async(fn,ok,after)=>{setBz(true);setNote('');try{await fn();setNote(ok||'Saved ✓');if(after)after();await load()}catch(e){setNote('That did not work ('+(e&&e.message||'error')+'). Check the database rules.')}setBz(false)};
+
+ /* ---- history: every change is recorded in the cloud (devhist = small summary, devdata = the before/after values) so it can be undone, redone or restored later ---- */
+ const mrg=(b,x)=>{const o={...(b&&typeof b==='object'?b:{})};for(const[k,v]of Object.entries(x)){if(v===null||v===undefined)delete o[k];else o[k]=v}return o};
+ const putv=async(p,v)=>{const acc=/^sync\/[^/]+$/.test(p);if(acc&&v&&typeof v==='object'&&v.t!==undefined)v={...v,t:Date.now()}; // restored accounts get a fresh timestamp so devices pick them up
+  const empty=v==null||(typeof v==='object'&&!Object.keys(v).length);if(empty)await ddel(p);else await dput(p,v)};
+ const applyOps=async(ops,fwd)=>{const L=fwd?ops:ops.slice().reverse();for(const o of L)await putv(o.p,fwd?o.a:o.b)};
+ const change=async(label,specs,isDel)=>{const ops=[];
+  for(const sp of specs){const b=await dget(sp.p),a=typeof sp.a==='function'?sp.a(b):sp.a;ops.push({p:sp.p,b:b===undefined?null:b,a:a===undefined?null:a})}
+  await applyOps(ops,true);
+  const id='h'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  try{await dput('devdata/'+id,JSON.stringify(ops));await dput('devhist/'+id,{t:Date.now(),l:label,d:isDel?1:0,u:0});
+   const old=Object.entries(D.h||{}).filter(([,v])=>v&&typeof v==='object').sort((x,y)=>(x[1].t||0)-(y[1].t||0));
+   for(const[k]of old.slice(0,Math.max(0,old.length-79))){await ddel('devhist/'+k);await ddel('devdata/'+k)}}catch(e){}};
+ const H=Object.entries(D.h||{}).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,...v})).sort((a,b)=>(b.t||0)-(a.t||0));
+ const newestT=H.length?H[0].t||0:0,undoT=H.find(h=>!h.u)||null,redoT=H.filter(h=>h.u&&(h.ut||0)>newestT).sort((a,b)=>(b.ut||0)-(a.ut||0))[0]||null;
+ const doUndo=h=>run(async()=>{const ops=JSON.parse(await dget('devdata/'+h.k)||'[]');if(!ops.length)throw new Error('history data missing');await applyOps(ops,false);await dpatch('devhist/'+h.k,{u:1,ut:Date.now()})},h.d?'Restored ✓':'Undone ✓');
+ const doRedo=h=>run(async()=>{const ops=JSON.parse(await dget('devdata/'+h.k)||'[]');if(!ops.length)throw new Error('history data missing');await applyOps(ops,true);await dpatch('devhist/'+h.k,{u:0,ut:null})},'Redone ✓');
+ const redoAsk=h=>h.d?ask({title:'Delete again?',msg:'“'+h.l+'” will be applied again.',yes:'Delete again',onYes:()=>doRedo(h)}):doRedo(h);
  const G=Object.entries(D.g).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,meta:v.meta||{},m:v.m||{},adm:admKeys(v.admins)})).sort((a,b)=>(a.meta.n||'').localeCompare(b.meta.n||''));
  const A=Object.entries(D.s).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,n:v.n||'',b:v.b||'',t:v.t,x:v.x===1,d:v.d,size:typeof v.d==='string'?v.d.length:0})).sort((a,b)=>(a.n||'~').localeCompare(b.n||'~'));
  const R=Object.entries(D.r).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,...v,s:v.s||'open'})).sort((a,b)=>(b.t||0)-(a.t||0));
  const ql=q.trim().toLowerCase(),has=(...x)=>!ql||x.some(y=>String(y||'').toLowerCase().includes(ql));
- const Gs=G.filter(g=>has(g.meta.n,g.meta.c,g.k)),As=A.filter(a=>has(a.n,a.b,a.k)),Rs=R.filter(r=>(flt==='all'||r.s===flt)&&has(r.m,r.ct,r.c,r.k)),openN=R.filter(r=>r.s!=='done').length;
+ const Hh=H.filter(h=>has(h.l)),Gs=G.filter(g=>has(g.meta.n,g.meta.c,g.k)),As=A.filter(a=>has(a.n,a.b,a.k)),Rs=R.filter(r=>(flt==='all'||r.s===flt)&&has(r.m,r.ct,r.c,r.k)),openN=R.filter(r=>r.s!=='done').length;
  const sg=sel&&sel.t==='g'?G.find(x=>x.k===sel.k):null,sa=sel&&sel.t==='a'?A.find(x=>x.k===sel.k):null,sr=sel&&sel.t==='r'?R.find(x=>x.k===sel.k):null;
  const pick=(t,k,init)=>{setSel({t,k});setF(init);setNote('');setRaw(false)};
  const close=()=>{setSel(null);setNote('')};
@@ -1216,17 +1276,23 @@ function DevDashboard({onExit}){
  const Pill=(t,cls)=><span className={cx('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold',cls||'bg-ink/[.08] text-muted')}>{t}</span>;
  const Msg=()=>note?<p className={cx('text-xs font-semibold',/did not work/.test(note)?'text-bad':'text-good')}>{note}</p>:null;
  const stats=a=>{try{const d=JSON.parse(a.d),ys=d.years||[],ss=ys.flatMap(y=>y.sems||[]);return ys.length+' year'+(ys.length===1?'':'s')+' · '+ss.length+' semester'+(ss.length===1?'':'s')+' · '+ss.reduce((n,s)=>n+(s.subs||[]).length,0)+' subjects'}catch(e){return'No readable data'}};
- const Tab=(id,l,n)=><button key={id} onClick={()=>{setTab(id);setQ('')}} className={cx('flex-1 rounded-xl px-3 py-2.5 text-sm font-bold transition',tab===id?'bg-accent text-accent-ink':'text-muted hover:bg-ink/[.07]')}>{l}{n!=null&&<span className="ml-1.5 text-xs opacity-80">{n}</span>}</button>;
+ const Tab=(id,l,n)=><button key={id} onClick={()=>{setTab(id);setQ('')}} className={cx('min-w-0 flex-1 truncate rounded-xl px-1.5 py-2.5 text-[13px] font-bold transition sm:px-3 sm:text-sm',tab===id?'bg-accent text-accent-ink':'text-muted hover:bg-ink/[.07]')}>{l}{n!=null&&<span className="ml-1.5 text-xs opacity-80">{n}</span>}</button>;
  return <div className="mx-auto max-w-3xl px-4 pb-20 pt-[var(--tp)] sm:px-8">
   <div className="flex flex-wrap items-center gap-3 pb-4 pt-2"><TigerLogo className="h-10 w-10"/><div className="min-w-0 flex-1"><h1 className="text-xl font-black tracking-tight sm:text-2xl">Developer Dashboard</h1><p className="text-xs text-muted">Signed in as {DEV_USER} · {APP_VER}</p></div>
    <button className={BTN} onClick={load} disabled={ld}>{ld?'Loading…':'↻ Refresh'}</button><button className={BTN} onClick={()=>{devSignOut();onExit()}}>Sign out</button></div>
-  <div className={cx(CARD,'mb-4 flex gap-1 p-1.5')}>{Tab('reports','Reports',openN)}{Tab('groups','Groups',G.length)}{Tab('accounts','Accounts',A.length)}</div>
+  <div className={cx(CARD,'mb-3 flex flex-col gap-1.5 p-2')}><div className="flex gap-2">
+   <button disabled={bz||ld||!undoT} onClick={()=>doUndo(undoT)} className={BTN+' flex-1'} aria-label="Undo the last change"><HIc d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" cls="h-4 w-4"/>Undo</button>
+   <button disabled={bz||ld||!redoT} onClick={()=>redoAsk(redoT)} className={BTN+' flex-1'} aria-label="Redo the change you undid">Redo<HIc d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" cls="h-4 w-4"/></button></div>
+   <p className="truncate px-1 text-[11px] text-muted">{undoT?'Next undo: '+undoT.l:'Nothing to undo yet'}{redoT?' · Next redo: '+redoT.l:''}</p></div>
+  <div className={cx(CARD,'mb-4 flex gap-1 p-1.5')}>{Tab('reports','Reports',openN)}{Tab('groups','Groups',G.length)}{Tab('accounts','Accounts',A.length)}{Tab('history','History',H.length)}</div>
   <div className="mb-4 flex flex-col gap-2.5"><TextIn v={q} on={setQ} ph={'Search '+tab}/>
    {tab==='reports'&&<div className="flex flex-wrap gap-1.5">{[['all','All'],...RSTAT].map(([k,l])=><button key={k} onClick={()=>setFlt(k)} className={cx('rounded-full border px-3 py-1.5 text-xs font-bold transition',flt===k?'border-accent bg-accent/20 text-accent-text':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{l}</button>)}</div>}</div>
   {er&&<p className={cx(CARD,'mb-4 p-4 text-sm font-semibold text-bad')}>{er}</p>}
   {ld&&!G.length&&!A.length&&!R.length&&!er&&<p className="py-10 text-center text-sm text-muted">Loading the database…</p>}
   <div className="stagger flex flex-col gap-2.5">
   {tab==='reports'&&(Rs.length?Rs.map(r=>Row(r.k,()=>pick('r',r.k,{dn:r.dn||''}),(RCAT[r.c]||'Report')+' · '+fdate(r.t),(r.ct||'No contact')+' · '+(r.v||''),r.m,Pill(RSTAT.find(x=>x[0]===r.s)?.[1]||'Open',r.s==='done'?'bg-good/15 text-good':r.s==='prog'?'bg-accent/20 text-accent-text':'bg-bad/15 text-bad'))):!ld&&<p className="py-8 text-center text-sm text-muted">No reports here.</p>)}
+  {tab==='history'&&<>{!!H.length&&<div className="flex items-center justify-between gap-2 px-1"><p className="text-xs text-muted">Deletes can be restored from here. The newest {Math.min(H.length,80)} changes are kept in the cloud.</p><button disabled={bz} className="shrink-0 text-xs font-semibold text-bad underline decoration-dotted underline-offset-4" onClick={()=>ask({title:'Clear the history?',msg:'Undo, Redo and Restore will no longer work for these changes.',yes:'Clear history',onYes:()=>run(async()=>{await ddel('devhist');await ddel('devdata')},'History cleared ✓')})}>Clear history</button></div>}
+   {Hh.length?Hh.map(h=><div key={h.k} className={cx(CARD,'flex items-center gap-3 p-3.5')}><span className="min-w-0 flex-1"><span className="block break-words text-sm font-extrabold leading-snug">{h.l}</span><span className="block text-xs text-muted">{fdate(h.t)}{h.u?' · '+(h.d?'restored ':'undone ')+fdate(h.ut):''}</span></span>{h.u?Pill(h.d?'Restored':'Undone','bg-good/15 text-good'):h.d?Pill('Deleted','bg-bad/15 text-bad'):null}<button disabled={bz} className={BTN+' shrink-0 !px-3 !py-1.5 !text-xs'} onClick={()=>h.u?redoAsk(h):doUndo(h)}>{h.u?(h.d?'Delete again':'Redo'):(h.d?'Restore':'Undo')}</button></div>):!ld&&<p className="py-8 text-center text-sm text-muted">No changes yet. Edits and deletes you make here will appear in this list.</p>}</>}
   {tab==='groups'&&(Gs.length?Gs.map(g=>Row(g.k,()=>pick('g',g.k,{n:g.meta.n||'',i:g.meta.i||'',r:g.meta.r||''}),g.meta.n||'Unnamed group',Object.keys(g.m).length+' member card'+(Object.keys(g.m).length===1?'':'s')+' · '+g.adm.length+' admin'+(g.adm.length===1?'':'s'),'Key '+g.k.slice(0,8)+'…',g.meta.c?Pill(fmtCode(g.meta.c)):null)):!ld&&<p className="py-8 text-center text-sm text-muted">No groups here.</p>)}
   {tab==='accounts'&&(As.length?As.map(a=>Row(a.k,()=>pick('a',a.k,{n:a.n,b:a.b,d:''}),a.n||(a.x?'Deleted account':'Unnamed account'),a.x?'Deleted by developer · '+fdate(a.t):(a.b||'No bio')+' · updated '+fdate(a.t),'Key '+a.k.slice(0,8)+'… · '+Math.round(a.size/1024*10)/10+' KB',a.x?Pill('Deleted','bg-bad/15 text-bad'):null)):!ld&&<p className="py-8 text-center text-sm text-muted">No accounts here.</p>)}
   </div>
@@ -1234,32 +1300,32 @@ function DevDashboard({onExit}){
   <Sheet open={!!sg} onClose={close} title="Group" wide>{sg&&<>
    <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Name<TextIn v={f.n||''} on={v=>setF({...f,n:v})} ph="Group name" cls="mt-1"/></label><label className="text-sm font-semibold">Icon (emoji)<TextIn v={f.i||''} on={v=>setF({...f,i:v})} ph="📚" cls="mt-1"/></label></div>
    <label className="text-sm font-semibold">Recovery email<TextIn v={f.r||''} on={v=>setF({...f,r:v})} ph="name@example.com" cls="mt-1"/></label>
-   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>dpatch('groups/'+sg.k+'/meta',{n:(f.n||'').trim()||sg.meta.n||'Group',i:f.i||'',r:(f.r||'').trim()||null,t:Date.now()}))}>Save changes</button><Msg/></div>
+   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>change('Edited group “'+(sg.meta.n||'Group')+'”',[{p:'groups/'+sg.k+'/meta',a:b=>mrg(b,{n:(f.n||'').trim()||sg.meta.n||'Group',i:f.i||'',r:(f.r||'').trim()||null,t:Date.now()})}]))}>Save changes</button><Msg/></div>
    <div className="rounded-2xl border border-line bg-ink/[.06] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className={LBL}>Join code</div><div className="text-2xl font-black tabular-nums tracking-widest">{sg.meta.c?fmtCode(sg.meta.c):'None'}</div></div>
-    <div className="flex gap-2"><button disabled={bz} className={BTN} onClick={()=>run(async()=>{const old=sg.meta.c,prev=old?await dget('codes/'+old):null,c=await freeCode();await dput('codes/'+c,{k:sg.k,sn:(prev&&prev.sn)||sg.meta.n||'',t:Date.now()});await dpatch('groups/'+sg.k+'/meta',{c});if(old)await ddel('codes/'+old)},'New code made ✓')}>{sg.meta.c?'New code':'Make code'}</button>{sg.meta.c&&<button disabled={bz} className={BTNX} onClick={()=>ask({title:'Remove the join code?',msg:'Nobody can join this group with the code until a new one is made.',yes:'Remove code',onYes:()=>run(async()=>{await ddel('codes/'+sg.meta.c);await dpatch('groups/'+sg.k+'/meta',{c:null})},'Code removed ✓')})}>Remove</button>}</div></div></div>
+    <div className="flex gap-2"><button disabled={bz} className={BTN} onClick={()=>run(async()=>{const old=sg.meta.c,prev=old?await dget('codes/'+old):null,c=await freeCode(),sp=[{p:'codes/'+c,a:{k:sg.k,sn:(prev&&prev.sn)||sg.meta.n||'',t:Date.now()}},{p:'groups/'+sg.k+'/meta',a:b=>mrg(b,{c})}];if(old)sp.push({p:'codes/'+old,a:null});await change('Made a new join code for “'+(sg.meta.n||'Group')+'”',sp)},'New code made ✓')}>{sg.meta.c?'New code':'Make code'}</button>{sg.meta.c&&<button disabled={bz} className={BTNX} onClick={()=>ask({title:'Remove the join code?',msg:'Nobody can join this group with the code until a new one is made.',yes:'Remove code',onYes:()=>run(()=>change('Removed the join code of “'+(sg.meta.n||'Group')+'”',[{p:'codes/'+sg.meta.c,a:null},{p:'groups/'+sg.k+'/meta',a:b=>mrg(b,{c:null})}]),'Code removed ✓')})}>Remove</button>}</div></div></div>
    <div><div className={LBL+' mb-2'}>Members ({Object.keys(sg.m).length})</div><div className="flex flex-col gap-2">{Object.entries(sg.m).map(([mid,m])=>{const ad=sg.adm.includes(mid);return <div key={mid} className="flex items-center gap-2 rounded-2xl border border-line bg-ink/[.04] p-2.5"><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{m.n||'Account'}{ad&&<span className="ml-2 text-[11px] font-bold text-accent-text">Admin</span>}</span><span className="block truncate text-xs text-muted">{m.sn||''}{m.b?' · '+m.b:''}</span></span>
-    <button disabled={bz} className={BTN+' !px-2.5 !py-1.5 !text-xs'} onClick={()=>run(()=>dpatch('groups/'+sg.k+'/admins',{[mid]:ad?null:true}))}>{ad?'Remove admin':'Make admin'}</button>
-    <button disabled={bz} className={BTNX+' !px-2.5 !py-1.5 !text-xs'} onClick={()=>ask({title:'Remove “'+(m.n||'this member')+'” from the group?',msg:'Only the member card is removed. Their account and grades are not deleted.',yes:'Remove member',onYes:()=>run(async()=>{await ddel('groups/'+sg.k+'/m/'+mid);await dpatch('groups/'+sg.k+'/admins',{[mid]:null})},'Member removed ✓')})}>Remove</button></div>})}{!Object.keys(sg.m).length&&<p className="text-sm text-muted">No member cards.</p>}</div></div>
-   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete “'+(sg.meta.n||'this group')+'” for everyone?',msg:'The group, its member list and its join code are erased from the cloud. Accounts and their grades are not deleted.',next:'Continue',final:'This cannot be undone. Delete the group anyway?',yes:'Yes, delete the group',onYes:()=>run(async()=>{if(sg.meta.c)await ddel('codes/'+sg.meta.c);await ddel('groups/'+sg.k)},'Group deleted ✓',close)})}>Delete group</button></>}</Sheet>
+    <button disabled={bz} className={BTN+' !px-2.5 !py-1.5 !text-xs'} onClick={()=>run(()=>change((ad?'Removed admin access from “':'Made admin “')+(m.n||'Account')+'” in “'+(sg.meta.n||'Group')+'”',[{p:'groups/'+sg.k+'/admins',a:b=>mrg(b,{[mid]:ad?null:true})}]))}>{ad?'Remove admin':'Make admin'}</button>
+    <button disabled={bz} className={BTNX+' !px-2.5 !py-1.5 !text-xs'} onClick={()=>ask({title:'Remove “'+(m.n||'this member')+'” from the group?',msg:'Only the member card is removed. Their account and grades are not deleted.',yes:'Remove member',onYes:()=>run(()=>change('Removed member “'+(m.n||'Account')+'” from “'+(sg.meta.n||'Group')+'”',[{p:'groups/'+sg.k+'/m/'+mid,a:null},{p:'groups/'+sg.k+'/admins',a:b=>mrg(b,{[mid]:null})}]),'Member removed ✓')})}>Remove</button></div>})}{!Object.keys(sg.m).length&&<p className="text-sm text-muted">No member cards.</p>}</div></div>
+   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete “'+(sg.meta.n||'this group')+'” for everyone?',msg:'The group, its member list and its join code are removed from the cloud. Accounts and their grades are not deleted. You can bring the group back with Undo or from History.',next:'Continue',final:'Delete the group?',yes:'Yes, delete the group',onYes:()=>run(()=>change('Deleted group “'+(sg.meta.n||'Group')+'”',[...(sg.meta.c?[{p:'codes/'+sg.meta.c,a:null}]:[]),{p:'groups/'+sg.k,a:null}],true),'Group deleted ✓ (Undo brings it back)',close)})}>Delete group</button></>}</Sheet>
 
   <Sheet open={!!sa} onClose={close} title="Account" wide>{sa&&<>
-   {sa.x?<><p className="text-sm text-muted">This account was deleted. Devices that still have it remove it the next time they sync. Remove the tombstone to free the sign-in for a new account.</p><button disabled={bz} className={BTNX} onClick={()=>ask({title:'Remove the tombstone?',msg:'Devices that have not synced yet may bring the account back.',yes:'Remove',onYes:()=>run(()=>ddel('sync/'+sa.k),'Removed ✓',close)})}>Remove permanently</button></>
+   {sa.x?<><p className="text-sm text-muted">This account was deleted. Devices that still have it remove it the next time they sync. Remove the tombstone to free the sign-in for a new account.</p><button disabled={bz} className={BTNX} onClick={()=>ask({title:'Remove the tombstone?',msg:'Devices that have not synced yet may bring the account back.',yes:'Remove',onYes:()=>run(()=>change('Removed the deleted-account marker',[{p:'sync/'+sa.k,a:null}]),'Removed ✓',close)})}>Remove permanently</button></>
    :<><p className="text-sm text-muted">{stats(sa)} · {Math.round(sa.size/1024*10)/10} KB · updated {fdate(sa.t)} · key {sa.k.slice(0,8)}…</p>
    <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Display name<TextIn v={f.n||''} on={v=>setF({...f,n:v})} ph="Name" cls="mt-1"/></label><label className="text-sm font-semibold">Bio<TextIn v={f.b||''} on={v=>setF({...f,b:v.slice(0,80)})} ph="Bio" cls="mt-1"/></label></div>
-   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>dpatch('sync/'+sa.k,{n:(f.n||'').trim()||sa.n,b:f.b||'',t:Date.now()}))}>Save changes</button><Msg/></div>
+   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>change('Edited account “'+(sa.n||'Account')+'”',[{p:'sync/'+sa.k,a:bb=>mrg(bb,{n:(f.n||'').trim()||sa.n,b:f.b||'',t:Date.now()})}]))}>Save changes</button><Msg/></div>
    <div className="flex flex-col gap-2"><button className={BTN+' self-start'} onClick={()=>{if(!raw){let t='';try{t=JSON.stringify(JSON.parse(sa.d),null,1)}catch(e){t=sa.d||''}setF({...f,d:t})}setRaw(v=>!v)}}>{raw?'Hide raw data':'View / edit raw data'}</button>
-    {raw&&<><TA v={f.d||''} on={v=>setF({...f,d:v})} rows={14} cls="font-mono"/><button disabled={bz} className={BTN+' self-start'} onClick={()=>{let d;try{d=mig(JSON.parse(f.d))}catch(e){setNote('That did not work (the text is not valid JSON).');return}if(!okState(d)){setNote('That did not work (the data has no years or semesters).');return}run(()=>dpatch('sync/'+sa.k,{d:JSON.stringify(d),t:Date.now()}),'Raw data saved ✓')}}>Save raw data</button><p className="text-xs text-muted">Edit with care: a bad change can break the account. Devices pick the new copy up on their next sync.</p></>}</div>
-   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete “'+(sa.n||'this account')+'”?',msg:'Its grades are erased from the cloud and removed from every device on the next sync.',next:'Continue',final:'This cannot be undone. Delete the account anyway?',yes:'Yes, delete the account',onYes:()=>run(()=>dput('sync/'+sa.k,{x:1,t:Date.now(),d:''}),'Account deleted ✓',close)})}>Delete account</button>
+    {raw&&<><TA v={f.d||''} on={v=>setF({...f,d:v})} rows={14} cls="font-mono"/><button disabled={bz} className={BTN+' self-start'} onClick={()=>{let d;try{d=mig(JSON.parse(f.d))}catch(e){setNote('That did not work (the text is not valid JSON).');return}if(!okState(d)){setNote('That did not work (the data has no years or semesters).');return}run(()=>change('Edited the raw data of “'+(sa.n||'Account')+'”',[{p:'sync/'+sa.k,a:bb=>mrg(bb,{d:JSON.stringify(d),t:Date.now()})}]),'Raw data saved ✓')}}>Save raw data</button><p className="text-xs text-muted">Edit with care: a bad change can break the account. Devices pick the new copy up on their next sync.</p></>}</div>
+   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete “'+(sa.n||'this account')+'”?',msg:'Its grades are removed from the cloud and from every device on the next sync. You can bring the account back with Undo or from History.',next:'Continue',final:'Delete the account?',yes:'Yes, delete the account',onYes:()=>run(()=>change('Deleted account “'+(sa.n||'Account')+'”',[{p:'sync/'+sa.k,a:{x:1,t:Date.now(),d:''}}],true),'Account deleted ✓ (Undo brings it back)',close)})}>Delete account</button>
    <p className="text-xs text-muted">Deleting an account leaves a small marker so other devices drop it instead of uploading it again. Remove the member card from its group in the Groups tab if it should disappear from the member list too.</p></>}</>}</Sheet>
 
   <Sheet open={!!sr} onClose={close} title="Report" wide>{sr&&<>
    <div className="flex flex-wrap items-center gap-2">{Pill(RCAT[sr.c]||'Report')}{Pill(fdate(sr.t))}{sr.v&&Pill(sr.v)}{sr.th&&Pill('Theme: '+sr.th)}</div>
    <p className="whitespace-pre-wrap break-words rounded-2xl border border-line bg-ink/[.06] p-4 text-sm leading-relaxed">{sr.m}</p>
    <div className="text-xs text-muted"><div>Contact: <b className="text-ink">{sr.ct||'none given'}</b></div><div className="mt-1 break-words">Device: {sr.ua||'unknown'}</div></div>
-   <div><div className={LBL+' mb-2'}>Status</div><div className="flex flex-wrap gap-2">{RSTAT.map(([k,l])=><button key={k} disabled={bz} onClick={()=>run(()=>dpatch('reports/'+sr.k,{s:k,u:Date.now()}),'Marked '+l.toLowerCase()+' ✓')} className={cx('rounded-xl border px-3.5 py-2 text-sm font-bold transition',sr.s===k?'border-accent bg-accent/20 text-accent-text':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{l}</button>)}</div></div>
+   <div><div className={LBL+' mb-2'}>Status</div><div className="flex flex-wrap gap-2">{RSTAT.map(([k,l])=><button key={k} disabled={bz} onClick={()=>run(()=>change('Marked a report '+l.toLowerCase(),[{p:'reports/'+sr.k,a:b=>mrg(b,{s:k,u:Date.now()})}]),'Marked '+l.toLowerCase()+' ✓')} className={cx('rounded-xl border px-3.5 py-2 text-sm font-bold transition',sr.s===k?'border-accent bg-accent/20 text-accent-text':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{l}</button>)}</div></div>
    <label className="text-sm font-semibold">Developer note<TA v={f.dn||''} on={v=>setF({...f,dn:v.slice(0,1000)})} rows={3} ph="Private note (only developers can see this)" cls="mt-1"/></label>
-   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>dpatch('reports/'+sr.k,{dn:f.dn||null,u:Date.now()}))}>Save note</button><Msg/></div>
-   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete this report?',msg:'It is erased from the database.',yes:'Delete report',onYes:()=>run(()=>ddel('reports/'+sr.k),'Deleted ✓',close)})}>Delete report</button></>}</Sheet>
+   <div className="flex flex-wrap items-center gap-2"><button disabled={bz} className={BTNP} onClick={()=>run(()=>change('Saved a report note',[{p:'reports/'+sr.k,a:b=>mrg(b,{dn:f.dn||null,u:Date.now()})}]))}>Save note</button><Msg/></div>
+   <button disabled={bz} className={BTNX} onClick={()=>ask({title:'Delete this report?',msg:'It is removed from the database. You can bring it back with Undo or from History.',yes:'Delete report',onYes:()=>run(()=>change('Deleted a report',[{p:'reports/'+sr.k,a:null}],true),'Deleted ✓',close)})}>Delete report</button></>}</Sheet>
 </div>;
 }
 
@@ -1274,18 +1340,18 @@ function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2
  // collapse after 56px of scroll, expand again only when back near the top (hysteresis stops flicker)
  useEffect(()=>{let raf=0;const f=()=>{raf=0;const y=window.scrollY||document.documentElement.scrollTop||0,n=colR.current?y>6:y>56;if(n!==colR.current){colR.current=n;setCol(n)}};const on=()=>{if(!raf)raf=requestAnimationFrame(f)};f();window.addEventListener('scroll',on,{passive:true});return()=>{window.removeEventListener('scroll',on);if(raf)cancelAnimationFrame(raf)}},[]);
  // the bar is position:fixed, so a spacer keeps the page layout steady (its height is the expanded bar, so collapsing never shifts the content)
- useLayoutEffect(()=>{const m=()=>{if(!colR.current&&ref.current)setH(ref.current.offsetHeight)};m();window.addEventListener('resize',m);try{document.fonts&&document.fonts.ready.then(m)}catch(e){}return()=>window.removeEventListener('resize',m)},[showA2hs]);
+ useLayoutEffect(()=>{let tm=0,ro=null;const m=()=>{if(!colR.current&&ref.current)setH(ref.current.offsetHeight)},lazy=()=>{clearTimeout(tm);tm=setTimeout(m,480)};m();window.addEventListener('resize',lazy);try{document.fonts&&document.fonts.ready.then(m)}catch(e){}try{if(window.ResizeObserver&&ref.current){ro=new ResizeObserver(lazy);ro.observe(ref.current)}}catch(e){}return()=>{clearTimeout(tm);window.removeEventListener('resize',lazy);ro&&ro.disconnect()}},[showA2hs]);
  const status=!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
  const IB='grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink transition hover:bg-ink/[.08] active:scale-95 disabled:opacity-40',
-  CH='inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-line/70 bg-ink/[.05] px-3 text-[13px] font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40';
+  CH='inline-flex h-9 max-w-full items-center gap-1.5 rounded-xl border border-line/70 bg-ink/[.05] px-3 text-[13px] font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40';
  return <div style={{height:h||undefined}} className="mb-1">
   <header ref={ref} className="fixed inset-x-0 top-0 z-30 flex justify-center">
-   <div className={cx('w-full max-w-6xl border-b border-line/60 bg-surface/[.88] backdrop-blur-xl transition-[border-radius,box-shadow,padding] duration-300 ease-out sm:border-x',col?'rounded-b-2xl shadow-[0_10px_24px_-12px_rgb(0_0_0/.5)]':'rounded-b-[2rem] shadow-[0_2px_8px_-3px_rgb(0_0_0/.22)]')} style={{paddingTop:col?'calc(var(--tp) - .3rem)':'var(--tp)',paddingBottom:col?'.5rem':'.75rem',backgroundImage:'linear-gradient(180deg,rgb(var(--accent)/.10),rgb(var(--accent)/0) 75%)',WebkitBackdropFilter:'blur(20px) saturate(1.5)',backdropFilter:'blur(20px) saturate(1.5)'}}>
+   <div className={cx('w-full max-w-6xl overflow-hidden border-b border-line/60 bg-surface/[.88] backdrop-blur-xl transition-[border-radius,box-shadow,padding] duration-300 ease-out sm:border-x',col?'rounded-b-2xl shadow-[0_10px_24px_-12px_rgb(0_0_0/.5)]':'rounded-b-[2rem] shadow-[0_2px_8px_-3px_rgb(0_0_0/.22)]')} style={{paddingTop:col?'calc(var(--tp) + .25rem)':'calc(var(--tp) + .75rem)',paddingBottom:col?'.625rem':'1rem',paddingLeft:'env(safe-area-inset-left,0px)',paddingRight:'env(safe-area-inset-right,0px)',backgroundImage:'linear-gradient(180deg,rgb(var(--accent)/.10),rgb(var(--accent)/0) 75%)',WebkitBackdropFilter:'blur(20px) saturate(1.5)',backdropFilter:'blur(20px) saturate(1.5)'}}>
     <div className="flex items-center gap-3 px-4 sm:px-8">
-     <TigerLogo className={cx('shrink-0 drop-shadow-sm transition-all duration-300',col?'h-9 w-9':'h-14 w-14')}/>
+     <TigerLogo className={cx('shrink-0 drop-shadow-sm transition-all duration-300',col?'h-9 w-9':'h-14 w-14 max-[359px]:h-11 max-[359px]:w-11')}/>
      <span aria-hidden="true" className={cx('w-px shrink-0 bg-line transition-all duration-300',col?'h-6':'h-10')}/>
      <div className="min-w-0 flex-1">
-      <div className={cx('truncate font-black leading-none tracking-tight transition-all duration-300',col?'text-lg':'text-[28px]')}>Gradely</div>
+      <div className={cx('truncate font-black leading-none tracking-tight transition-all duration-300',col?'text-lg':'text-[28px] max-[359px]:text-2xl')}>Gradely</div>
       <div key={col?'s':'t'} className="anim-fade mt-1.5 flex items-center gap-1.5 truncate text-xs font-semibold text-muted">{col?<><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></>:<span className="truncate">Track, Forecast, and Ace your Sem</span>}</div>
      </div>
      <div className="flex shrink-0 items-center">
@@ -1294,8 +1360,8 @@ function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2
      </div>
     </div>
     <div className={cx('acc',!col&&'open')} inert={col}><div>
-     <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-0.5 pt-3.5 sm:px-8" role="toolbar" aria-label="Quick actions">
-      <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl px-1 text-xs font-semibold text-muted"><span className={cx('h-2 w-2 rounded-full',dot)}/>{status}</span>
+     <div className="flex flex-wrap gap-2 px-4 pb-0.5 pt-3.5 sm:px-8" role="toolbar" aria-label="Quick actions">
+      <span className="inline-flex h-9 max-w-full items-center gap-2 rounded-xl px-1 text-xs font-semibold text-muted"><span className={cx('h-2 w-2 rounded-full',dot)}/>{status}</span>
       <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls="h-4 w-4"/>How it works</button>
       <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls="h-4 w-4"/>Join with code</button>
       {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls="h-4 w-4"/>Install app</button>}
