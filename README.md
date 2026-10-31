@@ -2,7 +2,10 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v30)
+## What's new in this version (v31)
+- **Home header redesign.** The pill is replaced by a flush, full-width Material-style app bar (soft translucency, slight tint, elevation, no glow). It is large at the top of the page (big icon, divider, **Gradely** and the tagline) and condenses as you scroll, swapping the tagline for your sync status. A quick-action row holds **How it works** (tutorial), **Join with code**, **Install app** (when not installed) and **Report a problem**; Refresh and Theme are icon buttons. It keeps clear of the notch and Dynamic Island. Service worker cache is `gradely-v31`.
+
+### Earlier (v30)
 - **Developer sign-in fix.** The username box now accepts either `dev_roeverjosh` or the full email `dev_roeverjosh@gradely.app`. Before, typing the full email always showed "Wrong developer username or password" without contacting Firebase. A blocked API key (website restrictions) now has its own message. Service worker cache is `gradely-v30`.
 
 ### Earlier (v29)

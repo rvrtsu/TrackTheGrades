@@ -83,6 +83,8 @@ input[type=range]{accent-color:rgb(var(--accent));height:1.75rem}
 select{color-scheme:inherit}select option{background:rgb(var(--surface));color:rgb(var(--ink))}
 .tot{border-bottom:4px double currentColor}
 input{font-variant-numeric:tabular-nums}
+/* hide the scrollbar on the header's quick-action row */
+.no-scrollbar{scrollbar-width:none;-ms-overflow-style:none}.no-scrollbar::-webkit-scrollbar{display:none}
 /* ---------- motion ---------- */
 @keyframes swipeHint{0%,100%{transform:translateX(-26px)}50%{transform:translateX(26px)}}
 @keyframes rise{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}

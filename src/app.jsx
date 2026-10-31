@@ -356,6 +356,9 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v31',notes:[
+ 'New home header: a bigger, flush app bar with a Material look. It shrinks as you scroll and shows your sync status',
+ 'Quick actions in the header: How it works (tutorial), Join with code, Install app and Report a problem, plus Refresh and Theme buttons']},
  {v:'v30',notes:[
  'Developer sign-in now accepts the full email (dev_roeverjosh@gradely.app) as well as the username, and shows a clearer message if the API key is blocked by website restrictions']},
  {v:'v29',notes:[
@@ -397,7 +400,7 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v30';
+const APP_VER='v31';
 /* ---- one-time contextual tab tutorials ---- */
 const tipSeen=k=>{try{return localStorage.getItem('gtf-tip-'+k)==='1'}catch(e){return false}};
 const tipDone=k=>{try{localStorage.setItem('gtf-tip-'+k,'1')}catch(e){}};
@@ -1263,6 +1266,47 @@ function DevDashboard({onExit}){
 /* =====================================================================
    8. HOME  (cloud GROUPS first, then the accounts inside a group)
    ===================================================================== */
+/* ---- home header: a flush, full-width Material-style app bar. Large while the page is at the top, condenses once you scroll ---- */
+const HIc=({d,cls='h-[18px] w-[18px]'})=><svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>;
+const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7';
+function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2hs,showA2hs}){
+ const [col,setCol]=useState(false),[h,setH]=useState(0),ref=useRef(null),colR=useRef(false);
+ // collapse after 56px of scroll, expand again only when back near the top (hysteresis stops flicker)
+ useEffect(()=>{let raf=0;const f=()=>{raf=0;const y=window.scrollY||document.documentElement.scrollTop||0,n=colR.current?y>6:y>56;if(n!==colR.current){colR.current=n;setCol(n)}};const on=()=>{if(!raf)raf=requestAnimationFrame(f)};f();window.addEventListener('scroll',on,{passive:true});return()=>{window.removeEventListener('scroll',on);if(raf)cancelAnimationFrame(raf)}},[]);
+ // the bar is position:fixed, so a spacer keeps the page layout steady (its height is the expanded bar, so collapsing never shifts the content)
+ useLayoutEffect(()=>{const m=()=>{if(!colR.current&&ref.current)setH(ref.current.offsetHeight)};m();window.addEventListener('resize',m);try{document.fonts&&document.fonts.ready.then(m)}catch(e){}return()=>window.removeEventListener('resize',m)},[showA2hs]);
+ const status=!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
+ const IB='grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink transition hover:bg-ink/[.08] active:scale-95 disabled:opacity-40',
+  CH='inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-line/70 bg-ink/[.05] px-3 text-[13px] font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40';
+ return <div style={{height:h||undefined}} className="mb-1">
+  <header ref={ref} className="fixed inset-x-0 top-0 z-30 flex justify-center">
+   <div className={cx('w-full max-w-6xl border-b border-line/60 bg-surface/[.88] backdrop-blur-xl transition-[border-radius,box-shadow,padding] duration-300 ease-out sm:border-x',col?'rounded-b-2xl shadow-[0_10px_24px_-12px_rgb(0_0_0/.5)]':'rounded-b-[2rem] shadow-[0_2px_8px_-3px_rgb(0_0_0/.22)]')} style={{paddingTop:col?'calc(var(--tp) - .3rem)':'var(--tp)',paddingBottom:col?'.5rem':'.75rem',backgroundImage:'linear-gradient(180deg,rgb(var(--accent)/.10),rgb(var(--accent)/0) 75%)',WebkitBackdropFilter:'blur(20px) saturate(1.5)',backdropFilter:'blur(20px) saturate(1.5)'}}>
+    <div className="flex items-center gap-3 px-4 sm:px-8">
+     <TigerLogo className={cx('shrink-0 drop-shadow-sm transition-all duration-300',col?'h-9 w-9':'h-14 w-14')}/>
+     <span aria-hidden="true" className={cx('w-px shrink-0 bg-line transition-all duration-300',col?'h-6':'h-10')}/>
+     <div className="min-w-0 flex-1">
+      <div className={cx('truncate font-black leading-none tracking-tight transition-all duration-300',col?'text-lg':'text-[28px]')}>Gradely</div>
+      <div key={col?'s':'t'} className="anim-fade mt-1.5 flex items-center gap-1.5 truncate text-xs font-semibold text-muted">{col?<><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></>:<span className="truncate">Track, Forecast, and Ace your Sem</span>}</div>
+     </div>
+     <div className="flex shrink-0 items-center">
+      {cloud&&<button className={IB} onClick={onRefresh} aria-label="Refresh from cloud"><span className={busy?'animate-spin':''}><HIc d={HI_SYNC}/></span></button>}
+      <button className={IB} onClick={onTheme} aria-label="Change theme"><HIc d={HI_THEME}/></button>
+     </div>
+    </div>
+    <div className={cx('acc',!col&&'open')} inert={col}><div>
+     <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-0.5 pt-3.5 sm:px-8" role="toolbar" aria-label="Quick actions">
+      <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl px-1 text-xs font-semibold text-muted"><span className={cx('h-2 w-2 rounded-full',dot)}/>{status}</span>
+      <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls="h-4 w-4"/>How it works</button>
+      <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls="h-4 w-4"/>Join with code</button>
+      {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls="h-4 w-4"/>Install app</button>}
+      <button className={CH} onClick={onReport}><HIc d={HI_BUG} cls="h-4 w-4"/>Report a problem</button>
+     </div>
+    </div></div>
+   </div>
+  </header>
+ </div>;
+}
+
 function Home({book,theme,setTheme,ctl,busy,at}){
  const [gv,setGvS]=useState(()=>{try{const v=localStorage.getItem('gtf-hv');return book.groups.some(g=>g.id===v)?v:null}catch(e){return null}}),setGv=v=>{setGvS(v);try{v?localStorage.setItem('gtf-hv',v):localStorage.removeItem('gtf-hv')}catch(e){}},[sh,setSh]=useState(()=>joinParam()?{t:'joinGroup'}:null),[arm,setArm]=useState(null),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
  const [ng,setNg]=useState({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''}),[jf,setJf]=useState({code:joinParam(),name:'',pass:'',adv:false}),[rp,setRp]=useState({c:'bug',m:'',ct:'',done:false}),[dv,setDv]=useState({u:'',p:''}),[cp,setCp]=useState(''),[na,setNa]=useState({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false}),[uf,setUf]=useState({pass:''}),[sf,setSf]=useState({name:'',pass:''}),[ef,setEf]=useState({pass:''}),[gp,setGp]=useState('');
@@ -1296,20 +1340,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
- const Top=<>
-  {/* floating glass pill: app icon | divider | name + subtitle. Sticks just below the safe area (--tp = safe-area-inset-top + .75rem, min 3rem when installed on a phone) */}
-  <header className="sticky z-30 mx-auto w-full max-w-md" style={{top:'var(--tp)'}}>
-   <div className="gc hdr anim-rise flex items-center gap-3 rounded-full py-1.5 pl-1.5 pr-5 shadow-[0_14px_40px_-18px_rgb(var(--accent)/.55)]">
-    <TigerLogo className="h-11 w-11 shrink-0 drop-shadow-[0_3px_8px_rgb(var(--accent)/.45)]"/>
-    <span aria-hidden="true" className="h-7 w-px shrink-0 rounded-full bg-gradient-to-b from-transparent via-ink/30 to-transparent"/>
-    <div className="min-w-0 flex-1 text-left leading-none">
-     <div className="truncate text-[17px] font-black tracking-tight">Gradely</div>
-     <p className="mt-1 truncate text-[11.5px] font-semibold text-muted">Track, Forecast, and Ace your Sem</p>
-    </div>
-   </div>
-  </header>
-  <div className="mt-3 flex flex-col items-center gap-3 text-center">
-  <div className="flex items-center justify-center gap-2"><span className="text-[11px] text-muted">{busy?'Updating from cloud…':at?'Updated '+rel(at):''}</span>{CLOUD&&<button className={BTN+' !px-3'} onClick={ctl.refresh} aria-label="Refresh from cloud"><span className={busy?'inline-block animate-spin':''}>↻</span></button>}<button className={BTN} onClick={()=>setSh({t:'theme'})}>Theme</button>{!isStandalone()&&<button className={BTN} onClick={ctl.a2hs}>Add to Home Screen</button>}</div></div></>;
+ const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
  const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <>
   <div className="anim-rise pb-5 pt-7 text-center sm:pt-9"><h1 className="text-3xl font-black tracking-tight sm:text-5xl">Your groups</h1><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Open a group, then pick your account.</p></div>
   {book.groups.length?<div className="flex flex-wrap justify-center gap-3">{book.groups.map(GroupCard)}</div>
@@ -1334,7 +1365,7 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    {CLOUD&&<button className="font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign in with a sync name and passcode</button>}
    {msg&&<p className="font-semibold text-ink">{msg}</p>}</div></>};
 
- return <div className="mx-auto max-w-6xl px-4 pb-20 pt-[var(--tp)] sm:px-8">
+ return <div className="mx-auto max-w-6xl px-4 pb-20 pt-0 sm:px-8">
   {Top}
   <div key={gv||'groups'}>{grp?GroupScreen():GroupsScreen()}</div>
   <div className="mt-10 flex flex-col items-center gap-4"><CreatorsCard/>
