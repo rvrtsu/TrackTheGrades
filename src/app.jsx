@@ -352,8 +352,9 @@ const RELEASE_NOTES=[
  'Prelims or Finals with no scores yet now show a dash instead of 5.00',
  'Fixed the Tracker tab going blank',
  'A section that fails to load now shows a message instead of a white screen',
- 'The update prompt is now a required dialog with these release notes'];
-const APP_VER='v21';
+ 'The update prompt is now a required dialog with these release notes',
+ 'Fixed Base grade calculation: Per term now shows each period grade after Base'];
+const APP_VER='v22';
 const UpdateBanner=({u})=>{const [busy,setBusy]=useState(false),btn=useRef(null);
  useEffect(()=>{if(!u.on)return;const o=document.body.style.overflow;document.body.style.overflow='hidden';const t=setTimeout(()=>{try{btn.current&&btn.current.focus()}catch(e){}},50);return()=>{clearTimeout(t);document.body.style.overflow=o}},[u.on]);
  if(!u.on)return null;
@@ -949,7 +950,7 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
    <div className="flex items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text sm:h-12 sm:w-12 sm:rounded-2xl"><svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span>
     <div className="min-w-0 flex-1"><h2 className="truncate text-xl font-black leading-tight tracking-tight sm:text-2xl">{s.code||'Subject'}</h2><p className="truncate text-xs text-muted sm:text-sm">{s.name||'No name'} · {f2(+s.units||0)} unit{(+s.units||0)===1?'':'s'}</p></div></div>
    <div className="grid gap-2 sm:gap-3" style={{gridTemplateColumns:'repeat('+Math.min(nCards,3)+',minmax(0,1fr))'}}>
-    {P.map(p=>{const c=pcalc(s,p),v=c.touched?(c.grade!=null?c.grade:c.gradeSoFar):null;return Bg(p.name,v==null?'—':f2(v),!c.touched?'No scores yet':c.allIn?'Raw · complete':'Raw · blanks count as 0',p.id===pcur.id)})}
+    {P.map(p=>{const c=pcalc(s,p),rv=c.touched?(c.grade!=null?c.grade:c.gradeSoFar):null,tm=bmodeOf(s)==='term',v=tm&&rv!=null?trans(rv,sbaseOf(s)):rv;return Bg(p.name,v==null?'—':f2(v),!c.touched?'No scores yet':tm?'After Base · raw '+f2(rv):c.allIn?'Raw · complete':'Raw · blanks count as 0',p.id===pcur.id)})}
     {P.length>1&&Bg('Semestral',semV,semSub,true,cx('!border-accent/60 !bg-accent/20',nCards>3&&'col-span-full'),true)}</div>
    <Seg v={pcur.id} on={x=>{setPid(x);setEdit(false)}} opts={P.map(p=>[p.id,p.name])} cls="w-full"/>
    {PeriodBlock(s,pcur)}

@@ -2,7 +2,12 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v21)
+## What's new in this version (v22)
+- **Base check.** The Base value and the At the end / Per term switch were audited end to end (input, saved subject, semestral math, breakdown, Report, forecaster). With valid scores and a Base the formulas run correctly in both modes (for example Prelim 80, Final 90, 40/60, Base 50 gives 93).
+- **Per term is now visible.** In Per term mode the Tracker's Prelims and Finals cards show each period grade after Base (80 shows as 90, with "After Base · raw 80"). Both modes still reach the same semestral grade because the formula is linear and weights are scaled to 100%.
+- "Fixed Base grade calculation" added to the release notes. Service worker cache is `gtf-v22`.
+
+### Earlier (v21)
 - **Tracker blank-screen fix.** The v20 edit accidentally removed three Tracker functions (`Options`, `Reverse`, `PeriodBlock`), so opening the Tracker crashed. They are restored, and the whole file was scanned for any other undefined names.
 - **Safer grade math.** Same formulas, but every step now tolerates missing subjects, periods, activities and NaN values (`null` instead of a crash). A period with no scores shows a dash on the Tracker cards too.
 - **Error boundary.** Each tab (and the app as a whole) is wrapped, so a failure shows "Failed to load this section" with **Try again** and **Reload app** instead of a white screen.
