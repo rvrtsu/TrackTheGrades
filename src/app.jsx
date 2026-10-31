@@ -96,7 +96,7 @@ const FX=(()=>{
    ===================================================================== */
 const PRESETS={
  ph:{label:'1.0 is highest',sub:'Philippine style · 1.00 to 5.00 · lower is better',hi:1,dir:-1,target:'1.75',pass:75,fail:5,
-  table:[[97,1],[94,1.25],[91,1.5],[88,1.75],[85,2],[82,2.25],[79,2.5],[76,2.75],[75,3]]},
+  table:[[96,1],[94,1.25],[92,1.5],[89,1.75],[88,2],[84,2.25],[82,2.5],[78,2.75],[75,3]]},
  gpa:{label:'4.0 is highest',sub:'US style GPA · 0.0 to 4.0 · higher is better',hi:4,dir:1,target:'3.5',pass:60,fail:0,
   table:[[93,4],[90,3.7],[87,3.3],[83,3],[80,2.7],[77,2.3],[73,2],[70,1.7],[67,1.3],[65,1],[60,0.7]]},
  pct:{label:'100 is highest',sub:'Percentage · 0 to 100 · higher is better',hi:100,dir:1,target:'90',pass:75,fail:0,table:null}};
@@ -120,7 +120,12 @@ CUR=mkScale(null);
 const eqv=g=>CUR.toG(g);
 const tone=g=>g==null?'':CUR.meets(g)?'text-good':CUR.bad(g)?'text-bad':'';
 const f2=n=>Number.isFinite(n)?String(+n.toFixed(2)):'—';
-const fg=g=>g==null||!Number.isFinite(g)?'—':g.toFixed(2);
+const fg=g=>g==null||!Number.isFinite(g)?'—':g.toFixed(2); // a single subject grade or a setting (always 2 decimals)
+// every GWA uses fw(): 3 decimals by default (e.g. 1.664), 2 or 4 when chosen in Profile & Settings
+let GD=3;
+const normGD=v=>{v=+v;return v===2||v===3||v===4?v:3};
+const fw=g=>g==null||!Number.isFinite(g)?'—':g.toFixed(GD);
+const fpc=n=>n==null||!Number.isFinite(n)?'—':n.toFixed(2)+'%';
 const rel=t=>{if(!t)return'not yet';const s=Math.max(0,(Date.now()-t)/1000);if(s<20)return'just now';if(s<60)return Math.floor(s)+' sec ago';const m=Math.floor(s/60);if(m<60)return m+' min ago';const h=Math.floor(m/60);if(h<24)return h+' hr ago';return Math.floor(h/24)+' d ago'};
 const cx=(...a)=>a.filter(Boolean).join(' ');
 
@@ -159,6 +164,12 @@ const loadRaw=()=>{let b=null;try{b=normBook(JSON.parse(localStorage.getItem(BK)
 const loadBook=()=>{const b=loadRaw();Object.keys(b.data).forEach(k=>{b.data[k]=mig(b.data[k])});return b};
 const saveBook=b=>{try{localStorage.setItem(BK,JSON.stringify(b))}catch(e){}};
 const THEMES=[{"id":"sun","name":"Yellow Light","bar":"#F6F6F3","sw":["#FFFFFF","#FACC15","#1C1B18"]},{"id":"dark","name":"Yellow Dark","bar":"#0E0E11","sw":["#1C1C21","#FBBF24","#F6F6F8"]},{"id":"blue","name":"Blue Light","bar":"#F4F8FF","sw":["#FFFFFF","#2563EB","#0F1D36"]},{"id":"bluedk","name":"Blue Dark","bar":"#080D18","sw":["#111A2C","#60A5FA","#EEF4FF"]},{"id":"red","name":"Red Light","bar":"#FFF7F7","sw":["#FFFFFF","#DC2626","#2E1014"]},{"id":"reddk","name":"Red Dark","bar":"#140909","sw":["#221114","#F87171","#FFF0F1"]},{"id":"green","name":"Green Light","bar":"#F5FCF7","sw":["#FFFFFF","#16A34A","#0E281A"]},{"id":"greendk","name":"Green Dark","bar":"#08120D","sw":["#101F17","#4ADE80","#ECFCF1"]},{"id":"mono","name":"Monochrome","bar":"#FAFAFA","sw":["#FFFFFF","#111111","#737373"]},{"id":"lav","name":"Lavender","bar":"#F7F5FF","sw":["#FFFFFF","#7C3AED","#1E1B3A"]}];
+// Report card export looks (the canvas is drawn in buildStory)
+const RTHEMES=[
+ {id:'light',name:'Minimalist Light',sub:'White, hairline rules',sw:['#FFFFFF','#111113','#E5E5EA','#111113']},
+ {id:'dark',name:'Premium Dark',sub:'Deep black with gold',sw:['#0B0B10','#F5F5F7','#2A2A34','#D4AF37']},
+ {id:'academic',name:'Classic Academic',sub:'Ivory paper, serif, double rules',sw:['#FAF5E6','#1B2A4A','#B9AD8E','#7A1F2B']},
+ {id:'app',name:'Current theme',sub:'Uses your app colours',sw:['rgb(var(--surface))','rgb(var(--ink))','rgb(var(--line))','rgb(var(--accent))']}];
 const resizeImg=(file,size=192)=>new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d'),m=Math.min(im.width,im.height);x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,size,size);res(c.toDataURL('image/jpeg',.82))};im.src=r.result};r.readAsDataURL(file)});
 
 /* ---- cloud helpers (Firebase Realtime Database over REST, no SDK) ---- */
@@ -268,7 +279,7 @@ const LBL2='text-[10px] font-bold uppercase leading-tight tracking-[.08em] text-
 const Num=({v,on,ph,w='w-20',nav,bad,clk})=><input inputMode="decimal" enterKeyHint="next" data-n={nav?1:undefined} onKeyDown={nav?e=>{if(e.key==='Enter'){e.preventDefault();const a=[...document.querySelectorAll('input[data-n]')],i=a.indexOf(e.target),n=a[i+1];n?n.focus():e.target.blur()}}:undefined} value={v??''} placeholder={ph} onChange={e=>{const x=e.target.value;if(/^\d*\.?\d*$/.test(x)){on(x)}}} className={cx(INP,'h-11 min-w-0 sm:h-12',w,bad&&'!border-bad ring-2 ring-bad/40')}/>;
 const TextIn=({v,on,ph,cls='',type='text'})=><input type={type} value={v} placeholder={ph} autoComplete="off" onChange={e=>on(e.target.value)} className={cx(INP,'h-11 w-full !text-left px-3.5 sm:h-12',cls)}/>;
 const Txt=({v,on,cls=''})=><input value={v} onChange={e=>on(e.target.value)} className={cx('min-w-0 rounded-xl bg-transparent px-2 py-1 text-base text-ink transition hover:bg-ink/[.09] focus:outline-none focus:ring-2 focus:ring-accent/40',cls)}/>;
-const Seg=({v,on,opts,cls=''})=><div className={cx('inline-grid grid-flow-col auto-cols-fr gap-1 rounded-2xl border border-line/70 bg-ink/[.06] p-1',cls)}>{opts.map(([k,l])=><button key={k} onClick={()=>on(k)} className={cx('min-w-0 rounded-xl px-3 py-2 text-center text-sm font-bold leading-tight transition-all duration-300',v===k?'bg-accent text-accent-ink shadow':'text-muted hover:text-ink')}>{l}</button>)}</div>;
+const Seg=({v,on,opts,cls='',sm})=><div role="group" className={cx('inline-grid grid-flow-col auto-cols-fr gap-0.5 rounded-xl border border-line/70 bg-ink/[.06] p-0.5',!sm&&'!gap-1 !rounded-2xl !p-1',cls)}>{opts.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-pressed={v===k} className={cx('min-w-0 text-center font-bold leading-tight transition-all duration-300',sm?'rounded-[.6rem] px-2.5 py-1.5 text-xs':'rounded-xl px-3 py-2 text-sm',v===k?'bg-accent text-accent-ink shadow':'text-muted hover:text-ink')}>{l}</button>)}</div>;
 const Chev=({open})=><svg viewBox="0 0 20 20" className={cx('h-5 w-5 shrink-0 text-muted transition-transform duration-300',open&&'rotate-180')} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5"/></svg>;
 const Tile=({l,v,sub,bad,vc})=><div className="rounded-2xl border border-line/60 bg-ink/[.06] p-3"><div className="text-xs font-semibold text-muted">{l}</div><div className={cx('text-xl font-extrabold tabular-nums',vc||(bad?'text-bad':'text-ink'))}>{v}</div>{sub&&<div className="mt-0.5 text-xs text-muted">{sub}</div>}</div>;
 const Switch=({on,onChange,label,sub})=><button role="switch" aria-checked={on} onClick={onChange} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line/60 bg-ink/[.06] p-3 text-left transition hover:bg-ink/[.09]"><span className="min-w-0"><span className="block text-sm font-bold">{label}</span>{sub&&<span className="block text-xs text-muted">{sub}</span>}</span><span className={cx('relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300',on?'bg-accent':'bg-line')}><span className={cx('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300',on?'left-[1.4rem]':'left-0.5')}/></span></button>;
@@ -350,9 +361,10 @@ const GroupIcon=({g,s='h-14 w-14',t='text-3xl'})=>g&&g.pic?<img src={g.pic} alt=
    7. APP  (one profile: Tracker, Forecaster, Settings)
    ===================================================================== */
 function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,theme,setTheme,prof}){
- const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('o'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0),[pill,setPill]=useState(false),[accO,setAccO]=useState({a:false,g:false});
- const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false});
+ const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('o'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0),[pill,setPill]=useState(false),[accO,setAccO]=useState({a:false,g:false}),[rcf,setRcfS]=useState(()=>{try{const j=JSON.parse(localStorage.getItem('gtf-rcf')||'{}');return{a:j.a==='p'?'p':'g',b:j.b==='p'?'p':'g'}}catch(e){return{a:'g',b:'g'}}}),[exT,setExT]=useState(()=>{try{const t=localStorage.getItem('gtf-ext');return RTHEMES.some(x=>x.id===t)?t:'light'}catch(e){return'light'}});
+ const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false}),genTok=useRef(0);
  const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState('');
+ const setRcf=(k,v)=>{const n={...rcf,[k]:v};setRcfS(n);try{localStorage.setItem('gtf-rcf',JSON.stringify(n))}catch(e){}};
  const togFx=k=>{const v=!fxs[k];FX.set(k,v);setFxs({...fxs,[k]:v})};
  const commit=n=>{ref.current=n;setSt(n);onSave(n)};
  useEffect(()=>{if(ext&&ext.data&&ext.n!==e0.current){e0.current=ext.n;const d=mig(ext.data);ref.current=d;setSt(d);past.current=[];fut.current=[];last.current={k:'',t:0}}},[ext&&ext.n]);
@@ -362,7 +374,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const undo=()=>{if(!past.current.length)return;fut.current.push(ref.current);last.current={k:'',t:0};commit(past.current.pop())};
  const redo=()=>{if(!fut.current.length)return;past.current.push(ref.current);last.current={k:'',t:0};commit(fut.current.pop())};
  const Y=st.years.find(y=>y.id===st.y)||st.years[0],S=Y.sems.find(x=>x.id===st.s)||Y.sems[0],tg=st.tg||{};
- CUR=mkScale(st.cfg);const C=CUR,P=C.periods;
+ CUR=mkScale(st.cfg);GD=normGD(st.cfg&&st.cfg.gd);const C=CUR,P=C.periods;
  const upd=(fn,key)=>set(c=>({...c,years:c.years.map(y=>y.id!==Y.id?y:{...y,sems:y.sems.map(x=>x.id!==S.id?x:fn(x))})}),key);
  const updSub=(id,fn,key)=>upd(x=>({...x,subs:x.subs.map(s=>s.id===id?fn(s):s)}),key&&key+id);
  const mapAll=(c,fn)=>({...c,years:c.years.map(y=>({...y,sems:y.sems.map(x=>({...x,subs:x.subs.map(fn)}))}))});
@@ -434,7 +446,13 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const hLo=Math.min(C.hi,C.fail),hHi=Math.max(C.hi,C.fail),hBad=hG!=null&&Number.isFinite(hG)&&(hG<hLo||hG>hHi);
  const ayRows=[],ayRowsM=[];st.years.forEach(y=>y.sems.forEach(x=>{(x.subs||[]).forEach(q=>{const e=finEq(q);if(e!=null){ayRows.push([e,q.units]);if(q.kind!=='gen')ayRowsM.push([e,q.units])}});if(single)(x.gens||[]).forEach(g=>{if(g.pre!==''&&g.pre!=null)ayRows.push([eqv(+g.pre),g.units])})}));
  const ayTrk=gwa(ayRows),ayTrkU=ayRows.reduce((a,r)=>a+(+r[1]>0?+r[1]:0),0),ayAll=gwa([...ayRows,...(histOk&&!hBad?[[hG,hU]]:[])]),ayU=ayTrkU+(histOk&&!hBad?hU:0),ayM=gwa(ayRowsM);
- const rcAll=[...subs.map(x=>({id:x.id,code:x.code||'Subject',name:x.name||'',pre:preEq(x),fin:finEq(x)})),...gens.map(g=>{const has=g.pre!==''&&g.pre!=null;return{id:g.id,code:g.name||'Gen Ed',name:'Gen Ed',pre:has?eqv(+g.pre):null,fin:single&&has?eqv(+g.pre):null}})];
+ // the same recorded grades as percentages (Base applied), so each report column can show either format
+ const preP=s=>pcalc(s,P[0]).complete?trans(pcalc(s,P[0]).raw,sbaseOf(s)):null,finP=s=>semActual(s,P),genPreP=gens.filter(g=>g.pre!==''&&g.pre!=null).map(g=>[+g.pre,g.units]);
+ const aPreP=gwa([...preSubs.map(s=>[preP(s),s.units]),...genPreP]),aPrePM=gwa(preSubs.filter(isMaj).map(s=>[preP(s),s.units])),aFinP=gwa([...finSubs.map(s=>[finP(s),s.units]),...(single?genPreP:[])]),aFinPM=gwa(finSubs.filter(isMaj).map(s=>[finP(s),s.units]));
+ const rcAll=[...subs.map(x=>({id:x.id,code:x.code||'Subject',name:x.name||'',pre:preEq(x),fin:finEq(x),prp:preP(x),fnp:finP(x)})),...gens.map(g=>{const has=g.pre!==''&&g.pre!=null;return{id:g.id,code:g.name||'Gen Ed',name:'Gen Ed',pre:has?eqv(+g.pre):null,fin:single&&has?eqv(+g.pre):null,prp:has?+g.pre:null,fnp:single&&has?+g.pre:null}})];
+ // report card display formats: 'g' = grade on the scale, 'p' = percentage. A percentage scale only has percentages.
+ const fmA=C.id==='pct'?'p':rcf.a,fmB=C.id==='pct'?'p':rcf.b,gLbl=C.id==='gpa'?'4.0 Scale':'5-Point Scale';
+ const rcCell=(m,g,pc)=>m==='p'?fpc(pc):fg(g),rcTot=(m,g,pc)=>m==='p'?(pc==null||!Number.isFinite(pc)?'—':pc.toFixed(GD)+'%'):fw(g);
  // cumulative target: what the remaining (in-progress + planned) units must average to land on the target GWA
  const ayt=st.ayt||{},tT=ayt.t!==undefined&&ayt.t!==''?+ayt.t:null,tOk=tT!=null&&Number.isFinite(tT),xU=ayt.ex!==undefined&&ayt.ex!==''&&Number.isFinite(+ayt.ex)&&+ayt.ex>0?+ayt.ex:0;
  let remU=0;st.years.forEach(y=>y.sems.forEach(x=>{(x.subs||[]).forEach(q=>{if(finEq(q)==null)remU+=+q.units||0});(x.gens||[]).forEach(g=>{if(!(single&&g.pre!==''&&g.pre!=null))remU+=+g.units||0})}));
@@ -467,59 +485,98 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   if(s.lock==='x'&&(Math.abs(dx)>70||(v>.5&&Math.abs(dx)>30)))goTo(dx<0?idx+1:idx-1)};
 
  /* ---- share / export as image ---- */
- const buildStory=async(hide,mode)=>{
+ const buildStory=async(hide,mode,theme)=>{
+  const themed=mode==='report'&&!!theme&&theme!=='app';
   try{await document.fonts.load('800 40px "Plus Jakarta Sans"')}catch(e){}
   const rs=getComputedStyle(document.documentElement),col=(n,a)=>{const t=rs.getPropertyValue(n).trim().split(/\s+/);return`rgba(${t[0]},${t[1]},${t[2]},${a==null?1:a})`};
   const W=1080,H=1920,ff='"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif',cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  const fitSz=(ts,sz,wt,fam,mw)=>{let z=sz;x.font=wt+' '+z+'px '+fam;while(z>30&&ts.some(t=>x.measureText(t).width>mw)){z-=2;x.font=wt+' '+z+'px '+fam}return z};
   const rr=(a,b,w,h,r)=>{x.beginPath();x.roundRect?x.roundRect(a,b,w,h,r):x.rect(a,b,w,h)};
   const tx=(s,a,b,sz,wt,c,al)=>{x.font=wt+' '+sz+'px '+ff;x.fillStyle=c;x.textAlign=al||'left';x.fillText(s,a,b)};
   
   x.fillStyle=col('--bg');x.fillRect(0,0,W,H);
   const glass=(a,b,w,h)=>{x.save();x.shadowColor='rgba(0,0,0,.10)';x.shadowBlur=36;x.shadowOffsetY=10;rr(a,b,w,h,56);x.fillStyle=col('--surface');x.fill();x.restore();rr(a,b,w,h,56);x.lineWidth=2;x.strokeStyle=col('--line',.9);x.stroke()};
   const M=84,CW=W-M*2,ok=finalG!=null&&C.meets(finalG),okM=mG!=null&&C.meets(mG),dirW=C.dir<0?'or lower':'or higher';
-  tx(acct.name||'My grades',M,170,60,800,col('--ink'));tx(Y.name+' · '+S.name,M,226,30,500,col('--muted'));
-  if(mode==='report'){
+  if(!themed){tx(acct.name||'My grades',M,170,60,800,col('--ink'));tx(Y.name+' · '+S.name,M,226,30,500,col('--muted'))}
+  // ---- Report Card export in a chosen design: light, dark or academic (the app-theme version is drawn below) ----
+  const drawThemed=th=>{
+   const SYS='-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Helvetica,Arial,sans-serif',SERIF='Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif';
+   const K={light:{ink:'#111113',mut:'#8E8E93',ln:'#E5E5EA',ac:'#111113',fam:SYS},dark:{ink:'#F5F5F7',mut:'#8E8E99',ln:'#272731',ac:'#E2BC5A',fam:ff},academic:{ink:'#1B2A4A',mut:'#6E6554',ln:'#C9BE9F',ac:'#7A1F2B',fam:SERIF}}[th],dk=th==='dark',ac=th==='academic';
+   const T=(t,a,b,sz,wt,c,al)=>{x.font=wt+' '+sz+'px '+K.fam;x.fillStyle=c;x.textAlign=al||'left';x.fillText(t,a,b)};
+   const hl=(a,b,w,c,t)=>{x.fillStyle=c;x.fillRect(a,b,w,t||2)};
+   if(dk){const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#08080C');g.addColorStop(1,'#16161F');x.fillStyle=g}else x.fillStyle=th==='light'?'#FFFFFF':'#FAF5E6';
+   x.fillRect(0,0,W,H);
+   const X0=M,X1=W-M,pad=dk?48:24,sub=Y.name+' · '+S.name,cut=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
+   let top;
+   if(th==='light'){T(acct.name||'My grades',X0,200,68,700,K.ink);T('Report card · '+sub,X0,256,30,500,K.mut);top=340}
+   else if(dk){hl(X0,150,72,K.ac,6);T(acct.name||'My grades',X0,236,66,800,K.ink);T('Report card · '+sub,X0,290,30,500,K.mut);top=380}
+   else{x.strokeStyle=K.ink;x.lineWidth=5;x.strokeRect(40,40,W-80,H-80);x.lineWidth=1.5;x.strokeRect(58,58,W-116,H-116);
+    T('Report Card',W/2,250,88,700,K.ink,'center');T(acct.name||'My grades',W/2,322,42,'italic 400',K.ink,'center');T(sub,W/2,374,28,400,K.mut,'center');
+    hl(X0,412,CW,K.ink,4);hl(X0,424,CW,K.ink,1.5);top=480}
+   const off=hide?200:0,footY=H-(ac?130:96),hdrH=70,totH=dk?340:300,avail=footY-60-(top+off)-hdrH-totH;
+   const cap=Math.max(3,Math.floor(avail/64)),rows=hide?[]:rcAll.slice(0,cap),more=hide?0:Math.max(0,rcAll.length-rows.length),rh=rows.length?Math.min(116,Math.floor((avail-(more?44:0))/rows.length)):0;
+   const cB=X1-pad,cA=cB-270,sx=X0+pad,y0=top+off,hy=y0+(dk?84:40),ry=hy+22,ty=ry+rows.length*rh+(more?44:0);
+   if(dk){x.save();rr(X0,y0,CW,hdrH+rows.length*rh+(more?44:0)+totH,48);x.fillStyle='#14141B';x.fill();x.lineWidth=2;x.strokeStyle='#262631';x.stroke();x.restore()}
+   const hf=ac?'italic 600':'600';
+   if(!hide)T('Subject',sx,hy,24,hf,K.mut);T(P[0].name,cA,hy,24,hf,K.mut,'right');T(single?'Semestral':P[last0].name,cB,hy,24,hf,K.mut,'right');
+   hl(dk?X0+40:X0,hy+22,dk?CW-80:CW,ac?K.ink:K.ln,ac?3:2);
+   rows.forEach((r,i)=>{const y=ry+i*rh+Math.round(rh*.58),vw=ac?400:dk?800:600,vs=ac?44:42;
+    T(cut(r.code,14),sx,y,40,ac?700:700,K.ink);if(r.name&&rh>=72)T(cut(r.name,28),sx,y+30,23,ac?'italic 400':500,K.mut);
+    T(rcCell(fmA,r.pre,r.prp),cA,y+4,vs,vw,r.pre==null?K.mut:K.ink,'right');T(rcCell(fmB,r.fin,r.fnp),cB,y+4,vs,vw,r.fin==null?K.mut:K.ink,'right');
+    if(i<rows.length-1)hl(dk?X0+40:X0,ry+(i+1)*rh,dk?CW-80:CW,K.ln,1.5)});
+   if(more)T('+'+more+' more subject'+(more>1?'s':''),sx,ty-12,24,ac?'italic 400':600,K.mut);
+   const gy=ty+(dk?118:96),vfill=ac?K.ac:dk?K.ac:K.ink,tA=rcTot(fmA,aPre,aPreP),tB=rcTot(fmB,aFin,aFinP);
+   if(th==='light')hl(X0,ty+14,CW,K.ink,4);
+   else if(ac){hl(X0,ty+12,CW,K.ink,3);hl(X0,ty+22,CW,K.ink,1.5)}
+   else{x.save();rr(X0+24,ty+26,CW-48,176,36);x.fillStyle='rgba(226,188,90,.10)';x.fill();x.lineWidth=2;x.strokeStyle='rgba(226,188,90,.45)';x.stroke();x.restore()}
+   const tz=fitSz([tA,tB],66,ac?700:900,K.fam,250);T('GWA',sx+(dk?12:0),gy,46,ac?700:800,dk?K.ac:K.ink);T(tA,cA,gy+2,tz,ac?700:900,vfill,'right');T(tB,cB,gy+2,tz,ac?700:900,vfill,'right');
+   T(single?'Semestral total':P[0].name+' total  ·  '+P[last0].name+' is cumulative',sx+(dk?12:0),gy+50,24,ac?'italic 400':500,K.mut);
+   const my=gy+(dk?150:122);T('Majors GWA',sx+(dk?12:0),my,30,ac?'italic 600':600,K.mut);T(rcTot(fmA,aPreM,aPrePM),cA,my,38,ac?400:700,K.mut,'right');T(rcTot(fmB,aFinM,aFinPM),cB,my,38,ac?400:700,K.mut,'right');
+   T(new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+' · Grades Tracker',W/2,footY,26,ac?'italic 400':500,K.mut,'center')};
+  if(mode==='report'&&themed){drawThemed(theme)}
+  else if(mode==='report'){
    // Report Card export: every subject with Prelims and Finals, GWA totals at the bottom of each column
-   const rh=80,maxR=13,rows=hide?[]:rcAll.slice(0,maxR),more=hide?0:Math.max(0,rcAll.length-rows.length),top=300,cA=M+CW-340,cB=M+CW-56,hy=top+84;
+   const rh=80,maxR=12,rows=hide?[]:rcAll.slice(0,maxR),more=hide?0:Math.max(0,rcAll.length-rows.length),top=300,cA=M+CW-340,cB=M+CW-56,hy=top+84;
    const gh=190+rows.length*rh+(more?50:0)+(single?250:250);
    glass(M,top,CW,gh);
    tx('Subject',M+56,hy,26,700,col('--muted'));tx(P[0].name,cA,hy,26,700,col('--muted'),'right');tx(single?'Semestral':P[last0].name,cB,hy,26,700,col('--muted'),'right');
    x.fillStyle=col('--line',.9);x.fillRect(M+40,hy+26,CW-80,3);
    const cut=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
-   rows.forEach((r,i)=>{const y=hy+100+i*rh;tx(cut(r.code,16),M+56,y,38,800,col('--ink'));if(r.name)tx(cut(r.name,30),M+56,y+30,22,500,col('--muted'));tx(fg(r.pre),cA,y+6,40,900,r.pre==null?col('--muted',.5):col('--ink'),'right');tx(fg(r.fin),cB,y+6,40,900,r.fin==null?col('--muted',.5):col('--ink'),'right')});
+   rows.forEach((r,i)=>{const y=hy+100+i*rh;tx(cut(r.code,16),M+56,y,38,800,col('--ink'));if(r.name)tx(cut(r.name,30),M+56,y+30,22,500,col('--muted'));tx(rcCell(fmA,r.pre,r.prp),cA,y+6,40,900,r.pre==null?col('--muted',.5):col('--ink'),'right');tx(rcCell(fmB,r.fin,r.fnp),cB,y+6,40,900,r.fin==null?col('--muted',.5):col('--ink'),'right')});
    let fy=hy+100+rows.length*rh;if(more){tx('+'+more+' more subjects',M+56,fy-20,24,600,col('--muted'));fy+=30}
    x.fillStyle=col('--line',.9);x.fillRect(M+40,fy-30,CW-80,3);
-   const gy=fy+62;tx('GWA',M+56,gy,40,900,col('--ink'));tx(fg(aPre),cA,gy,60,900,col('--ink'),'right');tx(fg(aFin),cB,gy,60,900,col('--ink'),'right');
-   [cA,cB].forEach((e,i)=>{const v=i?aFin:aPre,wd=x.measureText(fg(v)).width;x.fillRect(e-wd,gy+14,wd,3);x.fillRect(e-wd,gy+22,wd,3)});
+   const gy=fy+62,tA=rcTot(fmA,aPre,aPreP),tB=rcTot(fmB,aFin,aFinP);const tz=fitSz([tA,tB],60,900,ff,270);tx('GWA',M+56,gy,40,900,col('--ink'));tx(tA,cA,gy,tz,900,col('--ink'),'right');tx(tB,cB,gy,tz,900,col('--ink'),'right');
+   [cA,cB].forEach((e,i)=>{x.font='900 '+tz+'px '+ff;const wd=x.measureText(i?tB:tA).width;x.fillRect(e-wd,gy+14,wd,3);x.fillRect(e-wd,gy+22,wd,3)});
    tx(P[0].name+' total  ·  '+(single?'Semestral':P[last0].name+' is cumulative'),M+56,gy+66,24,600,col('--muted'));
-   tx('Majors GWA',M+56,gy+124,30,700,col('--muted'));tx(fg(aPreM),cA,gy+124,34,800,col('--muted'),'right');tx(fg(aFinM),cB,gy+124,34,800,col('--muted'),'right')
+   tx('Majors GWA',M+56,gy+124,30,700,col('--muted'));tx(rcTot(fmA,aPreM,aPrePM),cA,gy+124,34,800,col('--muted'),'right');tx(rcTot(fmB,aFinM,aFinPM),cB,gy+124,34,800,col('--muted'),'right')
   }else if(mode==='actual'){
    // Overview share: recorded grades only, no targets and no projections
    const secs=single?[['Semestral GWA',aFin,aFinM]]:[[P[0].name+' GWA',aPre,aPreM],[P[last0].name+' GWA',aFin,aFinM]],n=secs.length,ch=n===1?560:400,gap=36;
-   secs.forEach(([l,a,m],i)=>{const y=300+i*(ch+gap);glass(M,y,CW,ch);tx(l,M+64,y+96,38,700,col('--muted'));tx(fg(a),M+64,y+(n===1?400:292),n===1?280:220,900,col('--ink'));tx('Majors GWA',M+64,y+ch-48,34,700,col('--muted'));tx(fg(m),M+CW-64,y+ch-48,46,900,col('--ink'),'right')});
+   secs.forEach(([l,a,m],i)=>{const y=300+i*(ch+gap);glass(M,y,CW,ch);tx(l,M+64,y+96,38,700,col('--muted'));tx(fw(a),M+64,y+(n===1?400:292),n===1?280:220,900,col('--ink'));tx('Majors GWA',M+64,y+ch-48,34,700,col('--muted'));tx(fw(m),M+CW-64,y+ch-48,46,900,col('--ink'),'right')});
    const y0=300+n*(ch+gap),room=Math.floor((H-150-y0-130)/74),rows=hide?[]:aRows.slice(0,Math.max(0,Math.min(room,5)));
    if(rows.length){const gh=130+rows.length*74;glass(M,y0,CW,gh);tx('Subjects',M+56,y0+76,30,700,col('--muted'));
     if(!single)tx(P[0].name,M+CW-300,y0+76,24,600,col('--muted'),'right');tx(single?'Semestral':P[last0].name,M+CW-56,y0+76,24,600,col('--muted'),'right');
     rows.forEach((r,i)=>{const y=y0+150+i*74;tx(r.code||'Subject',M+56,y,36,800,col('--ink'));if(!single)tx(fg(r.pe),M+CW-300,y,32,700,col('--muted'),'right');tx(fg(r.fe),M+CW-56,y,38,900,col('--ink'),'right')})}
   }else{
-  glass(M,300,CW,620);tx('Overall GWA',M+64,400,36,700,col('--muted'));tx(fg(finalG),M+64,650,250,900,ok?col('--good'):col('--ink'));
-  tx(finalG==null?'Waiting for grades':ok?'On track for your target':fg(Math.abs(finalG-C.target))+' away from your target',M+64,760,44,800,ok?col('--good'):col('--ink'));
+  glass(M,300,CW,620);tx('Overall GWA',M+64,400,36,700,col('--muted'));tx(fw(finalG),M+64,650,250,900,ok?col('--good'):col('--ink'));
+  tx(finalG==null?'Waiting for grades':ok?'On track for your target':fw(Math.abs(finalG-C.target))+' away from your target',M+64,760,44,800,ok?col('--good'):col('--ink'));
   tx('Target '+fg(C.target)+' '+dirW,M+64,826,32,500,col('--muted'));
   const hw=(CW-36)/2,h2=hide?380:260;
-  glass(M,948,hw,h2);tx('Majors GWA',M+48,1020,30,700,col('--muted'));tx(fg(mG),M+48,1020+(hide?170:130),hide?150:110,900,okM?col('--good'):col('--ink'));if(hide)tx(mG==null?'No majors yet':okM?'Meets target':'Below target',M+48,1020+300,34,700,okM?col('--good'):col('--muted'));
+  glass(M,948,hw,h2);tx('Majors GWA',M+48,1020,30,700,col('--muted'));tx(fw(mG),M+48,1020+(hide?170:130),hide?150:110,900,okM?col('--good'):col('--ink'));if(hide)tx(mG==null?'No majors yet':okM?'Meets target':'Below target',M+48,1020+300,34,700,okM?col('--good'):col('--muted'));
   glass(M+hw+36,948,hw,h2);tx('Target GWA',M+hw+84,1020,30,700,col('--muted'));tx(fg(C.target),M+hw+84,1020+(hide?170:130),hide?150:110,900,col('--ink'));if(hide)tx(dirW,M+hw+84,1020+300,34,700,col('--muted'));
   if(!hide){const rows=rowsS.slice(0,5),gh=130+rows.length*74;glass(M,1244,CW,gh);tx('Subjects',M+56,1320,30,700,col('--muted'));
    rows.forEach((r,i)=>{const y=1400+i*74;tx(r.s.code||'Subject',M+56,y,36,800,col('--ink'));tx(r.pg.map(v=>v==null?'—':f2(v)).join('  /  '),M+420,y,30,600,col('--muted'));tx(fg(r.eq),M+CW-56,y,38,900,r.eq!=null&&C.meets(r.eq)?col('--good'):r.eq!=null&&C.bad(r.eq)?col('--bad'):col('--ink'),'right')});
    if(rowsS.length>5)tx('+'+(rowsS.length-5)+' more',M+56,1244+gh-20,26,600,col('--muted'))}
   }
-  tx(new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+' · Grades Tracker',W/2,H-90,28,600,col('--muted'),'center');
+  if(!themed)tx(new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+' · Grades Tracker',W/2,H-90,28,600,col('--muted'),'center');
   return await new Promise(r=>cv.toBlob(r,'image/png'))};
- const genStory=async(h,m)=>{try{const b=await buildStory(h,m),u=URL.createObjectURL(b);setShr(s=>{if(s&&s.url)URL.revokeObjectURL(s.url);return{hide:h,mode:m,url:u,blob:b}})}catch(e){setMsg('Could not create the image.')}};
- const openShare=m=>{const h=m!=='report';setShr({hide:h,mode:m,url:'',blob:null});genStory(h,m)};
+ const genStory=async(h,m,t)=>{const id=++genTok.current;try{const b=await buildStory(h,m,t),u=URL.createObjectURL(b);if(id!==genTok.current){URL.revokeObjectURL(u);return}setShr(s=>{if(!s){URL.revokeObjectURL(u);return s}if(s.url)URL.revokeObjectURL(s.url);return{...s,hide:h,mode:m,theme:t,url:u,blob:b}})}catch(e){setMsg('Could not create the image.')}};
+ const openShare=m=>{const h=m!=='report';setShr({hide:h,mode:m,url:'',blob:null,theme:exT});genStory(h,m,exT)};
+ const pickEx=id=>{setExT(id);try{localStorage.setItem('gtf-ext',id)}catch(e){}setShr(s=>s&&{...s,theme:id,blob:null});genStory(shr?shr.hide:false,'report',id)};
  const closeShare=()=>setShr(s=>{if(s&&s.url)URL.revokeObjectURL(s.url);return null});
- const sendStory=async()=>{const b=shr&&shr.blob;if(!b)return;const file=new File([b],'grades-story.png',{type:'image/png'});
+ const sendStory=async()=>{const b=shr&&shr.blob;if(!b)return;const fn=shr.mode==='report'?'report-card-'+(shr.theme||'app')+'.png':'grades-story.png',file=new File([b],fn,{type:'image/png'});
   try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'My grades'});return}}catch(e){if(e&&e.name==='AbortError')return}
-  const a=document.createElement('a');a.href=shr.url;a.download='grades-story.png';document.body.appendChild(a);a.click();a.remove();setMsg('Image saved')};
+  const a=document.createElement('a');a.href=shr.url;a.download=fn;document.body.appendChild(a);a.click();a.remove();setMsg('Image saved')};
 
 /* ---- header, overview, forecast summary ---- */
  // cloud status as one quiet icon: a check inside the cloud when everything is saved
@@ -557,21 +614,23 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const tog=k=>setAccO(o=>({...o,[k]:!o[k]}));
  const AH=(t,sub)=><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">{t}</span>{sub&&<span className="block truncate text-xs text-muted">{sub}</span>}</span>;
  const A=(k,t,sub,kids)=><Acc key={k} open={!!accO[k]} onToggle={()=>tog(k)} head={AH(t,sub)}>{kids}</Acc>;
- const Big=(l,v,sub,tip,cls,huge)=><div className={cx(CARD,'flex flex-col justify-between gap-6 p-6 sm:p-7',cls)}><div className="text-sm font-bold text-muted">{l}{tip&&<Tip t={tip}/>}</div><div><div className={cx('font-black tabular-nums tracking-tight',huge?'text-7xl sm:text-8xl':'text-6xl sm:text-7xl')}>{v}</div><div className="mt-2 text-sm font-semibold text-muted">{sub}</div></div></div>;
 
  /* ---- Report tab: a literal report card ---- */
- const ReportPage=()=>{
-  const RCG='grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center gap-3 px-5 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] sm:px-7';
-  return <div className="flex flex-col gap-4">
-   <div className="flex flex-wrap items-center justify-between gap-3"><p className="min-w-0 flex-1 text-sm text-muted">{Y.name} · {S.name} · recorded grades only</p>
-    <button className={BTNP+' !px-5 !py-3 !text-base'} onClick={()=>openShare('report')}><svg viewBox="0 0 24 24" className="h-5 w-5" {...IS}><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Export as Image</button></div>
+const ReportPage=()=>{
+  const RCG='grid grid-cols-[minmax(0,1fr)_5.25rem_5.25rem] items-center gap-2 px-4 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] sm:gap-3 sm:px-7';
+  const cols=[['a',P[0].name],['b',single?'Semestral':P[last0].name]],vs=m=>m==='p'?'text-[17px] sm:text-xl':'text-xl';
+  return <div className="flex flex-col gap-3">
+   <div className="flex flex-wrap items-center justify-between gap-3"><p className="min-w-0 flex-1 text-sm text-muted">{shortY(Y.name)} - {shortS(S.name)}<span className="hidden sm:inline"> · recorded grades only</span></p>
+    <button className={BTNP+' !px-4 !py-2.5 sm:!px-5 sm:!py-3 sm:!text-base'} onClick={()=>openShare('report')}><svg viewBox="0 0 24 24" className="h-5 w-5" {...IS}><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Export as Image</button></div>
+   {rcAll.length>0&&C.id!=='pct'&&<div className={cx(CARD,'grid gap-2.5 p-3 sm:grid-cols-2 sm:gap-x-8 sm:p-4')} role="group" aria-label="Choose how each column shows grades">
+    {cols.map(([k,l])=><div key={k} className="flex min-w-0 items-center justify-between gap-3"><span className="min-w-0 truncate text-sm font-extrabold">{l}</span><Seg sm v={rcf[k]} on={v=>setRcf(k,v)} opts={[['g',gLbl],['p','Percentage']]}/></div>)}</div>}
    {rcAll.length?<div className={cx(CARD,'overflow-hidden')}>
-    <div className={cx(RCG,'border-b border-line/60 py-3.5')}><span className={LBL2}>Subject</span><span className={cx(LBL2,'truncate text-right')}>{P[0].name}</span><span className={cx(LBL2,'truncate text-right')}>{single?'Semestral':P[last0].name}</span></div>
-    <ul className="divide-y divide-line/40">{rcAll.map(r=><li key={r.id} className={cx(RCG,'py-3.5')}><div className="min-w-0"><div className="truncate font-extrabold">{r.code}</div><div className="truncate text-xs text-muted">{r.name||'No description'}</div></div>
-     <span className={cx('text-right text-xl font-black tabular-nums',r.pre==null&&'text-muted/50')}>{fg(r.pre)}</span><span className={cx('text-right text-xl font-black tabular-nums',r.fin==null&&'text-muted/50')}>{fg(r.fin)}</span></li>)}</ul>
-    <div className={cx(RCG,'border-t-2 border-line bg-accent/10 py-4')}><div><div className="text-base font-black">GWA</div><div className="text-[11px] font-semibold text-muted">{single?'Semestral total':P[0].name+' total · '+P[last0].name+' is cumulative'}</div></div>
-     <span className="text-right text-2xl font-black tabular-nums"><span className="tot">{fg(aPre)}</span></span><span className="text-right text-2xl font-black tabular-nums"><span className="tot">{fg(aFin)}</span></span></div>
-    <div className={cx(RCG,'py-3 text-muted')}><span className="text-xs font-bold">Majors GWA</span><span className="text-right text-base font-extrabold tabular-nums">{fg(aPreM)}</span><span className="text-right text-base font-extrabold tabular-nums">{fg(aFinM)}</span></div></div>
+    <div className={cx(RCG,'border-b border-line/60 py-3')}><span className={LBL2}>Subject</span><span className={cx(LBL2,'truncate text-right')}>{P[0].name}</span><span className={cx(LBL2,'truncate text-right')}>{single?'Semestral':P[last0].name}</span></div>
+    <ul className="divide-y divide-line/40">{rcAll.map(r=><li key={r.id} className={cx(RCG,'py-3')}><div className="min-w-0"><div className="truncate font-extrabold">{r.code}</div><div className="truncate text-xs text-muted">{r.name||'No description'}</div></div>
+     <span className={cx('text-right font-black tabular-nums',vs(fmA),(fmA==='p'?r.prp:r.pre)==null&&'text-muted/50')}>{rcCell(fmA,r.pre,r.prp)}</span><span className={cx('text-right font-black tabular-nums',vs(fmB),(fmB==='p'?r.fnp:r.fin)==null&&'text-muted/50')}>{rcCell(fmB,r.fin,r.fnp)}</span></li>)}</ul>
+    <div className={cx(RCG,'border-t-2 border-line bg-accent/10 py-3.5')}><div><div className="text-base font-black">GWA</div><div className="text-[11px] font-semibold leading-tight text-muted">{single?'Semestral total':P[0].name+' total · '+P[last0].name+' is cumulative'}</div></div>
+     <span className={cx('text-right font-black tabular-nums',fmA==='p'?'text-lg sm:text-2xl':'text-2xl')}><span className="tot">{rcTot(fmA,aPre,aPreP)}</span></span><span className={cx('text-right font-black tabular-nums',fmB==='p'?'text-lg sm:text-2xl':'text-2xl')}><span className="tot">{rcTot(fmB,aFin,aFinP)}</span></span></div>
+    <div className={cx(RCG,'py-2.5 text-muted')}><span className="text-xs font-bold">Majors GWA</span><span className="text-right text-base font-extrabold tabular-nums">{rcTot(fmA,aPreM,aPrePM)}</span><span className="text-right text-base font-extrabold tabular-nums">{rcTot(fmB,aFinM,aFinPM)}</span></div></div>
    :<div className={cx(CARD,'p-6 text-center text-sm text-muted')}>No subjects yet. Add subjects in the Tracker and they appear here.</div>}</div>};
 
  /* ---- Overview: all GWA metrics ---- */
@@ -581,44 +640,51 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   const per=shortY(Y.name)+' - '+shortS(S.name);
   const tn=(l,v,sub)=><Tile key={l} l={l} v={v} sub={sub}/>;
   const vcls=!tr?'':tr.none?(tr.met?'border-good/40 bg-good/10 text-good':'border-line bg-ink/[.06]'):tr.secured?'border-good/40 bg-good/10 text-good':!tr.reach?'border-bad/40 bg-bad/10 text-bad':'border-accent/50 bg-accent/15';
-  const verdict=!tr?'':tr.none?(tr.met?'Target met with your current record.':'No units left to improve it. Add units you still plan to take above.'):tr.secured?'Secured: you stay on target whatever you score on the remaining units.':!tr.reach?'Not reachable: even perfect grades on the remaining units only give '+fg(tr.best)+'.':'Reachable: average '+fg(tr.Gr)+' '+dirW+' on the remaining units.';
+  const verdict=!tr?'':tr.none?(tr.met?'Target met with your current record.':'No units left to improve it. Add units you still plan to take above.'):tr.secured?'Secured: you stay on target whatever you score on the remaining units.':!tr.reach?'Not reachable: even perfect grades on the remaining units only give '+fw(tr.best)+'.':'Reachable: average '+fw(tr.Gr)+' '+dirW+' on the remaining units.';
   const need=tr&&!tr.none&&tr.reach&&!tr.secured&&tr.pct!=null?subs.filter(q=>finEq(q)==null).map(q=>({q,o:needX(linSub(q,P),tr.pct)})):[];
+  // slim accordion row that lives INSIDE the All-Year card
+  const NA=(k,t,sub,kids)=>{const o=!!accO[k];return <div className="border-t border-line/50">
+   <button onClick={()=>tog(k)} aria-expanded={o} className="flex w-full items-center gap-2 px-4 py-2.5 text-left transition hover:bg-ink/[.06] sm:px-5"><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold">{t}</span>{sub&&<span className="block truncate text-xs text-muted">{sub}</span>}</span><Chev open={o}/></button>
+   <div className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col gap-3 px-4 pb-4 pt-1 sm:px-5">{kids}</div></div></div></div>};
+  const GC=(l,v,sub,tip)=><div className={cx(CARD,'flex min-w-0 flex-col gap-1 p-3.5 sm:p-5')}><div className="truncate text-xs font-bold text-muted sm:text-sm">{l}{tip&&<Tip t={tip}/>}</div><div className="text-[2rem] font-black leading-none tabular-nums tracking-tight sm:text-5xl">{v}</div><div className="line-clamp-2 text-[11px] font-semibold leading-snug text-muted sm:text-sm">{sub}</div></div>;
+  const ayInfo=ayAll==null?'No completed semesters yet':f2(ayU)+' unit'+(ayU===1?'':'s')+' counted'+(ayM!=null?' · Majors '+fw(ayM):'')+(dr?' · includes your past record':'')+(C.meets(ayAll)?' · meets target':'');
   return <>
-   <section className={cx(CARD,'flex items-center gap-4 p-5 sm:gap-6 sm:p-6')}>
-    {acct.pic?<img src={acct.pic} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-accent sm:h-20 sm:w-20"/>:<div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-accent text-2xl font-black text-accent-ink sm:h-20 sm:w-20 sm:text-3xl">{nm.charAt(0).toUpperCase()}</div>}
-    <div className="min-w-0 flex-1"><h1 className="text-xl font-black leading-tight tracking-tight sm:text-3xl">Hi {nm}! Hope you’re doing great.</h1>
-     {acct.bio?<p className="mt-1 line-clamp-2 text-sm text-muted">{acct.bio}</p>:guest?<p className="mt-1 text-sm text-muted">Guest mode · save this session as an account to keep it.</p>:<button onClick={()=>setTab('p')} className="mt-1 text-left text-sm font-semibold text-accent-text underline underline-offset-4">Add a short bio</button>}</div></section>
+   <section className={cx(CARD,'flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5')}>
+    {acct.pic?<img src={acct.pic} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-accent sm:h-14 sm:w-14"/>:<div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent text-lg font-black text-accent-ink sm:h-14 sm:w-14 sm:text-2xl">{nm.charAt(0).toUpperCase()}</div>}
+    <div className="min-w-0 flex-1"><h1 className="text-base font-black leading-tight tracking-tight sm:text-2xl">Hi {nm}! Hope you’re doing great.</h1>
+     {acct.bio?<p className="mt-0.5 line-clamp-1 text-xs text-muted sm:text-sm">{acct.bio}</p>:guest?<p className="mt-0.5 text-xs text-muted">Guest mode · save this session as an account to keep it.</p>:<button onClick={()=>setTab('p')} className="mt-0.5 text-left text-xs font-semibold text-accent-text underline underline-offset-4">Add a short bio</button>}</div></section>
 
-   <section className="flex flex-col gap-4">
-    {Big('Cumulative All-Year GWA',fg(ayAll),ayAll==null?'No completed semesters yet':f2(ayU)+' unit'+(ayU===1?'':'s')+' counted'+(ayM!=null?' · Majors '+fg(ayM):'')+(dr?' · includes your past record':'')+(C.meets(ayAll)?' · meets target':''),'Weighted by units: every completed semestral grade across all years in the app, plus the past record you enter below.','hero !min-h-[15rem]',true)}
-    <div className="grid items-start gap-4 sm:grid-cols-2">
-     {A('pr','Past record','Optional · earlier semesters not in the app',<>
+   <section className={cx(CARD,'hero overflow-hidden')}>
+    <div className="flex items-center justify-between gap-3 p-4 sm:p-5">
+     <div className="min-w-0"><div className="text-sm font-bold text-muted">Cumulative All-Year GWA<Tip t="Weighted by units: every completed semestral grade across all years in the app, plus the past record you enter below."/></div><div className="mt-0.5 line-clamp-3 text-xs font-semibold leading-snug text-muted">{ayInfo}</div></div>
+     <div className="shrink-0 text-5xl font-black leading-none tabular-nums tracking-tight sm:text-6xl">{fw(ayAll)}</div></div>
+    {NA('pr','Past record','Optional · earlier semesters not in the app',<>
       <p className="text-sm text-muted">Missing historical data? Enter your past overall GWA and the total units taken so far. Both are needed.</p>
       <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold text-muted">Past overall GWA<Num v={hs.gwa} on={v=>setHist('gwa',v)} ph={C.dir<0?'e.g. 1.75':'e.g. 3.50'} w="mt-1 w-full" bad={hBad}/></label><label className="text-xs font-semibold text-muted">Total units taken<Num v={hs.units} on={v=>setHist('units',v)} ph="e.g. 60" w="mt-1 w-full"/></label></div>
       {hBad&&<p className="text-xs font-semibold text-bad">That GWA is outside the {fg(hLo)} to {fg(hHi)} scale, so it is not counted.</p>}
       {!hBad&&(hs.gwa||hs.units)&&!histOk&&<p className="text-xs font-semibold text-muted">Enter both a GWA and units above zero to include it.</p>}
-      <div className="grid grid-cols-2 gap-3">{tn('Tracked in app',fg(ayTrk),f2(ayTrkU)+' units')}{tn('Past record',dr?fg(hG):'—',dr?f2(hU)+' units':'Not entered')}</div>
+      <div className="grid grid-cols-2 gap-3">{tn('Tracked in app',fw(ayTrk),f2(ayTrkU)+' units')}{tn('Past record',dr?fw(hG):'—',dr?f2(hU)+' units':'Not entered')}</div>
       {(hs.gwa||hs.units)&&<button className={BTN+' self-start'} onClick={clearHist}>Clear past record</button>}</>)}
-     {A('tg','Target GWA',tOk?'Target '+fg(tT)+' '+dirW:'Set a target to see what you need',<>
+    {NA('tg','Target GWA',tOk?'Target '+fg(tT)+' '+dirW:'Set a target to see what you need',<>
       <p className="text-sm text-muted">Enter the cumulative GWA you are aiming for. It is worked out from your current standing and everything still in progress.</p>
       <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold text-muted">Target GWA<Num v={ayt.t} on={v=>setAyt('t',v)} ph={String(C.target)} w="mt-1 w-full"/></label><label className="text-xs font-semibold text-muted">More units to take<Num v={ayt.ex} on={v=>setAyt('ex',v)} ph="0" w="mt-1 w-full"/></label></div>
       <button className={BTN+' self-start'} onClick={()=>setAyt('t',String(C.target))}>Use my Dean’s List target ({fg(C.target)})</button>
       {tr&&<div className="flex flex-col gap-3"><div className={cx('rounded-2xl border px-3 py-2.5 text-sm font-semibold',vcls)}>{verdict}</div>
-       <div className="grid grid-cols-2 gap-3">{tn('Current standing',fg(G0),f2(U0)+' units')}{tn('Remaining units',f2(Ur),remU>0?f2(remU)+' in progress'+(xU>0?' + '+f2(xU)+' planned':''):xU>0?'planned':'None in progress')}
-        {!tr.none&&tn('Average grade needed',tr.secured?'Any':fg(tr.Gr),tr.secured?'target is secured':dirW+' on remaining units')}{!tr.none&&tn('Minimum semestral %',tr.secured?'—':tr.pct!=null?'≥ '+f2(tr.pct)+'%':'—','in each remaining subject')}</div>
-       {!tr.none&&tn('Best GWA still possible',fg(tr.best),'if every remaining unit earns '+fg(C.hi))}
-       {need.length>0&&<div className="flex flex-col gap-2"><div className="text-xs font-bold text-muted">To stay on track this semester</div>{need.map(({q,o})=><div key={q.id} className="flex items-center justify-between gap-3 rounded-2xl bg-ink/[.06] px-3 py-2 text-sm"><span className="font-extrabold">{q.code||'Subject'}</span><span className={cx('text-right text-xs font-semibold',tlCls(o&&!o.done?o.x:null))}>{needLbl(o,missOf(q,P))}</span></div>)}</div>}</div>}</>)}</div></section>
+       <div className="grid grid-cols-2 gap-3">{tn('Current standing',fw(G0),f2(U0)+' units')}{tn('Remaining units',f2(Ur),remU>0?f2(remU)+' in progress'+(xU>0?' + '+f2(xU)+' planned':''):xU>0?'planned':'None in progress')}
+        {!tr.none&&tn('Average grade needed',tr.secured?'Any':fw(tr.Gr),tr.secured?'target is secured':dirW+' on remaining units')}{!tr.none&&tn('Minimum semestral %',tr.secured?'—':tr.pct!=null?'≥ '+f2(tr.pct)+'%':'—','in each remaining subject')}</div>
+       {!tr.none&&tn('Best GWA still possible',fw(tr.best),'if every remaining unit earns '+fg(C.hi))}
+       {need.length>0&&<div className="flex flex-col gap-2"><div className="text-xs font-bold text-muted">To stay on track this semester</div>{need.map(({q,o})=><div key={q.id} className="flex items-center justify-between gap-3 rounded-2xl bg-ink/[.06] px-3 py-2 text-sm"><span className="font-extrabold">{q.code||'Subject'}</span><span className={cx('text-right text-xs font-semibold',tlCls(o&&!o.done?o.x:null))}>{needLbl(o,missOf(q,P))}</span></div>)}</div>}</div>}</>)}</section>
 
-   <section className="flex flex-col gap-4"><div><h2 className="text-2xl font-black tracking-tight sm:text-3xl">{per}</h2><p className="mt-0.5 text-sm text-muted">Recorded grades only. Nothing here is forecast.</p></div>
-    <div className={cx('grid gap-4',!single&&'sm:grid-cols-2')}>
-     {!single&&Big(P[0].name+' GWA',fg(aPre),preSub+(aPreM!=null?' · Majors '+fg(aPreM):''),'Only recorded '+P[0].name+' grades, weighted by units.')}
-     {Big(single?'Semestral GWA':P[last0].name+' GWA',fg(aFin),finSub+(aFinM!=null?' · Majors '+fg(aFinM):'')+(single?'':' · cumulative'),single?'Recorded grades only.':'Cumulative: '+P.map(p=>p.name).join(' + ')+', after Base.')}</div></section>
+   <section className="flex flex-col gap-2.5"><div className="flex items-baseline justify-between gap-3 px-1"><h2 className="text-lg font-black tracking-tight sm:text-2xl">{per}</h2><p className="text-right text-[11px] text-muted sm:text-xs">Recorded grades only</p></div>
+    <div className={cx('grid gap-3',!single&&'grid-cols-2')}>
+     {!single&&GC(P[0].name+' GWA',fw(aPre),preSub+(aPreM!=null?' · Majors '+fw(aPreM):''),'Only recorded '+P[0].name+' grades, weighted by units.')}
+     {GC(single?'Semestral GWA':P[last0].name+' GWA',fw(aFin),finSub+(aFinM!=null?' · Majors '+fw(aFinM):'')+(single?'':' · cumulative'),single?'Recorded grades only.':'Cumulative: '+P.map(p=>p.name).join(' + ')+', after Base.')}</div></section>
 
-   <section><h2 className="mb-4 text-2xl font-black tracking-tight sm:text-3xl">Subjects<Tip t="For subjects with no known breakdown, simply add the subject and enter the released Prelim Grade directly in Options, under Reverse calculator."/></h2>
-    {subs.length?<div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{subs.map(s=>{const pe=preEq(s),fe=finEq(s);return <button key={s.id} onClick={()=>{setSid(s.id);setTab('t')}} className={cx(CARD,'lift flex flex-col gap-6 p-5 text-left hover:!border-accent/60')}>
-      <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span><div className="min-w-0 flex-1"><div className="truncate font-extrabold">{s.code||'Subject'}</div><div className="truncate text-xs text-muted">{s.name||'No name'}</div></div><span className={cx('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold',s.kind==='gen'?'bg-ink/[.06] text-muted':'bg-accent/15 text-accent-text')}>{s.kind==='gen'?'Gen Ed':'Major'}</span></div>
-      <div className="flex items-end justify-between gap-3"><div><div className="text-xs font-semibold text-muted">{single?'Semestral':P[0].name}</div><div className="text-3xl font-black tabular-nums">{fg(single?fe:pe)}</div></div>{!single&&<div className="text-right"><div className="text-xs font-semibold text-muted">{P[last0].name}</div><div className="text-3xl font-black tabular-nums">{fg(fe)}</div></div>}</div></button>})}</div>
-     :<div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><p className="max-w-sm text-sm text-muted">Add your first subject to see your GWA here.</p><button className={BTNP} onClick={()=>{setTab('t');setAdding(true)}}>Add subject</button></div>}</section></>};
+   <section><h2 className="mb-2.5 px-1 text-lg font-black tracking-tight sm:text-2xl">Subjects<Tip t="For subjects with no known breakdown, simply add the subject and enter the released Prelim Grade directly in Options, under Reverse calculator."/></h2>
+    {subs.length?<div className="stagger grid gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">{subs.map(s=>{const pe=preEq(s),fe=finEq(s);return <button key={s.id} onClick={()=>{setSid(s.id);setTab('t')}} className={cx(CARD,'lift flex items-center gap-3 !rounded-[1.4rem] px-3.5 py-3 text-left hover:!border-accent/60')}>
+      <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><span className="truncate text-[15px] font-extrabold">{s.code||'Subject'}</span><span className={cx('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold leading-none',s.kind==='gen'?'bg-ink/[.06] text-muted':'bg-accent/15 text-accent-text')}>{s.kind==='gen'?'Gen Ed':'Major'}</span></div><div className="truncate text-xs text-muted">{s.name||'No name'}</div></div>
+      <div className="flex shrink-0 items-end gap-4 text-right"><div><div className="text-[10px] font-semibold leading-tight text-muted">{single?'Semestral':P[0].name}</div><div className="text-xl font-black leading-tight tabular-nums">{fg(single?fe:pe)}</div></div>{!single&&<div><div className="text-[10px] font-semibold leading-tight text-muted">{P[last0].name}</div><div className="text-xl font-black leading-tight tabular-nums">{fg(fe)}</div></div>}</div></button>})}</div>
+     :<div className={cx(CARD,'flex flex-col items-center gap-3 p-6 text-center')}><p className="font-bold">No subjects yet</p><p className="max-w-sm text-sm text-muted">Add your first subject to see your GWA here.</p><button className={BTNP} onClick={()=>{setTab('t');setAdding(true)}}>Add subject</button></div>}</section></>};
 
 
 const Banners=()=><>
@@ -633,8 +699,8 @@ const Banners=()=><>
    <button onClick={()=>setAdding(true)} className="shrink-0 rounded-xl border border-dashed border-accent/60 px-3 py-1.5 text-xs font-bold text-accent-text transition hover:bg-accent/10 sm:text-sm" aria-label="Add subject">＋</button></div></div>
   {subs.length>1&&<div className="flex shrink-0 items-center gap-1"><button className="hidden h-8 w-8 rounded-lg text-lg text-muted transition hover:bg-ink/[.09] hover:text-ink disabled:opacity-30 sm:block" onClick={()=>goTo(idx-1)} disabled={idx<=0} aria-label="Previous subject">‹</button><span className="w-9 text-center text-[11px] font-bold tabular-nums text-muted">{idx+1}/{subs.length}</span><button className="hidden h-8 w-8 rounded-lg text-lg text-muted transition hover:bg-ink/[.09] hover:text-ink disabled:opacity-30 sm:block" onClick={()=>goTo(idx+1)} disabled={idx>=subs.length-1} aria-label="Next subject">›</button></div>}</div>;
  const Shell=body=><div onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE} style={{touchAction:'pan-y'}} className="pb-3">
-  <div ref={swRef} className="will-change-transform"><section className={cx(CARD,'sa-'+(idx%6),'overflow-hidden')}>{CardTabs()}
-   <div key={cur.id} className={cx('flex flex-col gap-6 p-5 sm:p-7',dir>0?'slide-r':'slide-l')}>{body}</div></section></div>
+  <div ref={swRef} className="min-w-0 will-change-transform"><section className={cx(CARD,'sa-'+(idx%6),'overflow-hidden')}>{CardTabs()}
+   <div key={cur.id} className={cx('flex min-w-0 flex-col gap-3.5 p-3.5 sm:gap-6 sm:p-7',dir>0?'slide-r':'slide-l')}>{body}</div></section></div>
   {subs.length>1&&<p className="mt-3 text-center text-[11px] text-muted sm:hidden">Swipe the card left or right to change subject</p>}</div>;
 
  /* ---- tracker body ---- */
@@ -665,29 +731,29 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
   <div className="flex flex-wrap items-center gap-2"><Num v={s.rel&&s.rel[p.id]} on={v=>setRel(s.id,p.id,v)} ph={'released '+p.name.toLowerCase()+' grade'} w="w-44"/><button className={BTNP} onClick={()=>rvFill(s,p)}>Fill possible scores</button>{hasEst&&<button className={BTN} onClick={()=>rvClear(s,p)}>Clear possible scores</button>}</div>
   {m&&<p className={cx('text-xs font-semibold',m.bad?'text-bad':'text-good')}>{m.msg}</p>}</div>};
  const PeriodBlock=(s,p)=>{const c=pcalc(s,p),acts=c.acts,pi=P.indexOf(p),w=wts(s,P)[pi],R=c.raw!=null?c.raw:c.soFar,wsum=acts.reduce((t,a)=>t+wgt(a),0);
-  return <div className="flex flex-col gap-4 rounded-2xl border border-line/60 bg-ink/[.06] p-4 sm:p-5">
-   <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{p.name} <span className="ml-1 text-xs font-semibold text-muted">{f2(w)}% of semestral</span></h4><button className={BTN} onClick={()=>setEdit(!edit)}>{edit?'✓ Done':'Edit activities'}</button></div>
+  return <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line/60 bg-ink/[.06] p-3 sm:gap-4 sm:p-5">
+   <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{p.name} <span className="ml-1 text-xs font-semibold text-muted">{f2(w)}%<span className="hidden sm:inline"> of semestral</span></span></h4><button className={BTN+' !py-1.5'} onClick={()=>setEdit(!edit)}>{edit?'✓ Done':'Edit activities'}</button></div>
    {!acts.length&&<p className="text-sm text-muted">No activities yet. Add one below.</p>}
-   <div className="grid gap-3.5 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-4">{acts.map(a=>{const x=ap(a);return edit
-    ?<div key={a.id} className="flex items-center gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 min-w-0 flex-1 !text-left px-3')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-[4.5rem]"/><span className="text-muted">%</span><button className={BTNX+' !px-2.5'} onClick={()=>delAct(s.id,p.id,a.id)} aria-label="Remove activity">✕</button></div>
-    :<div key={a.id} className="flex items-center gap-2 sm:gap-3"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{a.name||'Activity'}</div><div className="text-xs text-muted">{f2(wgt(a))}% · {x==null?'not entered':f2(x)+'%'}</div>{a.est&&<span className="mt-0.5 inline-block rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span>}</div>
-     <Num nav v={a.s} on={v=>setAct(s.id,p.id,a.id,'s',v)} ph="score" bad={x!=null&&x>100} w={cx('w-[4.5rem] sm:w-20',a.est&&'!border-accent/60 !italic')}/><span className="text-muted">/</span><Num v={a.m} on={v=>setAct(s.id,p.id,a.id,'m',v)} ph="100" w="w-14 sm:w-16"/></div>})}</div>
+   <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-4">{acts.map(a=>{const x=ap(a);return edit
+    ?<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 w-0 min-w-0 flex-1 !text-left px-3')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-14 shrink-0 !px-1 sm:w-[4.5rem]"/><span className="shrink-0 text-muted">%</span><button className={BTNX+' !h-11 !w-11 shrink-0 !p-0'} onClick={()=>delAct(s.id,p.id,a.id)} aria-label="Remove activity" title="Remove activity">✕</button></div>
+    :<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-3"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{a.name||'Activity'}</div><div className="text-xs text-muted">{f2(wgt(a))}% · {x==null?'not entered':f2(x)+'%'}</div>{a.est&&<span className="mt-0.5 inline-block rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span>}</div>
+     <Num nav v={a.s} on={v=>setAct(s.id,p.id,a.id,'s',v)} ph="score" bad={x!=null&&x>100} w={cx('w-16 shrink-0 !px-1 sm:w-20',a.est&&'!border-accent/60 !italic')}/><span className="shrink-0 text-muted">/</span><Num v={a.m} on={v=>setAct(s.id,p.id,a.id,'m',v)} ph="100" w="w-14 shrink-0 !px-1 sm:w-16"/></div>})}</div>
    <button className={BTNP+' self-start'} onClick={()=>{addAct(s.id,p.id);setEdit(true)}}>＋ Add Extra Activity</button>
    {acts.length>0&&<p className={cx('text-xs',Math.abs(wsum-100)>.005?'text-bad':'text-muted')}>Activity weights total {f2(wsum)}%{Math.abs(wsum-100)>.005?' · the grade is scaled to 100%':''}</p>}
-   <div className="grid grid-cols-3 gap-2 rounded-xl bg-ink/[.06] p-2.5 text-center sm:p-3">
+   <div className="grid grid-cols-3 gap-2 rounded-xl bg-ink/[.06] p-2 text-center sm:p-3">
     <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">{p.name} grade{c.raw==null&&R!=null?' so far':''}</div><div className="text-base font-black tabular-nums sm:text-lg">{R==null?'—':f2(R)}</div></div>
     <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Weight</div><div className="text-base font-black tabular-nums sm:text-lg">{f2(w)}%</div></div>
     <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Activities</div><div className="text-base font-black tabular-nums sm:text-lg">{c.n}/{c.total}</div></div></div>
    </div>};
   const TrackerBody=()=>{const s=cur,sem=semActual(s,P),sp=semProjC(s,P),eq=sem==null?null:eqv(sem),isLast=P.length<2||pcur.id===P[last0].id;
-  const Bg=(l,v,sub,hi,cls,big)=><div key={l} className={cx('rounded-3xl border p-4 sm:p-5',hi?'border-accent/40 bg-accent/15':'border-line/60 bg-ink/[.06]',cls)}><div className="text-xs font-bold text-muted">{l}</div><div className={cx('mt-1 font-black tabular-nums tracking-tight',big?(P.length===2?'text-6xl sm:text-5xl':'text-6xl'):'text-4xl sm:text-5xl')}>{v}</div>{sub&&<div className="mt-1 text-xs font-semibold text-muted">{sub}</div>}</div>;
-  const two=P.length===2,semV=eq!=null?fg(eq):sp.grade!=null?fg(eqv(sp.grade)):'—',semSub=sem!=null?f2(sem)+'% semestral · '+(sem>=retOf(s).pct-1e-9?'Meets retention':'Below retention ('+fg(retOf(s).g)+')'):sp.grade!=null?'Projected · '+f2(sp.grade)+'% semestral':'Complete every period';
+  const Bg=(l,v,sub,hi,cls,big)=><div key={l} className={cx('min-w-0 rounded-2xl border px-3 py-2.5 sm:rounded-3xl sm:p-4',hi?'border-accent/40 bg-accent/15':'border-line/60 bg-ink/[.06]',cls)}><div className="truncate text-[11px] font-bold text-muted sm:text-xs">{l}</div><div className={cx('mt-0.5 truncate font-black leading-none tabular-nums tracking-tight',big?'text-3xl sm:text-5xl':'text-2xl sm:text-4xl')}>{v}</div>{sub&&<div className="mt-1 line-clamp-2 text-[10px] font-semibold leading-snug text-muted sm:text-xs">{sub}</div>}</div>;
+  const two=P.length===2,semV=eq!=null?fg(eq):sp.grade!=null?fg(eqv(sp.grade)):'—',semSub=sem!=null?<>{f2(sem)+'%'}<br/>{sem>=retOf(s).pct-1e-9?'Meets retention':'Below '+fg(retOf(s).g)}</>:sp.grade!=null?'Projected · '+f2(sp.grade)+'%':'Complete every period',nCards=P.length>1?P.length+1:P.length;
   return <>
-   <div className="flex items-center gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span>
-    <div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-black tracking-tight">{s.code||'Subject'}</h2><p className="truncate text-sm text-muted">{s.name||'No name'} · {f2(+s.units||0)} unit{(+s.units||0)===1?'':'s'}</p></div></div>
-   <div className={cx('grid grid-cols-2 gap-3',two&&'sm:grid-cols-3')}>
-    {P.map(p=>{const c=pcalc(s,p),v=c.grade!=null?c.grade:c.gradeSoFar;return Bg(p.name+' grade',v==null?'—':f2(v),c.grade!=null?'Raw · complete':v!=null?'Raw · so far':'No scores yet',p.id===pcur.id)})}
-    {P.length>1&&Bg('Semestral grade',semV,semSub,true,cx('col-span-2 !border-accent/60 !bg-accent/20',two&&'sm:col-span-1'),true)}</div>
+   <div className="flex items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text sm:h-12 sm:w-12 sm:rounded-2xl"><svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span>
+    <div className="min-w-0 flex-1"><h2 className="truncate text-xl font-black leading-tight tracking-tight sm:text-2xl">{s.code||'Subject'}</h2><p className="truncate text-xs text-muted sm:text-sm">{s.name||'No name'} · {f2(+s.units||0)} unit{(+s.units||0)===1?'':'s'}</p></div></div>
+   <div className="grid gap-2 sm:gap-3" style={{gridTemplateColumns:'repeat('+Math.min(nCards,3)+',minmax(0,1fr))'}}>
+    {P.map(p=>{const c=pcalc(s,p),v=c.grade!=null?c.grade:c.gradeSoFar;return Bg(p.name,v==null?'—':f2(v),c.grade!=null?'Raw · complete':v!=null?'Raw · so far':'No scores yet',p.id===pcur.id)})}
+    {P.length>1&&Bg('Semestral',semV,semSub,true,cx('!border-accent/60 !bg-accent/20',nCards>3&&'col-span-full'),true)}</div>
    <Seg v={pcur.id} on={x=>{setPid(x);setEdit(false)}} opts={P.map(p=>[p.id,p.name])} cls="w-full"/>
    {PeriodBlock(s,pcur)}
    <div className="mx-auto w-full max-w-3xl">{Options(s,pcur,isLast)}</div></>};
@@ -703,6 +769,10 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
   const rp=rawP(),tw=P.reduce((a,p)=>a+p.w,0);
   return <>
    {A('ap','Appearance','Theme colours',<><ThemePicker theme={theme} setTheme={setTheme}/></>)}
+   {A('gd','GWA decimal places','Showing '+GD+' decimals · e.g. '+fw(ayAll!=null?ayAll:1.66432),<>
+    <p className="text-sm text-muted">How many decimals every GWA shows: Overview, Report card, Target GWA and exported images. Subject grades such as 1.75 are not affected.</p>
+    <Seg v={GD} on={v=>setCfg({gd:v},'cfggd')} opts={[[2,'2'],[3,'3'],[4,'4']]} cls="w-full"/>
+    <div className="flex items-center justify-between rounded-2xl border border-line/60 bg-ink/[.06] px-3 py-2.5 text-sm"><span className="font-semibold text-muted">Preview</span><b className="text-lg tabular-nums">{fw(ayAll!=null?ayAll:1.66432)}</b></div></>)}
    {A('sd','Sound and haptics','Effects and vibration',<>
     <Switch on={fxs.snd} onChange={()=>togFx('snd')} label="Sound effects" sub="Soft pops when you reach your target or finish a calculation. Typing and taps stay silent."/>
     {fxs.snd&&<button className={BTN+' self-start'} onClick={()=>FX.test()}>Play test sound</button>}
@@ -751,9 +821,9 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
    {pm&&<p className="rounded-2xl border border-line bg-ink/[.06] px-4 py-3 text-sm font-semibold" role="status">{pm}</p>}
    <section className={sec}><h2 className="text-lg font-extrabold">Session</h2><p className="text-sm text-muted">Switch to another account or group.</p><button className={BTN+' self-start'} onClick={onSwitch}>Switch account</button></section></div>};
   return <div className="mx-auto w-full max-w-[1240px] overflow-x-clip px-5 pb-44 pt-[var(--tp)] sm:px-8 md:pb-40">
-  <main className="flex flex-col gap-6 sm:gap-7">
+  <main className="flex flex-col gap-4 sm:gap-7">
    {Top()}{tab!=='o'&&<h1 className="px-1 pt-2 text-[2.1rem] font-black leading-none tracking-tight sm:text-5xl">{TITLES[tab]||'Overview'}</h1>}{Banners()}
-   <div key={tab} className="anim-rise flex flex-col gap-8 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='w'?ReportPage():ProfileView()}</div></main>
+   <div key={tab} className="anim-rise flex flex-col gap-5 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='w'?ReportPage():ProfileView()}</div></main>
   <BottomNav tab={tab} on={k=>{setPill(false);setTab(k)}}/>
   <Sheet open={adding} onClose={()=>setAdding(false)} title="Add subject">
    <label className="text-sm font-semibold">Code<TextIn v={nf.code} on={v=>setNf({...nf,code:v})} ph="Subject code" cls="mt-1"/></label>
@@ -764,7 +834,11 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
    <button className={BTNP} onClick={addSub}>Add subject</button></Sheet>
   <Sheet open={!!shr} onClose={closeShare} title={shr&&shr.mode==='report'?'Export report card':'Share your grades'}>{shr&&<>
    <div className="mx-auto w-full max-w-[17rem] overflow-hidden rounded-[1.75rem] border border-line bg-ink/[.06] shadow-xl" style={{aspectRatio:'9/16'}}>{shr.url?<img src={shr.url} alt="Preview of your story image" className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-sm text-muted">Creating image…</div>}</div>
-   <Switch on={shr.hide} onChange={()=>{const h=!shr.hide;setShr({...shr,hide:h});genStory(h,shr.mode)}} label={shr.mode==='report'?'Hide subject grades':'Hide raw scores'} sub={shr.mode==='report'?'Shows only the GWA totals, not each subject.':shr.mode==='actual'?'Shows only your GWAs, not each subject.':'Shows only your GWA and target status.'}/>
+   {shr.mode==='report'&&<div className="flex flex-col gap-2.5"><span className="text-sm font-bold">Design</span>
+    <div className="grid grid-cols-2 gap-2.5">{RTHEMES.map(t=>{const on=(shr.theme||exT)===t.id;return <button key={t.id} onClick={()=>pickEx(t.id)} aria-pressed={on} className={cx('flex flex-col gap-2 rounded-2xl border p-2.5 text-left transition',on?'border-accent bg-accent/10 ring-2 ring-accent/40':'border-line bg-ink/[.06] hover:bg-ink/[.09]')}>
+     <span className="block h-14 overflow-hidden rounded-lg border p-2" style={{background:t.sw[0],borderColor:t.sw[2]}}><span className="mb-1.5 block h-1.5 w-2/3 rounded-full" style={{background:t.sw[1]}}/><span className="mb-1 block h-1 w-full rounded-full" style={{background:t.sw[2]}}/><span className="mb-1 block h-1 w-full rounded-full" style={{background:t.sw[2]}}/><span className="block h-1.5 w-1/3 rounded-full" style={{background:t.sw[3]}}/></span>
+     <span><span className="block text-sm font-bold leading-tight">{t.name}</span><span className="block text-xs leading-snug text-muted">{t.sub}</span></span></button>})}</div></div>}
+   <Switch on={shr.hide} onChange={()=>{const h=!shr.hide;setShr({...shr,hide:h});genStory(h,shr.mode,shr.theme||exT)}} label={shr.mode==='report'?'Hide subject grades':'Hide raw scores'} sub={shr.mode==='report'?'Shows only the GWA totals, not each subject.':shr.mode==='actual'?'Shows only your GWAs, not each subject.':'Shows only your GWA and target status.'}/>
    <button className={BTNP} disabled={!shr.blob} onClick={sendStory}>{shr.mode==='report'?'Export as Image':'Share or save image'}</button></>}</Sheet>
  </div>;
 }

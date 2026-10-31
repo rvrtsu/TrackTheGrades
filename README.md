@@ -2,17 +2,18 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v16)
-- **Soft glass look.** Cards, the header, the bottom bar and sheets are lightly translucent with a gentle blur, a soft highlight and an accent gradient. A quiet three-glow colour wash sits behind everything. No tiger stripes or patterns.
-- **Homepage, centred.** Groups come first, then Profiles (your accounts), then small Create group / Join a group buttons at the bottom. Everything is centred, including the screen inside a group.
-- **Report tab (was GWA).** A literal report card: every subject with its Prelims and Finals grade. The Prelims GWA is the total under the Prelims column and the Finals GWA (cumulative Prelims + Finals) is the total under the Finals column, with the Majors GWA beneath. **Export as Image** makes a shareable picture of it (you can hide the subject grades and share only the totals).
-- **Forecast tab removed** from the app and the navigation bar. The bottom bar now has 4 tabs: Overview, Tracker, Report, Profile.
-- **Overview holds all GWA metrics.** The Cumulative All-Year GWA is the biggest card, followed by the Prelims GWA and Finals GWA for the selected semester (Majors GWA shown on each). Your profile header stays at the top.
-- **Target GWA (collapsible, inside the All-Year section).** Enter a target and optionally the units you still plan to take. The app shows your current standing, the average grade needed on the remaining units, the minimum semestral percentage, the best GWA still possible, and the score each in-progress subject needs this semester. The Past record entry is collapsible too.
-- **Tracker.** The Semestral grade card now leads with the grade equivalent (for example 2.25) in large type and shows the percentage (for example 82.6%) as smaller subtext.
-- **Classification dropdown.** Major / Gen Ed is a dropdown in each subject's Options (and in Add subject).
-- **Collapsible Profile & Settings.** Appearance, Sound and haptics, Grading periods and Base, Highest possible grade, Years and semesters, Data, Account passcode and Group passcode are all accordions.
-- Formulas, Firebase sync, passcodes and groups are unchanged, and the Firebase rules do not need to change. Saved data keeps working; the target is stored with each account.
+## What's new in this version (v17)
+- **Compact Overview.** Past record and Target GWA now sit inside the Cumulative All-Year GWA card as slim accordions. The greeting, All-Year card and the Prelims and Finals GWA cards fit on one phone screen, and the Prelims and Finals cards stay side by side.
+- **Compact subject cards.** Overview subject cards are one slim row each with Prelims and Finals visible immediately. In the Tracker the Prelims, Finals and Semestral cards are one row (the semestral card still leads with the grade equivalent and shows the percentage under it).
+- **Activity editor fixed on phones.** The activity name shrinks, and the weight box, the % sign and the remove button always stay on screen (tested down to 320 px wide).
+- **Report tab: independent formats.** Prelims and Finals each have their own switch: 5-Point Scale or Percentage. You can show Prelims as percentages and Finals as grades, or the other way round. The GWA totals follow each column (in Percentage mode they show the unit-weighted average percentage). The choice is remembered on the device. On a percentage-scale profile only percentages are shown.
+- **Export as Image has 4 designs:** Minimalist Light, Premium Dark, Classic Academic and Current theme (your app colours). Pick one in the export sheet and the preview updates. The export uses the same column formats and decimals as the Report tab.
+- **New default grade table** (used by every new account, group and subject, and by any account that has not edited its own table): 96 = 1, 94 = 1.25, 92 = 1.5, 89 = 1.75, 88 = 2, 84 = 2.25, 82 = 2.5, 78 = 2.75, 75 = 3. Accounts that saved their own custom table keep it. To switch an existing account to the new table: Profile and Settings, Highest possible grade, Reset to preset.
+- **GWA decimals.** Every GWA now shows 3 decimals by default (for example 1.664). Choose 2, 3 or 4 in Profile and Settings, GWA decimal places. The choice is saved with the account. Single subject grades (1.75, 2.25) still show 2 decimals.
+- Grade formulas, Firebase sync, passcodes and groups are unchanged, and the Firebase rules do not need to change.
+
+### Earlier (v16)
+Soft glass look, centred homepage, Report tab, Forecast tab removed, Overview holds all GWA metrics, collapsible Profile and Settings.
 
 **Important:** the Firebase rules above do not need to change. Changing an account or group passcode moves its cloud copy to a new key, so other devices must remove that account (or rejoin that group) and unlock it again with the new passcode.
 
@@ -64,7 +65,7 @@ Files (already in `icons/`): `tiger.svg` (vector), `icon-192.png`, `icon-512.png
 **To change or refresh the icon:**
 1. Replace the PNG files in `icons/` with your new artwork using the **same file names and sizes** (192, 512, 512 with ~20% padding for *maskable*, and 180 with no transparency for `apple-touch-icon.png`). To re-export from the SVG: `npx sharp-cli -i icons/tiger.svg -o icons/icon-512.png resize 512` or any editor.
 2. `manifest.json` already points to them, so no edit is needed unless you rename a file. If you do, update the `src` entries in the `icons` array and the matching `<link rel="apple-touch-icon">` / `<link rel="icon">` lines in `index.html`. Colours: `background_color` is `#FFFFFF`, `theme_color` is `#FACC15`.
-3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v16'` to `'gtf-v17'`) so devices download the new icons.
+3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v17'` to `'gtf-v18'`) so devices download the new icons.
 4. Upload, then on each device **delete the old Home Screen icon and add it again** (iPhone/iPad: Share → Add to Home Screen; Android: Install app). iOS keeps the old icon until you re-add it.
 
 **Inline SVG for the UI** (this is the `TigerLogo` component in `src/app.jsx`; paste this anywhere in HTML and size it with CSS):
