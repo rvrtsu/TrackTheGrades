@@ -1,6 +1,6 @@
 {
-  "name": "Grades Tracker and Forecaster",
-  "short_name": "Grades",
+  "name": "Gradely",
+  "short_name": "Gradely",
   "description": "Track grades, forecast finals and plan your GWA for the Dean's List.",
   "id": "./",
   "start_url": "./",

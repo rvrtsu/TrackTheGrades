@@ -1,4 +1,4 @@
-# Grades Tracker and Forecaster (PWA)
+# Gradely (PWA)
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
