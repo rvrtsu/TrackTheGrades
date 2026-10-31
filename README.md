@@ -2,7 +2,14 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v28)
+## What's new in this version (v30)
+- **Developer sign-in fix.** The username box now accepts either `dev_roeverjosh` or the full email `dev_roeverjosh@gradely.app`. Before, typing the full email always showed "Wrong developer username or password" without contacting Firebase. A blocked API key (website restrictions) now has its own message. Service worker cache is `gradely-v30`.
+
+### Earlier (v29)
+- **New home header.** The top of the home screen is now a floating glass pill: tiger icon, a hairline divider, **Gradely** and the tagline "Track, Forecast, and Ace your Sem". It sticks below the status bar and respects the notch and Dynamic Island (safe-area inset, with a 3rem minimum when installed on a phone).
+- Service worker cache is `gradely-v29`.
+
+### Earlier (v28)
 - **Cloud only.** The "local only" account and group options are gone. Every new group and account is created in your Firebase database. Older accounts and groups that were saved only on a device still open; edit them on the home screen and use **Move to the cloud** to keep them.
 - **Join with a code.** Every new group gets a short 6-character code (for example `K7M-Q2X`). Tap **Join Group** on the home screen and type it to join instantly. The group screen shows the code with **Copy code** and **Copy invite link** (the link opens the join box with the code filled in). Admins can make a new code from Edit group. Older groups show **Generate join code** to admins.
 - **Creator = admin.** Creating a group also creates (or reuses) your account and makes it the group admin. There is no separate admin account to set up.

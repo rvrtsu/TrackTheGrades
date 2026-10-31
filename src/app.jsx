@@ -200,12 +200,12 @@ const devTok=async()=>{if(!DEV.rt)return'';if(DEV.tok&&Date.now()<DEV.exp-60000)
  if(!r.ok){devSignOut();throw new Error('expired')}
  const j=await r.json();DEV.tok=j.id_token;DEV.rt=j.refresh_token||DEV.rt;DEV.exp=Date.now()+(+j.expires_in||3600)*1000;try{localStorage.setItem(DEVK,DEV.rt)}catch(e){}return DEV.tok};
 const devSignIn=async(u,p)=>{
- if(String(u||'').trim().toLowerCase()!==DEV_USER)return'Wrong developer username or password.';
+ if(String(u||'').trim().toLowerCase().replace(/@gradely\.app$/,'')!==DEV_USER)return'Wrong developer username or password.'; // accepts "dev_roeverjosh" or the full email
  if(!APIKEY)return'Developer sign-in needs your Firebase Web API key. Add apiKey to config.js (README, Part 4).';
  if(!navigator.onLine)return'You need an internet connection for that.';
  try{const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(APIKEY),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:DEV_EMAIL,password:String(p||''),returnSecureToken:true})});
   if(!r.ok){let m='';try{const j=await r.json();m=(j&&j.error&&j.error.message)||''}catch(e){}
-   return /EMAIL_NOT_FOUND/.test(m)?'The developer user is not created in Firebase yet (README, Part 4).':/OPERATION_NOT_ALLOWED/.test(m)?'Turn on Email/Password sign-in in Firebase Authentication first (README, Part 4).':/API.?KEY/i.test(m)?'The apiKey in config.js is not valid.':/TOO_MANY/.test(m)?'Too many attempts. Try again later.':'Wrong developer username or password.'}
+   return /EMAIL_NOT_FOUND/.test(m)?'The developer user is not created in Firebase yet (README, Part 4).':/OPERATION_NOT_ALLOWED/.test(m)?'Turn on Email/Password sign-in in Firebase Authentication first (README, Part 4).':/REFERER|REFERRER/i.test(m)?'Firebase blocked this website for the API key. Add https://rvrtsu.github.io/* to the key\u2019s website restrictions in Google Cloud.':/API.?KEY/i.test(m)?'The apiKey in config.js is not valid.':/TOO_MANY/.test(m)?'Too many attempts. Try again later.':'Wrong developer username or password.'}
   const j=await r.json();DEV.tok=j.idToken;DEV.rt=j.refreshToken;DEV.exp=Date.now()+(+j.expiresIn||3600)*1000;try{localStorage.setItem(DEVK,DEV.rt)}catch(e){}return'ok'}
  catch(e){return'Could not reach Firebase. Check your connection.'}};
 const dq=async p=>{let t='';try{t=await devTok()}catch(e){}return DB+'/'+p+'.json'+(t?'?auth='+encodeURIComponent(t):'')};
@@ -356,6 +356,10 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v30',notes:[
+ 'Developer sign-in now accepts the full email (dev_roeverjosh@gradely.app) as well as the username, and shows a clearer message if the API key is blocked by website restrictions']},
+ {v:'v29',notes:[
+ 'New home header: a floating glass pill with the Gradely icon, a divider, the name and a short tagline, kept clear of the notch and Dynamic Island']},
  {v:'v28',notes:[
  'Everything is saved to the cloud now: the "local only" account and group options are gone',
  'Groups get a short join code. Tap Join Group on the home screen and enter it to join instantly',
@@ -393,7 +397,7 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v28';
+const APP_VER='v30';
 /* ---- one-time contextual tab tutorials ---- */
 const tipSeen=k=>{try{return localStorage.getItem('gtf-tip-'+k)==='1'}catch(e){return false}};
 const tipDone=k=>{try{localStorage.setItem('gtf-tip-'+k,'1')}catch(e){}};
@@ -1292,8 +1296,20 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
- const Top=<div className="flex flex-col items-center gap-3 text-center"><div className="flex items-center gap-2.5"><TigerLogo className="h-11 w-11"/><span className="text-lg font-extrabold">Gradely</span></div>
-  <div className="flex items-center justify-center gap-2"><span className="text-[11px] text-muted">{busy?'Updating from cloud…':at?'Updated '+rel(at):''}</span>{CLOUD&&<button className={BTN+' !px-3'} onClick={ctl.refresh} aria-label="Refresh from cloud"><span className={busy?'inline-block animate-spin':''}>↻</span></button>}<button className={BTN} onClick={()=>setSh({t:'theme'})}>Theme</button>{!isStandalone()&&<button className={BTN} onClick={ctl.a2hs}>Add to Home Screen</button>}</div></div>;
+ const Top=<>
+  {/* floating glass pill: app icon | divider | name + subtitle. Sticks just below the safe area (--tp = safe-area-inset-top + .75rem, min 3rem when installed on a phone) */}
+  <header className="sticky z-30 mx-auto w-full max-w-md" style={{top:'var(--tp)'}}>
+   <div className="gc hdr anim-rise flex items-center gap-3 rounded-full py-1.5 pl-1.5 pr-5 shadow-[0_14px_40px_-18px_rgb(var(--accent)/.55)]">
+    <TigerLogo className="h-11 w-11 shrink-0 drop-shadow-[0_3px_8px_rgb(var(--accent)/.45)]"/>
+    <span aria-hidden="true" className="h-7 w-px shrink-0 rounded-full bg-gradient-to-b from-transparent via-ink/30 to-transparent"/>
+    <div className="min-w-0 flex-1 text-left leading-none">
+     <div className="truncate text-[17px] font-black tracking-tight">Gradely</div>
+     <p className="mt-1 truncate text-[11.5px] font-semibold text-muted">Track, Forecast, and Ace your Sem</p>
+    </div>
+   </div>
+  </header>
+  <div className="mt-3 flex flex-col items-center gap-3 text-center">
+  <div className="flex items-center justify-center gap-2"><span className="text-[11px] text-muted">{busy?'Updating from cloud…':at?'Updated '+rel(at):''}</span>{CLOUD&&<button className={BTN+' !px-3'} onClick={ctl.refresh} aria-label="Refresh from cloud"><span className={busy?'inline-block animate-spin':''}>↻</span></button>}<button className={BTN} onClick={()=>setSh({t:'theme'})}>Theme</button>{!isStandalone()&&<button className={BTN} onClick={ctl.a2hs}>Add to Home Screen</button>}</div></div></>;
  const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <>
   <div className="anim-rise pb-5 pt-7 text-center sm:pt-9"><h1 className="text-3xl font-black tracking-tight sm:text-5xl">Your groups</h1><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Open a group, then pick your account.</p></div>
   {book.groups.length?<div className="flex flex-wrap justify-center gap-3">{book.groups.map(GroupCard)}</div>
