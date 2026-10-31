@@ -2,24 +2,11 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v35)
-- **No more blurred or blank screen.** Every `backdrop-filter` / `backdrop-blur` was removed (cards, sheets, dialogs and the header). Surfaces are now solid with only a slight translucency, and the background glow is much quieter.
-- **New home header.** A solid, flush, full-width Material top app bar (not a pill). It is large at the top of the page and condenses on scroll. It keeps clear of the status bar and notch with safe-area padding, and its quick actions wrap instead of overflowing on small screens.
-- **New swipe Tracker tutorial.** A swipeable walkthrough built from sample subject cards (swiping between subjects, grade cards, adding scores, Options) with a live, interactive **Reverse Calculator** demo and step-by-step instructions. It never touches real grades. Replay it from **Profile > Settings > Tutorial**, the **Replay Tutorial** button in the Tracker, or **Tracker tutorial** in the home header.
-- **Changelog cleanup.** The update dialog filters out any note that contains an e-mail address, a developer username, an API key or sign-in wording. The app no longer contains a hardcoded developer username or e-mail: the developer signs in with the e-mail of the Firebase Authentication user (README, Part 4) and the dashboard shows only "Developer session".
-- **Developer dashboard history.** Undo and Redo (buttons, or Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z), a **Recently deleted** filter in History for one-tap Restore of groups, accounts and reports, and a session-memory fallback (never written to disk) if the cloud history cannot be saved.
-- Service worker cache is `gradely-v35`. The Firebase rules do not need to change except to use your own developer e-mail (README, Part 4).
-
-### Earlier (v33)
-- **Home header fix.** Quick actions now wrap onto extra lines instead of running past the edge, the bar clips anything that would spill out, it respects the left and right safe areas, and there is more space under the status bar and notch.
-- **Developer dashboard: Undo, Redo and History.** Every edit or delete in the dashboard is recorded. **Undo** and **Redo** buttons sit at the top, and a new **History** tab lists every change with **Restore** (for deleted groups, accounts and reports), **Undo** and **Redo**. History is kept in your database under `devhist` and `devdata` (the newest 80 changes) and only the developer user can read it, so the Part 1 rules do not need to change. Restoring an account refreshes its timestamp so devices pick it up on the next sync.
-- Service worker cache is `gradely-v33`.
-
-### Earlier (v32)
-- **Tracker tutorial.** A guided tour that spotlights the real controls: swiping between subjects (also tabs, arrows and the ← → keys), the grade cards, adding and editing scores, Options, and the **Reverse Calculator** (what it is for, plus a numbered how-to). It opens once the first time the Tracker is shown. The **Replay Tutorial** button at the top of the Tracker now replays this tour (the general welcome tour is still in Profile and on the home screen). Swipe the tutorial card, use Next/Back or the arrow keys. Service worker cache is `gradely-v32`.
-
-### Earlier (v31)
+## What's new in this version (v31)
 - **Home header redesign.** The pill is replaced by a flush, full-width Material-style app bar (soft translucency, slight tint, elevation, no glow). It is large at the top of the page (big icon, divider, **Gradely** and the tagline) and condenses as you scroll, swapping the tagline for your sync status. A quick-action row holds **How it works** (tutorial), **Join with code**, **Install app** (when not installed) and **Report a problem**; Refresh and Theme are icon buttons. It keeps clear of the notch and Dynamic Island. Service worker cache is `gradely-v31`.
+
+### Earlier (v30)
+- **Developer sign-in fix.** The username box now accepts either `dev_roeverjosh` or the full email `dev_roeverjosh@gradely.app`. Before, typing the full email always showed "Wrong developer username or password" without contacting Firebase. A blocked API key (website restrictions) now has its own message. Service worker cache is `gradely-v30`.
 
 ### Earlier (v29)
 - **New home header.** The top of the home screen is now a floating glass pill: tiger icon, a hairline divider, **Gradely** and the tagline "Track, Forecast, and Ace your Sem". It sticks below the status bar and respects the notch and Dynamic Island (safe-area inset, with a 3rem minimum when installed on a phone).
@@ -31,7 +18,7 @@ Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**
 - **Creator = admin.** Creating a group also creates (or reuses) your account and makes it the group admin. There is no separate admin account to set up.
 - **Themes.** **Yellow Dark** is the default for new installs (devices that already picked a theme keep it). Red is now a deeper **Maroon**. **Pink**, **Lavender** and **Mint** are new, each with a Light and a Dark version. The theme picker groups them by colour.
 - **Report a Problem.** A button on the home screen sends a bug report to `reports/` in your database.
-- **Developer dashboard.** Sign in from the small **Developer sign-in** link (see **Part 4**). The dashboard lists bug reports (status, notes, delete), groups (rename, join code, members, admins, delete) and accounts (name, bio, raw data, delete). See **Part 4**. **You must publish the new rules in Part 1 and do Part 4 for it to work.**
+- **Developer dashboard.** Sign in from the small **Developer sign-in** link (username `dev_roeverjosh`). The dashboard lists bug reports (status, notes, delete), groups (rename, join code, members, admins, delete) and accounts (name, bio, raw data, delete). See **Part 4**. **You must publish the new rules in Part 1 and do Part 4 for it to work.**
 - **UI.** **Hide Prelim Grades** now appears only in the report card export. **Meet the Creators** on the home screen is a large collapsible card. The Tracker has a small **Replay Tutorial** button.
 - Service worker cache is `gradely-v28`. Open the app twice on each device so the update loads.
 
@@ -107,8 +94,8 @@ Soft glass look, centred homepage, Report tab, Forecast tab removed, Overview ho
 ```json
 {
   "rules": {
-    ".read": "auth != null && auth.token.email == 'YOUR_DEVELOPER_EMAIL'",
-    ".write": "auth != null && auth.token.email == 'YOUR_DEVELOPER_EMAIL'",
+    ".read": "auth != null && auth.token.email == 'dev_roeverjosh@gradely.app'",
+    ".write": "auth != null && auth.token.email == 'dev_roeverjosh@gradely.app'",
     "sync": {
       "$key": {
         ".read": true,
@@ -159,10 +146,10 @@ Open `config.js`, replace the placeholder URL (keep the quotes), then upload **e
 ## Part 4: Developer dashboard (one-time setup)
 The dashboard needs Firebase Authentication so only the developer can read every group and account. The developer password is **not** stored in the app: Firebase checks it.
 1. Firebase console → **Build → Authentication → Get started → Sign-in method** → turn on **Email/Password**.
-2. **Users → Add user**: email `YOUR_DEVELOPER_EMAIL`, and a strong password of your choice.
+2. **Users → Add user**: email `dev_roeverjosh@gradely.app`, and a strong password of your choice.
 3. **Project settings → General** → copy the **Web API key** and paste it between the quotes after `apiKey` in `config.js`.
 4. Optional but recommended: **Authentication → Settings → User actions** → turn off **Enable create (sign-up)**, so nobody else can register users.
-5. Open the app → **Developer sign-in** (bottom of the home screen) → the developer email from step 2 and its password. The session is remembered on that device until you tap **Sign out**.
+5. Open the app → **Developer sign-in** (bottom of the home screen) → username `dev_roeverjosh` and the password from step 2. The session is remembered on that device until you tap **Sign out**.
 
 Deleting an account from the dashboard leaves a small marker so other devices drop the account instead of uploading it again.
 
