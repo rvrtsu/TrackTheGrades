@@ -2,17 +2,17 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v15)
-- **Clean "flat with depth" look.** The glass, blur and animated tiger background are gone. Cards, the header, the bottom bar and sheets are solid surfaces with a hairline edge and a soft shadow, on a light grey (or dark) page. The share image is flat too.
-- **Overview profile header.** Your picture, a greeting ("Hi [name]! Hope you're doing great.") and your bio sit right under the top bar. No bio yet? A link takes you to Profile to add one.
-- **All-Year GWA (GWA tab).** Combines every completed semester across all years in the app with an optional manual past record (past overall GWA and total units taken), weighted by units. Use it when earlier semesters are missing. Clear it any time.
-- **Tracker top cards.** Semestral grade is now a larger card that balances Prelims and Finals and stays visible on every period. It also shows the grade and the retention status.
-- **Redundant bottom Semestral block removed** from the Tracker.
-- **iPhone notch spacing.** One spacing variable (`--tp`) pushes every screen below the status bar and notch, with a 3rem minimum when installed on a phone or tablet.
-- **Profile and Settings are one tab** (5 tabs now: Overview, Tracker, Forecast, GWA, Profile). Account Passcode and Group Passcode are collapsible accordions.
-- **Shorter header title**, for example "2nd Year - 1st Sem". The full year and semester names show inside the dropdown.
-- **Homepage leads with your groups**, followed by recent accounts. Create and Join are smaller buttons at the bottom.
-- Formulas, Firebase sync, passcodes and groups are unchanged. The Firebase rules do not need to change. Existing accounts keep all their data; the new past record is stored with the account.
+## What's new in this version (v16)
+- **Soft glass look.** Cards, the header, the bottom bar and sheets are lightly translucent with a gentle blur, a soft highlight and an accent gradient. A quiet three-glow colour wash sits behind everything. No tiger stripes or patterns.
+- **Homepage, centred.** Groups come first, then Profiles (your accounts), then small Create group / Join a group buttons at the bottom. Everything is centred, including the screen inside a group.
+- **Report tab (was GWA).** A literal report card: every subject with its Prelims and Finals grade. The Prelims GWA is the total under the Prelims column and the Finals GWA (cumulative Prelims + Finals) is the total under the Finals column, with the Majors GWA beneath. **Export as Image** makes a shareable picture of it (you can hide the subject grades and share only the totals).
+- **Forecast tab removed** from the app and the navigation bar. The bottom bar now has 4 tabs: Overview, Tracker, Report, Profile.
+- **Overview holds all GWA metrics.** The Cumulative All-Year GWA is the biggest card, followed by the Prelims GWA and Finals GWA for the selected semester (Majors GWA shown on each). Your profile header stays at the top.
+- **Target GWA (collapsible, inside the All-Year section).** Enter a target and optionally the units you still plan to take. The app shows your current standing, the average grade needed on the remaining units, the minimum semestral percentage, the best GWA still possible, and the score each in-progress subject needs this semester. The Past record entry is collapsible too.
+- **Tracker.** The Semestral grade card now leads with the grade equivalent (for example 2.25) in large type and shows the percentage (for example 82.6%) as smaller subtext.
+- **Classification dropdown.** Major / Gen Ed is a dropdown in each subject's Options (and in Add subject).
+- **Collapsible Profile & Settings.** Appearance, Sound and haptics, Grading periods and Base, Highest possible grade, Years and semesters, Data, Account passcode and Group passcode are all accordions.
+- Formulas, Firebase sync, passcodes and groups are unchanged, and the Firebase rules do not need to change. Saved data keeps working; the target is stored with each account.
 
 **Important:** the Firebase rules above do not need to change. Changing an account or group passcode moves its cloud copy to a new key, so other devices must remove that account (or rejoin that group) and unlock it again with the new passcode.
 
@@ -64,7 +64,7 @@ Files (already in `icons/`): `tiger.svg` (vector), `icon-192.png`, `icon-512.png
 **To change or refresh the icon:**
 1. Replace the PNG files in `icons/` with your new artwork using the **same file names and sizes** (192, 512, 512 with ~20% padding for *maskable*, and 180 with no transparency for `apple-touch-icon.png`). To re-export from the SVG: `npx sharp-cli -i icons/tiger.svg -o icons/icon-512.png resize 512` or any editor.
 2. `manifest.json` already points to them, so no edit is needed unless you rename a file. If you do, update the `src` entries in the `icons` array and the matching `<link rel="apple-touch-icon">` / `<link rel="icon">` lines in `index.html`. Colours: `background_color` is `#FFFFFF`, `theme_color` is `#FACC15`.
-3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v15'` to `'gtf-v16'`) so devices download the new icons.
+3. In `sw.js` raise the cache number (`const CACHE = 'gtf-v16'` to `'gtf-v17'`) so devices download the new icons.
 4. Upload, then on each device **delete the old Home Screen icon and add it again** (iPhone/iPad: Share → Add to Home Screen; Android: Install app). iOS keeps the old icon until you re-add it.
 
 **Inline SVG for the UI** (this is the `TigerLogo` component in `src/app.jsx`; paste this anywhere in HTML and size it with CSS):

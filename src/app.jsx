@@ -285,7 +285,7 @@ function Sheet({open,onClose,title,children,wide}){
  useEffect(()=>{if(!open)return;const k=e=>e.key==='Escape'&&onClose();window.addEventListener('keydown',k);const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{window.removeEventListener('keydown',k);document.body.style.overflow=o}},[open]);
  if(!open)return null;
  return <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-  <div onClick={onClose} className="anim-fade absolute inset-0 bg-black/40"/>
+  <div onClick={onClose} className="anim-fade absolute inset-0 bg-black/35 backdrop-blur-sm"/>
   <div className={cx('anim-sheet relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain gcs rounded-t-[2rem] sm:rounded-[2rem]',wide?'sm:max-w-2xl':'sm:max-w-lg')} style={{paddingBottom:'env(safe-area-inset-bottom,0px)'}}>
    <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line/40 px-6 py-4"><h2 className="text-lg font-extrabold">{title}</h2><button onClick={onClose} aria-label="Close" className={BTN+' !px-3'}>✕</button></div>
    <div className="flex flex-col gap-7 p-6">{children}</div></div></div>;
@@ -301,9 +301,9 @@ const Tip=({t})=>{const [o,setO]=useState(false),[ps,setPs]=useState(null),b=use
  return <><button ref={b} type="button" onClick={e=>{e.preventDefault();e.stopPropagation();setO(v=>!v)}} aria-label="More info" aria-expanded={o} className="ml-1.5 inline-grid h-5 w-5 place-items-center rounded-full border border-muted/60 align-middle text-[11px] font-bold leading-none text-muted transition hover:border-accent hover:text-accent-text">i</button>
   {o&&createPortal(<div ref={p} role="tooltip" style={ps?{left:ps.left,top:ps.top,width:ps.w}:{left:0,top:0,width:Math.min(280,window.innerWidth-32),visibility:'hidden'}} className="anim-fade fixed z-[90] gcs rounded-2xl p-4 text-left text-sm font-medium normal-case leading-relaxed tracking-normal text-ink shadow-2xl">{t}</div>,document.body)}</>};
 const IC={o:'M4 11l8-6.5 8 6.5M6 9.5V19h4v-5h4v5h4V9.5',t:'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',f:'M3 20h18M6 20v-8M11 20V5M16 20v-5M21 20v-9',p:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20c.7-3.5 3.5-5.5 7-5.5s6.3 2 7 5.5',s:'M4 7h9M17 7h3M4 17h3M11 17h9M15 4v6M9 14v6',w:'M2 9l10-5 10 5-10 5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5M22 9v5',g:'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19c.5-3 3-4.5 6-4.5s5.5 1.5 6 4.5M17 11a2.6 2.6 0 1 0 0-5.2M17.5 14.6c2 .4 3.3 1.8 3.7 4.4'};
-const NAV=[['o','Overview'],['t','Tracker'],['f','Forecast'],['w','GWA'],['p','Profile']];
+const NAV=[['o','Overview'],['t','Tracker'],['w','Report'],['p','Profile']];
 const BottomNav=({tab,on})=>{const i=NAV.findIndex(x=>x[0]===tab),N=NAV.length;return <nav aria-label="Main" className="fixed inset-x-0 z-40 flex justify-center px-2 sm:px-3" style={{bottom:'calc(env(safe-area-inset-bottom,0px) + .75rem)'}}>
- <div className="glass relative grid w-full max-w-lg grid-cols-5 rounded-[1.75rem] p-1.5 md:max-w-2xl">
+ <div className="glass relative grid w-full max-w-lg grid-cols-4 rounded-[1.75rem] p-1.5 md:max-w-2xl">
   {i>=0&&<span aria-hidden="true" className="absolute bottom-1.5 top-1.5 rounded-[1.3rem] bg-accent shadow-sm transition-all duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{left:'calc(.375rem + '+i+' * (100% - .75rem) / '+N+')',width:'calc((100% - .75rem) / '+N+')'}}/>}
   {NAV.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-current={tab===k?'page':undefined} className={cx('relative z-10 flex min-w-0 flex-col items-center gap-0.5 rounded-[1.3rem] py-2 text-[9px] font-bold tracking-tight transition-colors duration-300 sm:text-[10px] md:text-xs',tab===k?'text-accent-ink':'text-muted hover:text-ink')}>
    <svg viewBox="0 0 24 24" className="h-[21px] w-[21px] md:h-[22px] md:w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={IC[k]}/></svg><span className="max-w-full truncate">{l}</span></button>)}</div></nav>};
@@ -385,6 +385,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const rvClear=(s,p)=>{updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(a=>a.est?{...a,s:'',est:false}:a)}}));setRvMsg(null)};
  const setTg=(k,v)=>set(c=>({...c,tg:{...(c.tg||{}),[k]:v}}),'tg'+k);
  const setHist=(k,v)=>set(c=>({...c,hist:{...(c.hist||{}),[k]:v}}),'hist'+k);
+ const setAyt=(k,v)=>set(c=>({...c,ayt:{...(c.ayt||{}),[k]:v}}),'ayt'+k);
  const clearHist=()=>set(c=>{const n={...c};delete n.hist;return n});
  const setCfg=(p,key)=>set(c=>({...c,cfg:{...(c.cfg||{}),...p}}),key||'cfg'+Object.keys(p).join());
  const pickScale=id=>set(c=>({...c,tg:{},cfg:{...(c.cfg||{}),scale:id,target:PRESETS[id].target,pass:String(PRESETS[id].pass),table:null}}));
@@ -431,8 +432,17 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  // All-Year GWA: every completed semestral grade in every year of this account, plus the optional manual past record (overall GWA + total units)
  const hs=st.hist||{},hG=hs.gwa!==undefined&&hs.gwa!==''?+hs.gwa:null,hU=hs.units!==undefined&&hs.units!==''?+hs.units:null,histOk=hG!=null&&Number.isFinite(hG)&&hU!=null&&Number.isFinite(hU)&&hU>0;
  const hLo=Math.min(C.hi,C.fail),hHi=Math.max(C.hi,C.fail),hBad=hG!=null&&Number.isFinite(hG)&&(hG<hLo||hG>hHi);
- const ayRows=[];st.years.forEach(y=>y.sems.forEach(x=>{(x.subs||[]).forEach(q=>{const e=finEq(q);if(e!=null)ayRows.push([e,q.units])});if(single)(x.gens||[]).forEach(g=>{if(g.pre!==''&&g.pre!=null)ayRows.push([eqv(+g.pre),g.units])})}));
- const ayTrk=gwa(ayRows),ayTrkU=ayRows.reduce((a,r)=>a+(+r[1]>0?+r[1]:0),0),ayAll=gwa([...ayRows,...(histOk&&!hBad?[[hG,hU]]:[])]),ayU=ayTrkU+(histOk&&!hBad?hU:0);
+ const ayRows=[],ayRowsM=[];st.years.forEach(y=>y.sems.forEach(x=>{(x.subs||[]).forEach(q=>{const e=finEq(q);if(e!=null){ayRows.push([e,q.units]);if(q.kind!=='gen')ayRowsM.push([e,q.units])}});if(single)(x.gens||[]).forEach(g=>{if(g.pre!==''&&g.pre!=null)ayRows.push([eqv(+g.pre),g.units])})}));
+ const ayTrk=gwa(ayRows),ayTrkU=ayRows.reduce((a,r)=>a+(+r[1]>0?+r[1]:0),0),ayAll=gwa([...ayRows,...(histOk&&!hBad?[[hG,hU]]:[])]),ayU=ayTrkU+(histOk&&!hBad?hU:0),ayM=gwa(ayRowsM);
+ const rcAll=[...subs.map(x=>({id:x.id,code:x.code||'Subject',name:x.name||'',pre:preEq(x),fin:finEq(x)})),...gens.map(g=>{const has=g.pre!==''&&g.pre!=null;return{id:g.id,code:g.name||'Gen Ed',name:'Gen Ed',pre:has?eqv(+g.pre):null,fin:single&&has?eqv(+g.pre):null}})];
+ // cumulative target: what the remaining (in-progress + planned) units must average to land on the target GWA
+ const ayt=st.ayt||{},tT=ayt.t!==undefined&&ayt.t!==''?+ayt.t:null,tOk=tT!=null&&Number.isFinite(tT),xU=ayt.ex!==undefined&&ayt.ex!==''&&Number.isFinite(+ayt.ex)&&+ayt.ex>0?+ayt.ex:0;
+ let remU=0;st.years.forEach(y=>y.sems.forEach(x=>{(x.subs||[]).forEach(q=>{if(finEq(q)==null)remU+=+q.units||0});(x.gens||[]).forEach(g=>{if(!(single&&g.pre!==''&&g.pre!=null))remU+=+g.units||0})}));
+ const Ur=remU+xU,G0=ayAll,U0=ayU,dirW=C.dir<0?'or lower':'or higher';
+ const tr=(()=>{if(!tOk)return null;const g0=G0==null?0:G0,met=G0!=null&&(C.dir<0?G0<=tT+1e-9:G0>=tT-1e-9);
+  if(Ur<=0)return{none:true,met};
+  const Gr=(tT*(U0+Ur)-g0*U0)/Ur,best=(g0*U0+C.hi*Ur)/(U0+Ur),secured=C.dir<0?Gr>=C.fail-1e-9:Gr<=C.fail+1e-9,reach=C.dir<0?Gr>=C.hi-1e-9:Gr<=C.hi+1e-9,pct=secured||!reach?null:C.pctFor(Gr);
+  return{Gr,best,secured,reach,pct:pct!=null&&pct<=100?pct:null,met}})();
 
  /* ---- retention levels ---- */
  // 0 fine, 1 retention is tight (needs 85%+ on what is left), 2 projected below retention or out of reach
@@ -468,7 +478,22 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   const glass=(a,b,w,h)=>{x.save();x.shadowColor='rgba(0,0,0,.10)';x.shadowBlur=36;x.shadowOffsetY=10;rr(a,b,w,h,56);x.fillStyle=col('--surface');x.fill();x.restore();rr(a,b,w,h,56);x.lineWidth=2;x.strokeStyle=col('--line',.9);x.stroke()};
   const M=84,CW=W-M*2,ok=finalG!=null&&C.meets(finalG),okM=mG!=null&&C.meets(mG),dirW=C.dir<0?'or lower':'or higher';
   tx(acct.name||'My grades',M,170,60,800,col('--ink'));tx(Y.name+' · '+S.name,M,226,30,500,col('--muted'));
-  if(mode==='actual'){
+  if(mode==='report'){
+   // Report Card export: every subject with Prelims and Finals, GWA totals at the bottom of each column
+   const rh=80,maxR=13,rows=hide?[]:rcAll.slice(0,maxR),more=hide?0:Math.max(0,rcAll.length-rows.length),top=300,cA=M+CW-340,cB=M+CW-56,hy=top+84;
+   const gh=190+rows.length*rh+(more?50:0)+(single?250:250);
+   glass(M,top,CW,gh);
+   tx('Subject',M+56,hy,26,700,col('--muted'));tx(P[0].name,cA,hy,26,700,col('--muted'),'right');tx(single?'Semestral':P[last0].name,cB,hy,26,700,col('--muted'),'right');
+   x.fillStyle=col('--line',.9);x.fillRect(M+40,hy+26,CW-80,3);
+   const cut=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
+   rows.forEach((r,i)=>{const y=hy+100+i*rh;tx(cut(r.code,16),M+56,y,38,800,col('--ink'));if(r.name)tx(cut(r.name,30),M+56,y+30,22,500,col('--muted'));tx(fg(r.pre),cA,y+6,40,900,r.pre==null?col('--muted',.5):col('--ink'),'right');tx(fg(r.fin),cB,y+6,40,900,r.fin==null?col('--muted',.5):col('--ink'),'right')});
+   let fy=hy+100+rows.length*rh;if(more){tx('+'+more+' more subjects',M+56,fy-20,24,600,col('--muted'));fy+=30}
+   x.fillStyle=col('--line',.9);x.fillRect(M+40,fy-30,CW-80,3);
+   const gy=fy+62;tx('GWA',M+56,gy,40,900,col('--ink'));tx(fg(aPre),cA,gy,60,900,col('--ink'),'right');tx(fg(aFin),cB,gy,60,900,col('--ink'),'right');
+   [cA,cB].forEach((e,i)=>{const v=i?aFin:aPre,wd=x.measureText(fg(v)).width;x.fillRect(e-wd,gy+14,wd,3);x.fillRect(e-wd,gy+22,wd,3)});
+   tx(P[0].name+' total  ·  '+(single?'Semestral':P[last0].name+' is cumulative'),M+56,gy+66,24,600,col('--muted'));
+   tx('Majors GWA',M+56,gy+124,30,700,col('--muted'));tx(fg(aPreM),cA,gy+124,34,800,col('--muted'),'right');tx(fg(aFinM),cB,gy+124,34,800,col('--muted'),'right')
+  }else if(mode==='actual'){
    // Overview share: recorded grades only, no targets and no projections
    const secs=single?[['Semestral GWA',aFin,aFinM]]:[[P[0].name+' GWA',aPre,aPreM],[P[last0].name+' GWA',aFin,aFinM]],n=secs.length,ch=n===1?560:400,gap=36;
    secs.forEach(([l,a,m],i)=>{const y=300+i*(ch+gap);glass(M,y,CW,ch);tx(l,M+64,y+96,38,700,col('--muted'));tx(fg(a),M+64,y+(n===1?400:292),n===1?280:220,900,col('--ink'));tx('Majors GWA',M+64,y+ch-48,34,700,col('--muted'));tx(fg(m),M+CW-64,y+ch-48,46,900,col('--ink'),'right')});
@@ -490,7 +515,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   tx(new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})+' · Grades Tracker',W/2,H-90,28,600,col('--muted'),'center');
   return await new Promise(r=>cv.toBlob(r,'image/png'))};
  const genStory=async(h,m)=>{try{const b=await buildStory(h,m),u=URL.createObjectURL(b);setShr(s=>{if(s&&s.url)URL.revokeObjectURL(s.url);return{hide:h,mode:m,url:u,blob:b}})}catch(e){setMsg('Could not create the image.')}};
- const openShare=m=>{setShr({hide:true,mode:m,url:'',blob:null});genStory(true,m)};
+ const openShare=m=>{const h=m!=='report';setShr({hide:h,mode:m,url:'',blob:null});genStory(h,m)};
  const closeShare=()=>setShr(s=>{if(s&&s.url)URL.revokeObjectURL(s.url);return null});
  const sendStory=async()=>{const b=shr&&shr.blob;if(!b)return;const file=new File([b],'grades-story.png',{type:'image/png'});
   try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'My grades'});return}}catch(e){if(e&&e.name==='AbortError')return}
@@ -505,7 +530,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
     {k==='error'&&<path d="M12 8.5v4M12 15.4h.01" strokeWidth="2.1"/>}
     {(k==='offline'||k==='local')&&<path d="M4.5 4.5l15 15" strokeWidth="2"/>}</svg></button>};
  const HB='grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink/[.07] text-ink transition active:scale-95 disabled:pointer-events-none disabled:opacity-35 sm:h-10 sm:w-10';
- const TITLES={o:'Overview',t:'Tracker',f:'Forecast',w:'GWA',p:'Profile & Settings'};
+ const TITLES={o:'Overview',t:'Tracker',w:'Report Card',p:'Profile & Settings'};
  const IS={fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':'true'};
  const pickYS=(yid,sid)=>{set(c=>({...c,y:yid,s:sid}));setPill(false)};
  // header shows e.g. "2nd Year - 1st Sem"; the full academic-year text only appears inside the dropdown
@@ -513,7 +538,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const shortS=n=>{n=String(n||'');return n.replace(/\s*[\(\[].*$/,'').replace(/\bsemester\b/ig,'Sem').trim()||n};
  // flat header: undo/redo on the left, the compact year-and-semester pill in the middle, cloud sync and the account/group switcher on the right
  const Top=()=><header className="sticky z-30" style={{top:'var(--tp)'}}>
-  <div className="gc grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-full p-1.5">
+  <div className="gc hdr grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-full p-1.5">
    <div className="flex items-center gap-1 justify-self-start">
     <button onClick={undo} disabled={!past.current.length} aria-label="Undo" title="Undo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button onClick={redo} disabled={!fut.current.length} aria-label="Redo" title="Redo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button></div>
@@ -527,55 +552,74 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
     <div className="mt-1 flex gap-2 border-t border-line/40 px-1 pt-3"><button className={BTN+' flex-1'} onClick={()=>{addYear();setPill(false)}}>＋ Year</button><button className={BTN+' flex-1'} onClick={()=>{addSem();setPill(false)}}>＋ Semester</button></div></div></>}
  </header>;
 
- const GwaPage=()=>{
-  const share=<button className={BTN} onClick={()=>openShare('actual')}>Share</button>,tot=subs.length+gens.length;
-  // report card: every subject with a recorded grade (no units). Prelims = first period; Finals = the semestral grade once every period is in.
-  const rc=[...subs.map(x=>({id:x.id,code:x.code||'Subject',name:x.name||'',pre:preEq(x),fin:finEq(x)})),...gens.map(g=>{const has=g.pre!==''&&g.pre!=null;return{id:g.id,code:g.name||'Gen Ed',name:'Gen Ed',pre:has?eqv(+g.pre):null,fin:single&&has?eqv(+g.pre):null}})].filter(r=>r.pre!=null||r.fin!=null);
-  const RCG='grid grid-cols-[minmax(0,1fr)_4.25rem_4.25rem] items-center gap-3 px-5 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] sm:px-6';
-  const Wd=(l,v,sub,tip,hero)=><div className={cx(CARD,'flex min-h-[11rem] flex-col justify-between gap-8 p-6 sm:p-7',hero&&'!border-accent/40 !bg-accent/15')}><div className="text-sm font-bold text-muted">{l}{tip&&<Tip t={tip}/>}</div><div><div className="text-6xl font-black tabular-nums tracking-tight sm:text-7xl">{v}</div><div className="mt-2 text-sm font-semibold text-muted">{sub}</div></div></div>;
-  const Sec=(title,note,a,m,sa,sm,act)=><section className="flex flex-col gap-4"><div className="flex items-end justify-between gap-3"><div className="min-w-0"><h2 className="text-2xl font-black tracking-tight sm:text-3xl">{title}</h2><p className="mt-0.5 text-sm text-muted">{note}</p></div>{act}</div>
-   <div className="grid gap-4 sm:grid-cols-2">{Wd('Overall GWA',fg(a),sa,'Every recorded subject, Major and Gen Ed, weighted by units.',true)}{Wd('Majors GWA',fg(m),sm,'Only subjects tagged Major.')}</div></section>;
-  const preSub=tot?(preSubs.length+genPre.length)+' of '+tot+' subject'+(tot===1?'':'s')+' recorded':'Add a subject to begin',preMSub=nMaj?preSubs.filter(isMaj).length+' of '+nMaj+' major subject'+(nMaj===1?'':'s')+' recorded':'No major subjects yet';
-  const ft=subs.length+(single?gens.length:0),finSub=ft?(finSubs.length+(single?genPre.length:0))+' of '+ft+' subject'+(ft===1?'':'s')+' complete':'Add a subject to begin',finMSub=nMaj?finSubs.filter(isMaj).length+' of '+nMaj+' major subject'+(nMaj===1?'':'s')+' complete':'No major subjects yet';
+
+ /* ---- accordion helpers (Settings, Overview target) ---- */
+ const tog=k=>setAccO(o=>({...o,[k]:!o[k]}));
+ const AH=(t,sub)=><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">{t}</span>{sub&&<span className="block truncate text-xs text-muted">{sub}</span>}</span>;
+ const A=(k,t,sub,kids)=><Acc key={k} open={!!accO[k]} onToggle={()=>tog(k)} head={AH(t,sub)}>{kids}</Acc>;
+ const Big=(l,v,sub,tip,cls,huge)=><div className={cx(CARD,'flex flex-col justify-between gap-6 p-6 sm:p-7',cls)}><div className="text-sm font-bold text-muted">{l}{tip&&<Tip t={tip}/>}</div><div><div className={cx('font-black tabular-nums tracking-tight',huge?'text-7xl sm:text-8xl':'text-6xl sm:text-7xl')}>{v}</div><div className="mt-2 text-sm font-semibold text-muted">{sub}</div></div></div>;
+
+ /* ---- Report tab: a literal report card ---- */
+ const ReportPage=()=>{
+  const RCG='grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center gap-3 px-5 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] sm:px-7';
+  return <div className="flex flex-col gap-4">
+   <div className="flex flex-wrap items-center justify-between gap-3"><p className="min-w-0 flex-1 text-sm text-muted">{Y.name} · {S.name} · recorded grades only</p>
+    <button className={BTNP+' !px-5 !py-3 !text-base'} onClick={()=>openShare('report')}><svg viewBox="0 0 24 24" className="h-5 w-5" {...IS}><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Export as Image</button></div>
+   {rcAll.length?<div className={cx(CARD,'overflow-hidden')}>
+    <div className={cx(RCG,'border-b border-line/60 py-3.5')}><span className={LBL2}>Subject</span><span className={cx(LBL2,'truncate text-right')}>{P[0].name}</span><span className={cx(LBL2,'truncate text-right')}>{single?'Semestral':P[last0].name}</span></div>
+    <ul className="divide-y divide-line/40">{rcAll.map(r=><li key={r.id} className={cx(RCG,'py-3.5')}><div className="min-w-0"><div className="truncate font-extrabold">{r.code}</div><div className="truncate text-xs text-muted">{r.name||'No description'}</div></div>
+     <span className={cx('text-right text-xl font-black tabular-nums',r.pre==null&&'text-muted/50')}>{fg(r.pre)}</span><span className={cx('text-right text-xl font-black tabular-nums',r.fin==null&&'text-muted/50')}>{fg(r.fin)}</span></li>)}</ul>
+    <div className={cx(RCG,'border-t-2 border-line bg-accent/10 py-4')}><div><div className="text-base font-black">GWA</div><div className="text-[11px] font-semibold text-muted">{single?'Semestral total':P[0].name+' total · '+P[last0].name+' is cumulative'}</div></div>
+     <span className="text-right text-2xl font-black tabular-nums"><span className="tot">{fg(aPre)}</span></span><span className="text-right text-2xl font-black tabular-nums"><span className="tot">{fg(aFin)}</span></span></div>
+    <div className={cx(RCG,'py-3 text-muted')}><span className="text-xs font-bold">Majors GWA</span><span className="text-right text-base font-extrabold tabular-nums">{fg(aPreM)}</span><span className="text-right text-base font-extrabold tabular-nums">{fg(aFinM)}</span></div></div>
+   :<div className={cx(CARD,'p-6 text-center text-sm text-muted')}>No subjects yet. Add subjects in the Tracker and they appear here.</div>}</div>};
+
+ /* ---- Overview: all GWA metrics ---- */
+ const Ov=()=>{
+  const nm=(acct.name||'').trim()||'there',tot=subs.length+gens.length,ft=subs.length+(single?gens.length:0),dr=!!(histOk&&!hBad);
+  const preSub=tot?(preSubs.length+genPre.length)+' of '+tot+' recorded':'Add a subject to begin',finSub=ft?(finSubs.length+(single?genPre.length:0))+' of '+ft+' complete':'Add a subject to begin';
+  const per=shortY(Y.name)+' - '+shortS(S.name);
+  const tn=(l,v,sub)=><Tile key={l} l={l} v={v} sub={sub}/>;
+  const vcls=!tr?'':tr.none?(tr.met?'border-good/40 bg-good/10 text-good':'border-line bg-ink/[.06]'):tr.secured?'border-good/40 bg-good/10 text-good':!tr.reach?'border-bad/40 bg-bad/10 text-bad':'border-accent/50 bg-accent/15';
+  const verdict=!tr?'':tr.none?(tr.met?'Target met with your current record.':'No units left to improve it. Add units you still plan to take above.'):tr.secured?'Secured: you stay on target whatever you score on the remaining units.':!tr.reach?'Not reachable: even perfect grades on the remaining units only give '+fg(tr.best)+'.':'Reachable: average '+fg(tr.Gr)+' '+dirW+' on the remaining units.';
+  const need=tr&&!tr.none&&tr.reach&&!tr.secured&&tr.pct!=null?subs.filter(q=>finEq(q)==null).map(q=>({q,o:needX(linSub(q,P),tr.pct)})):[];
   return <>
-   <div className="flex flex-wrap items-center justify-between gap-3"><p className="min-w-0 flex-1 text-sm text-muted">Actual, recorded grades only. Nothing on this page is forecast or projected.</p>{share}</div>
-   {!single&&Sec(P[0].name+' GWA','Recorded '+P[0].name+' grades only',aPre,aPreM,preSub,preMSub)}
-   {Sec(single?'Semestral GWA':P[last0].name+' GWA',single?'Recorded grades only':'Cumulative · '+P.map(p=>p.name).join(' + '),aFin,aFinM,finSub,finMSub)}
-   <section className="flex flex-col gap-4"><div><h2 className="text-2xl font-black tracking-tight sm:text-3xl">All-Year GWA</h2><p className="mt-0.5 text-sm text-muted">{histOk&&!hBad?'Every year tracked in this app, combined with your past record':'Every year tracked in this app'}</p></div>
-    <div className="grid gap-4 sm:grid-cols-2">
-     {Wd('All-Year GWA',fg(ayAll),ayAll==null?'No completed semesters yet':f2(ayU)+' unit'+(ayU===1?'':'s')+' counted'+(histOk&&!hBad?' · '+f2(hU)+' from your past record':'')+(C.meets(ayAll)?' · meets target':''),'Weighted by units: every completed semestral grade across all years in the app, plus the past overall GWA and units you enter on the right.',true)}
-     <div className={cx(CARD,'flex flex-col gap-4 p-6 sm:p-7')}>
-      <div><div className="text-sm font-bold">Past record<Tip t="Use this if earlier semesters are not in the app. Enter your overall GWA and the total units you have taken so far. It is blended with the grades tracked here, weighted by units."/></div><p className="mt-1 text-xs text-muted">Missing historical data? Enter both values to include them.</p></div>
+   <section className={cx(CARD,'flex items-center gap-4 p-5 sm:gap-6 sm:p-6')}>
+    {acct.pic?<img src={acct.pic} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-accent sm:h-20 sm:w-20"/>:<div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-accent text-2xl font-black text-accent-ink sm:h-20 sm:w-20 sm:text-3xl">{nm.charAt(0).toUpperCase()}</div>}
+    <div className="min-w-0 flex-1"><h1 className="text-xl font-black leading-tight tracking-tight sm:text-3xl">Hi {nm}! Hope you’re doing great.</h1>
+     {acct.bio?<p className="mt-1 line-clamp-2 text-sm text-muted">{acct.bio}</p>:guest?<p className="mt-1 text-sm text-muted">Guest mode · save this session as an account to keep it.</p>:<button onClick={()=>setTab('p')} className="mt-1 text-left text-sm font-semibold text-accent-text underline underline-offset-4">Add a short bio</button>}</div></section>
+
+   <section className="flex flex-col gap-4">
+    {Big('Cumulative All-Year GWA',fg(ayAll),ayAll==null?'No completed semesters yet':f2(ayU)+' unit'+(ayU===1?'':'s')+' counted'+(ayM!=null?' · Majors '+fg(ayM):'')+(dr?' · includes your past record':'')+(C.meets(ayAll)?' · meets target':''),'Weighted by units: every completed semestral grade across all years in the app, plus the past record you enter below.','hero !min-h-[15rem]',true)}
+    <div className="grid items-start gap-4 sm:grid-cols-2">
+     {A('pr','Past record','Optional · earlier semesters not in the app',<>
+      <p className="text-sm text-muted">Missing historical data? Enter your past overall GWA and the total units taken so far. Both are needed.</p>
       <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold text-muted">Past overall GWA<Num v={hs.gwa} on={v=>setHist('gwa',v)} ph={C.dir<0?'e.g. 1.75':'e.g. 3.50'} w="mt-1 w-full" bad={hBad}/></label><label className="text-xs font-semibold text-muted">Total units taken<Num v={hs.units} on={v=>setHist('units',v)} ph="e.g. 60" w="mt-1 w-full"/></label></div>
       {hBad&&<p className="text-xs font-semibold text-bad">That GWA is outside the {fg(hLo)} to {fg(hHi)} scale, so it is not counted.</p>}
       {!hBad&&(hs.gwa||hs.units)&&!histOk&&<p className="text-xs font-semibold text-muted">Enter both a GWA and units above zero to include it.</p>}
-      <div className="grid grid-cols-2 gap-3"><Tile l="Tracked in app" v={fg(ayTrk)} sub={f2(ayTrkU)+' units'}/><Tile l="Past record" v={histOk&&!hBad?fg(hG):'—'} sub={histOk&&!hBad?f2(hU)+' units':'Not entered'}/></div>
-      {(hs.gwa||hs.units)&&<button className={BTN+' self-start'} onClick={clearHist}>Clear past record</button>}</div></div></section>
-   <section className="flex flex-col gap-4"><div><h2 className="text-2xl font-black tracking-tight sm:text-3xl">Report card</h2><p className="mt-0.5 text-sm text-muted">{Y.name} · {S.name} · recorded grades only</p></div>
-    {rc.length?<div className={cx(CARD,'overflow-hidden')}>
-     <div className={cx(RCG,'border-b border-line/40 py-3')}><span className={LBL2}>Subject</span><span className={cx(LBL2,'truncate text-right')}>{P[0].name}</span><span className={cx(LBL2,'truncate text-right')}>{single?'Semestral':P[last0].name}</span></div>
-     <ul className="divide-y divide-line/40">{rc.map(r=><li key={r.id} className={cx(RCG,'py-3.5')}><div className="min-w-0"><div className="truncate font-extrabold">{r.code}</div><div className="truncate text-xs text-muted">{r.name||'No description'}</div></div>
-      <span className={cx('text-right text-xl font-black tabular-nums',r.pre==null&&'text-muted/50')}>{fg(r.pre)}</span><span className={cx('text-right text-xl font-black tabular-nums',r.fin==null&&'text-muted/50')}>{fg(r.fin)}</span></li>)}</ul></div>
-    :<div className={cx(CARD,'p-6 text-center text-sm text-muted')}>No grades recorded yet. Subjects appear here once a period is complete.</div>}</section>
-  </>};
- const Ov=()=>{
-  const nm=(acct.name||'').trim()||'there';
-  return <>
-   <section className={cx(CARD,'flex items-center gap-4 p-5 sm:gap-6 sm:p-7')}>
-    {acct.pic?<img src={acct.pic} alt="" className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-accent sm:h-24 sm:w-24"/>:<div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-accent text-3xl font-black text-accent-ink sm:h-24 sm:w-24 sm:text-4xl">{nm.charAt(0).toUpperCase()}</div>}
-    <div className="min-w-0 flex-1"><h1 className="text-2xl font-black leading-tight tracking-tight sm:text-4xl">Hi {nm}! Hope you’re doing great.</h1>
-     {acct.bio?<p className="mt-1.5 line-clamp-2 text-sm text-muted sm:text-base">{acct.bio}</p>:guest?<p className="mt-1.5 text-sm text-muted">Guest mode · save this session as an account to keep it.</p>:<button onClick={()=>setTab('p')} className="mt-1.5 text-left text-sm font-semibold text-accent-text underline underline-offset-4">Add a short bio</button>}</div></section>
+      <div className="grid grid-cols-2 gap-3">{tn('Tracked in app',fg(ayTrk),f2(ayTrkU)+' units')}{tn('Past record',dr?fg(hG):'—',dr?f2(hU)+' units':'Not entered')}</div>
+      {(hs.gwa||hs.units)&&<button className={BTN+' self-start'} onClick={clearHist}>Clear past record</button>}</>)}
+     {A('tg','Target GWA',tOk?'Target '+fg(tT)+' '+dirW:'Set a target to see what you need',<>
+      <p className="text-sm text-muted">Enter the cumulative GWA you are aiming for. It is worked out from your current standing and everything still in progress.</p>
+      <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold text-muted">Target GWA<Num v={ayt.t} on={v=>setAyt('t',v)} ph={String(C.target)} w="mt-1 w-full"/></label><label className="text-xs font-semibold text-muted">More units to take<Num v={ayt.ex} on={v=>setAyt('ex',v)} ph="0" w="mt-1 w-full"/></label></div>
+      <button className={BTN+' self-start'} onClick={()=>setAyt('t',String(C.target))}>Use my Dean’s List target ({fg(C.target)})</button>
+      {tr&&<div className="flex flex-col gap-3"><div className={cx('rounded-2xl border px-3 py-2.5 text-sm font-semibold',vcls)}>{verdict}</div>
+       <div className="grid grid-cols-2 gap-3">{tn('Current standing',fg(G0),f2(U0)+' units')}{tn('Remaining units',f2(Ur),remU>0?f2(remU)+' in progress'+(xU>0?' + '+f2(xU)+' planned':''):xU>0?'planned':'None in progress')}
+        {!tr.none&&tn('Average grade needed',tr.secured?'Any':fg(tr.Gr),tr.secured?'target is secured':dirW+' on remaining units')}{!tr.none&&tn('Minimum semestral %',tr.secured?'—':tr.pct!=null?'≥ '+f2(tr.pct)+'%':'—','in each remaining subject')}</div>
+       {!tr.none&&tn('Best GWA still possible',fg(tr.best),'if every remaining unit earns '+fg(C.hi))}
+       {need.length>0&&<div className="flex flex-col gap-2"><div className="text-xs font-bold text-muted">To stay on track this semester</div>{need.map(({q,o})=><div key={q.id} className="flex items-center justify-between gap-3 rounded-2xl bg-ink/[.06] px-3 py-2 text-sm"><span className="font-extrabold">{q.code||'Subject'}</span><span className={cx('text-right text-xs font-semibold',tlCls(o&&!o.done?o.x:null))}>{needLbl(o,missOf(q,P))}</span></div>)}</div>}</div>}</>)}</div></section>
+
+   <section className="flex flex-col gap-4"><div><h2 className="text-2xl font-black tracking-tight sm:text-3xl">{per}</h2><p className="mt-0.5 text-sm text-muted">Recorded grades only. Nothing here is forecast.</p></div>
+    <div className={cx('grid gap-4',!single&&'sm:grid-cols-2')}>
+     {!single&&Big(P[0].name+' GWA',fg(aPre),preSub+(aPreM!=null?' · Majors '+fg(aPreM):''),'Only recorded '+P[0].name+' grades, weighted by units.')}
+     {Big(single?'Semestral GWA':P[last0].name+' GWA',fg(aFin),finSub+(aFinM!=null?' · Majors '+fg(aFinM):'')+(single?'':' · cumulative'),single?'Recorded grades only.':'Cumulative: '+P.map(p=>p.name).join(' + ')+', after Base.')}</div></section>
+
    <section><h2 className="mb-4 text-2xl font-black tracking-tight sm:text-3xl">Subjects<Tip t="For subjects with no known breakdown, simply add the subject and enter the released Prelim Grade directly in Options, under Reverse calculator."/></h2>
     {subs.length?<div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{subs.map(s=>{const pe=preEq(s),fe=finEq(s);return <button key={s.id} onClick={()=>{setSid(s.id);setTab('t')}} className={cx(CARD,'lift flex flex-col gap-6 p-5 text-left hover:!border-accent/60')}>
       <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span><div className="min-w-0 flex-1"><div className="truncate font-extrabold">{s.code||'Subject'}</div><div className="truncate text-xs text-muted">{s.name||'No name'}</div></div><span className={cx('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold',s.kind==='gen'?'bg-ink/[.06] text-muted':'bg-accent/15 text-accent-text')}>{s.kind==='gen'?'Gen Ed':'Major'}</span></div>
       <div className="flex items-end justify-between gap-3"><div><div className="text-xs font-semibold text-muted">{single?'Semestral':P[0].name}</div><div className="text-3xl font-black tabular-nums">{fg(single?fe:pe)}</div></div>{!single&&<div className="text-right"><div className="text-xs font-semibold text-muted">{P[last0].name}</div><div className="text-3xl font-black tabular-nums">{fg(fe)}</div></div>}</div></button>})}</div>
      :<div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><p className="max-w-sm text-sm text-muted">Add your first subject to see your GWA here.</p><button className={BTNP} onClick={()=>{setTab('t');setAdding(true)}}>Add subject</button></div>}</section></>};
 
- const ForecastSummary=()=>{const ok=finalG!=null&&C.meets(finalG),fi=P.findIndex(p=>p.id===fsub),pre1=!single&&fi>=0&&fi<last0;return <div className="flex flex-col gap-4">
-  <div className={cx('grid gap-4 px-1 sm:gap-8',pre1?'grid-cols-1':'grid-cols-2')}>
-   <div className="min-w-0"><div className={LBL2}>{P[0].name} GWA</div><div className="mt-1 text-4xl font-black tabular-nums tracking-tight sm:text-6xl">{fg(preGP)}</div><div className="mt-1 text-[11px] text-muted sm:text-sm">{preGP==null?'Nothing to project yet':preN+' of '+(subs.length+gens.length)+' actual · rest projected'}</div></div>
-   {!pre1&&<div className="min-w-0"><div className={LBL2}>{single?'Semestral GWA':P[last0].name+' / Semestral GWA'}</div><div className={cx('mt-1 text-4xl font-black tabular-nums tracking-tight sm:text-6xl',ok&&'text-good')}>{fg(finalG)}</div><div className="mt-1 text-[11px] text-muted sm:text-sm">{finalN} final · {subs.length-finalN+gens.length} projected</div></div>}</div>
-  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1"><span className="text-sm font-bold sm:text-base">Target {fg(C.target)} <span className="font-semibold text-muted">or {C.dir<0?'lower':'higher'}</span></span>{!pre1&&<span className={cx('text-xs font-semibold sm:text-sm',ok?'text-good':'text-muted')}>{finalG==null?'':ok?'Projection meets your target':fg(Math.abs(finalG-C.target))+' away from the target'}</span>}<button onClick={()=>openShare('forecast')} className={BTN+' sm:ml-auto'}>Share</button></div></div>};
 
 const Banners=()=><>
   {loser&&<div className="anim-rise flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-ink/[.06] p-3 text-sm"><span className="min-w-[14rem] flex-1 font-semibold">Edits from two devices clashed. The newest version was kept.</span><button className={BTN} onClick={restoreLoser}>Restore the other version</button><button className={BTN} onClick={onLoser}>Dismiss</button></div>}
@@ -598,7 +642,8 @@ const Banners=()=><>
  const RetBox=s=>{const o=s.ret,has=o!==undefined&&o!==null&&o!=='',rt=retOf(s);return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Retention grade<Tip t="The lowest grade you must keep in this subject. Blank uses the default passing mark from Settings."/></span><div className="flex items-center gap-2"><Num v={has?o:''} on={v=>setRet(s.id,v)} ph={fg(retOf(null).g)} w="w-24"/><span className="text-xs text-muted">needs about {rt.pct>100?'more than 100':f2(rt.pct)}% semestral</span></div></div>};
  const DetailsBox=s=><div className="flex flex-col gap-3"><span className="text-sm font-bold">Subject details</span>
   <div className="grid grid-cols-[1fr_5.5rem] gap-3"><label className="text-xs font-semibold text-muted">Code<TextIn v={s.code} on={v=>setF(s.id,'code',v.toUpperCase())} cls="mt-1"/></label><label className="text-xs font-semibold text-muted">Units<Num v={s.units} on={v=>setF(s.id,'units',v)} w="mt-1 w-full"/></label></div>
-  <label className="text-xs font-semibold text-muted">Name<TextIn v={s.name} on={v=>setF(s.id,'name',v)} cls="mt-1"/></label></div>;
+  <label className="text-xs font-semibold text-muted">Name<TextIn v={s.name} on={v=>setF(s.id,'name',v)} cls="mt-1"/></label>
+  <label className="text-xs font-semibold text-muted">Classification<select value={s.kind==='gen'?'gen':'major'} onChange={e=>setF(s.id,'kind',e.target.value)} className={SEL+' selc mt-1 block w-full'}><option value="major">Major</option><option value="gen">Gen Ed</option></select><span className="mt-1 block font-normal">Major subjects feed the Majors GWA.</span></label></div>;
  const WeightsBox=s=>{const W=wts(s,P),tot=W.reduce((a,b)=>a+b,0),has=!!(s.pw&&Object.values(s.pw).some(v=>v!==''&&v!=null));return <div className="flex flex-col gap-2">
   <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold">Period weights<Tip t="How much each period counts toward the semestral grade. With two periods, the other one balances to 100 automatically."/></span>{has&&<button className="text-xs font-semibold text-accent-text underline" onClick={()=>resetPW(s.id)}>Reset to default</button>}</div>
   <div className="flex flex-wrap items-center gap-3">{P.map((p,i)=><label key={p.id} className="flex items-center gap-1.5 text-xs font-semibold text-muted">{p.name}<Num v={s.pw&&s.pw[p.id]!==undefined?s.pw[p.id]:String(p.w)} on={v=>setPW(s.id,i,v)} w="w-[4.5rem]"/>%</label>)}</div>
@@ -636,11 +681,10 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
    </div>};
   const TrackerBody=()=>{const s=cur,sem=semActual(s,P),sp=semProjC(s,P),eq=sem==null?null:eqv(sem),isLast=P.length<2||pcur.id===P[last0].id;
   const Bg=(l,v,sub,hi,cls,big)=><div key={l} className={cx('rounded-3xl border p-4 sm:p-5',hi?'border-accent/40 bg-accent/15':'border-line/60 bg-ink/[.06]',cls)}><div className="text-xs font-bold text-muted">{l}</div><div className={cx('mt-1 font-black tabular-nums tracking-tight',big?(P.length===2?'text-6xl sm:text-5xl':'text-6xl'):'text-4xl sm:text-5xl')}>{v}</div>{sub&&<div className="mt-1 text-xs font-semibold text-muted">{sub}</div>}</div>;
-  const two=P.length===2,semV=sem!=null?f2(sem):sp.grade!=null?f2(sp.grade):'—',semSub=sem!=null?'Grade '+fg(eq)+' · '+(sem>=retOf(s).pct-1e-9?'Meets retention':'Below retention ('+fg(retOf(s).g)+')'):sp.grade!=null?'Projected · grade '+fg(eqv(sp.grade)):'Complete every period';
+  const two=P.length===2,semV=eq!=null?fg(eq):sp.grade!=null?fg(eqv(sp.grade)):'—',semSub=sem!=null?f2(sem)+'% semestral · '+(sem>=retOf(s).pct-1e-9?'Meets retention':'Below retention ('+fg(retOf(s).g)+')'):sp.grade!=null?'Projected · '+f2(sp.grade)+'% semestral':'Complete every period';
   return <>
    <div className="flex items-center gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span>
     <div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-black tracking-tight">{s.code||'Subject'}</h2><p className="truncate text-sm text-muted">{s.name||'No name'} · {f2(+s.units||0)} unit{(+s.units||0)===1?'':'s'}</p></div></div>
-   <div className="flex flex-wrap items-center gap-2"><Seg v={s.kind==='gen'?'gen':'major'} on={v=>setF(s.id,'kind',v)} opts={[['major','Major'],['gen','Gen Ed']]}/><Tip t="Tag a subject as Major or Gen Ed. The Majors GWA on the GWA tab only counts subjects tagged Major."/></div>
    <div className={cx('grid grid-cols-2 gap-3',two&&'sm:grid-cols-3')}>
     {P.map(p=>{const c=pcalc(s,p),v=c.grade!=null?c.grade:c.gradeSoFar;return Bg(p.name+' grade',v==null?'—':f2(v),c.grade!=null?'Raw · complete':v!=null?'Raw · so far':'No scores yet',p.id===pcur.id)})}
     {P.length>1&&Bg('Semestral grade',semV,semSub,true,cx('col-span-2 !border-accent/60 !bg-accent/20',two&&'sm:col-span-1'),true)}</div>
@@ -651,37 +695,6 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
 const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><button className={BTNP} onClick={()=>setAdding(true)}>＋ Add your first subject</button></div>;
  const TrackerView=()=><div className="flex flex-col gap-6 pb-2">{subs.length?Shell(TrackerBody()):EmptyCard()}</div>;
 
- /* ---- forecaster (also one subject card at a time) ---- */
-
- const ForecastBody=pi=>{const s=cur,p=P[pi],sp=semProjC(s,P),prj=sp.pr,W=sp.W,B=sp.B,T=tFor(s,pi),r=pproj(s,p,T),sem=sp.grade,met=T!=null&&r.proj!=null&&r.proj>=T-1e-9;
-  let hint;if(!r.live.length)hint='No activities';else if(!r.miss.length)hint='All scores are in';else if(r.miss.length===1)hint='Need '+need(r.alone[0][1])[0]+' on '+r.miss[0].name;else hint='Need '+need(r.uni)[0]+' on each of '+r.miss.length+' scores';
-  return <>
-   <div className="flex items-center gap-2.5 sm:gap-3"><span className="h-10 w-1.5 shrink-0 rounded-full bg-sa"/>
-    <div className="min-w-0 flex-1"><div className="truncate text-lg font-extrabold sm:text-xl">{s.code}</div><div className="truncate text-sm text-muted">{hint}</div></div>
-    <div className="text-right"><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Projected</div><div className={cx('text-xl font-black tabular-nums',met?'text-good':'text-ink')}>{r.proj==null?'—':f2(r.proj)}</div></div></div>
-   <div className="rounded-2xl border border-line/60 bg-ink/[.06] p-3 text-sm">
-    <div>{p.name} grade needed (raw): <b className={T!=null&&T>100?'text-bad':''}>{T==null?'—':T<=0?'Secured ✓':T>100?'Out of reach ('+f2(T)+')':f2(T)}</b></div>
-    {pi===last0?<div className="mt-1 text-xs text-muted">Semestral target {f2(Ts)}. With Base {f2(B)} that needs a raw semestral grade of {f2(Math.max(0,untrans(Ts,B)))}.</div>:<div className="mt-1 text-xs text-muted">Period target: the raw grade that passes if every period matches (change it above).</div>}
-    {P.map((q,j)=>j===pi?null:<div key={q.id} className="text-muted">{q.name} ({f2(W[j])}%): <b className="text-ink">{prj[j].proj==null?'—':f2(prj[j].proj)}</b> ({prj[j].complete?'actual':'projected'})</div>)}</div>
-   {(()=>{const rr=all.find(z=>z.s&&z.s.id===s.id),lv=rr?rLvl(rr):0;return lv?<div className={cx('rounded-xl border px-3 py-2 text-xs font-semibold',lv===2?'ins-bad':'ins-warn')}>{lv===2?'Projected below its '+fg(rr.rt.g)+' retention grade':'Retention at risk: needs '+Math.ceil(rr.sv.x-1e-9)+'% on what is left to stay at '+fg(rr.rt.g)}</div>:null})()}
-   {r.miss.length>1&&<Tile l={`Same % on all ${r.miss.length} missing`} v={need(r.uni)[0]} bad={need(r.uni)[1]} vc={tlCls(r.uni)}/>}
-   <div className="flex flex-col gap-3.5">{r.acts.filter(a=>wgt(a)>0).map(a=>{const x=ap(a);if(x!=null)return <div key={a.id} className="flex items-center justify-between rounded-2xl bg-ink/[.06] px-4 py-2.5 text-sm"><span className="font-semibold">{a.name} <span className="font-normal text-muted">{f2(wgt(a))}%</span></span><span className="font-bold">✓ {f2(x)}%{a.est&&<span className="ml-1 text-[10px] font-bold uppercase text-accent-text">possible</span>}</span></div>;
-    const v=r.alone.find(z=>z[0]===a.id)[1],[t,bad]=need(v),m=mxs(a);
-    return <div key={a.id} className="flex flex-col gap-3 rounded-2xl border border-line/60 bg-ink/[.06] p-4 sm:p-5">
-     <div className="flex items-center justify-between"><span className="font-bold">{a.name} <span className="text-xs font-semibold text-muted">{f2(wgt(a))}%</span></span><span className="rounded-full bg-accent/25 px-2 py-0.5 text-xs font-bold">Not yet</span></div>
-     <div><span className="text-xs text-muted">Score needed{r.miss.length>1?' (others at their sliders)':''}:</span><div className={cx('text-xl font-extrabold',tlCls(v)||(bad?'text-bad':'text-ink'))}>{t}{v>0&&v<=100&&<span className="text-sm font-semibold text-muted"> ≈ {f2(v/100*m)}/{m}</span>}</div></div>
-     <div className="flex items-center gap-3"><span className="w-16 text-xs font-semibold">If I score</span><input type="range" min="0" max="100" step="1" value={Math.min(100,+wiv(s,a)||0)} onChange={e=>setWi(s.id,a.id,e.target.value)} className="min-w-0 flex-1"/><Num v={wiv(s,a)} on={v=>setWi(s.id,a.id,v)} w="w-16"/></div></div>})}</div>
-   <AccentBox l={`Projected ${p.name.toLowerCase()} grade (raw)`} v={r.proj==null?'—':f2(r.proj)} rl={T==null?'':'vs target'} r={T==null?'—':f2(Math.max(0,T))} foot={T==null?'':met?'Meets target ✓':'Short by '+f2(T-(r.proj||0))}/>
-   {P.length>1&&pi===last0&&<AccentBox l="Projected semestral (after Base)" v={sem==null?'—':f2(sem)} rl="Grade" r={sem==null?'—':fg(eqv(sem))} foot={sem==null?'':sem>=retOf(s).pct-1e-9?'Meets retention ✓':'Below retention ('+fg(retOf(s).g)+')'}/>}
-   <div className="mx-auto w-full max-w-3xl">{Options(s,P[pi],pi===last0)}</div></>};
- const ForecastView=()=>{const pi=P.findIndex(p=>p.id===fsub);return <>
-  {ForecastSummary()}
-  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-   <Seg v={fsub} on={setSub} opts={P.map(p=>[p.id,p.name])} cls="w-full sm:w-auto"/>
-   {pi<last0&&<label className="flex items-center gap-2 text-sm font-semibold">{P[pi].name} target<Num v={tg[fsub]} on={v=>setTg(fsub,v)} ph={String(C.pass)} w="w-20"/></label>}
-   {pi===last0&&<label className="flex items-center gap-2 text-sm font-semibold">Semestral target<Num v={tg.s} on={v=>setTg('s',v)} ph={String(C.pass)} w="w-20"/></label>}</div>
-  {subs.length?Shell(ForecastBody(pi)):EmptyCard()}</>};
-
  /* ---- settings sheet ---- */
  const Settings=()=>{
   const raw=(st.cfg&&st.cfg.table&&st.cfg.table.length)?st.cfg.table:(C.id==='pct'?[]:PRESETS[C.id].table);
@@ -689,20 +702,20 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
   const setRow=(i,j,v)=>{const t=str();t[i][j]=v;setCfg({table:t},'tbl'+i+j)};
   const rp=rawP(),tw=P.reduce((a,p)=>a+p.w,0);
   return <>
-   <section className="flex flex-col gap-3"><h3 className={LBL}>Appearance</h3><ThemePicker theme={theme} setTheme={setTheme}/></section>
-   <section className="flex flex-col gap-3"><h3 className={LBL}>Sound and haptics</h3>
+   {A('ap','Appearance','Theme colours',<><ThemePicker theme={theme} setTheme={setTheme}/></>)}
+   {A('sd','Sound and haptics','Effects and vibration',<>
     <Switch on={fxs.snd} onChange={()=>togFx('snd')} label="Sound effects" sub="Soft pops when you reach your target or finish a calculation. Typing and taps stay silent."/>
     {fxs.snd&&<button className={BTN+' self-start'} onClick={()=>FX.test()}>Play test sound</button>}
-    <Switch on={fxs.hap} onChange={()=>togFx('hap')} label="Haptic feedback" sub="Short vibrations on phones that support them."/></section>
-   <section className="flex flex-col gap-3"><h3 className={LBL}>Grading periods and Base</h3>
+    <Switch on={fxs.hap} onChange={()=>togFx('hap')} label="Haptic feedback" sub="Short vibrations on phones that support them."/></>)}
+   {A('gp','Grading periods and Base','Weights and the curve',<>
     {rp.map((p,i)=><div key={p.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-ink/[.06] p-3">
      <TextIn v={p.name} on={v=>setPeriod(i,{name:v})} ph="Period name" cls="min-w-[8rem] flex-1"/>
      <label className="flex items-center gap-1 text-xs font-semibold text-muted">Weight<Num v={p.w} on={v=>setPeriod(i,{w:v})} w="w-[4.5rem]"/>%</label>
      {rp.length>1&&<button className={BTNX+' !px-2.5'} onClick={()=>delPeriod(i)} aria-label="Remove period">✕</button>}</div>)}
     <div className="flex flex-wrap items-center gap-2"><button className={BTN} onClick={addPeriod} disabled={rp.length>=5}>＋ Add period</button><span className={cx('text-xs font-semibold',Math.abs(tw-100)>.005?'text-bad':'text-muted')}>Weights total {f2(tw)}%{Math.abs(tw-100)>.005?' (scaled to 100%)':''}</span></div>
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-ink/[.06] p-3"><span className="text-sm font-bold">Default Base</span><Num v={st.cfg&&st.cfg.base!==undefined?st.cfg.base:'0'} on={v=>setCfg({base:v},'cfgbase')} w="w-20"/></div>
-    <p className="text-xs text-muted">These weights and this Base are the defaults for every subject. Any subject can change its own period weights and Base on its card. The curve is applied to the <b>semestral grade</b> (Prelims + Finals combined): (Raw ÷ 100) × (100 − Base) + Base.</p></section>
-   <section className="flex flex-col gap-4"><h3 className={LBL}>Highest possible grade</h3>
+    <p className="text-xs text-muted">These weights and this Base are the defaults for every subject. Any subject can change its own period weights and Base on its card. The curve is applied to the <b>semestral grade</b> (Prelims + Finals combined): (Raw ÷ 100) × (100 − Base) + Base.</p></>)}
+   {A('hg','Highest possible grade','Scale, target and grade table',<>
     <div className="grid gap-2">{Object.entries(PRESETS).map(([id,p])=><button key={id} onClick={()=>pickScale(id)} className={cx('rounded-2xl border p-3 text-left transition',C.id===id?'border-accent bg-accent/10 ring-2 ring-accent/40':'border-line bg-ink/[.06] hover:bg-ink/[.09]')}><div className="font-bold">{p.label}</div><div className="text-xs text-muted">{p.sub}</div></button>)}</div>
     <div className="flex flex-wrap gap-4">
      <label className="text-sm font-semibold">Dean’s List GWA target<div className="mt-1"><Num v={st.cfg&&st.cfg.target!==undefined?st.cfg.target:PRESETS[C.id].target} on={v=>setCfg({target:v},'cfgt')} w="w-28"/></div></label>
@@ -710,52 +723,49 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     <p className="text-xs text-muted">{C.dir<0?`Lower is better on this scale, so a target of ${fg(C.target)} means ${fg(C.target)} or lower.`:`Higher is better on this scale, so a target of ${fg(C.target)} means ${fg(C.target)} or higher.`} You need about {f2(C.need)}% in a subject to land on the target.</p>
     {C.table&&<div className="flex flex-col gap-2"><div className="text-sm font-bold">Grade table <span className="text-xs font-semibold text-muted">(minimum percent → grade)</span></div>
      {raw.map((r,i)=><div key={i} className="flex items-center gap-2"><Num v={String(r[0])} on={v=>setRow(i,0,v)} ph="min %" w="w-24"/><span className="text-muted">→</span><Num v={String(r[1])} on={v=>setRow(i,1,v)} ph="grade" w="w-24"/><button className={BTN+' !px-3'} onClick={()=>setCfg({table:str().filter((_,k)=>k!==i)})} aria-label="Remove row">✕</button></div>)}
-     <div className="flex gap-2"><button className={BTN} onClick={()=>setCfg({table:[...str(),['','']]})}>＋ Add row</button><button className={BTN} onClick={()=>setCfg({table:null})}>Reset to preset</button></div></div>}</section>
-   <section className="flex flex-col gap-3"><h3 className={LBL}>Years and semesters</h3>
+     <div className="flex gap-2"><button className={BTN} onClick={()=>setCfg({table:[...str(),['','']]})}>＋ Add row</button><button className={BTN} onClick={()=>setCfg({table:null})}>Reset to preset</button></div></div>}</>)}
+   {A('ys','Years and semesters','Rename, switch or add',<>
     <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Academic year<TextIn v={Y.name} on={v=>rename('y',v)} cls="mt-1"/></label><label className="text-sm font-semibold">Semester<TextIn v={S.name} on={v=>rename('s',v)} cls="mt-1"/></label></div>
-    <div className="flex flex-wrap gap-2"><select value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select><select value={S.id} onChange={e=>set(c=>({...c,s:e.target.value}))} className={SEL}>{Y.sems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select><button className={BTN} onClick={addYear}>＋ Year</button><button className={BTN} onClick={addSem}>＋ Semester</button></div></section>
-   <section className="flex flex-col gap-3"><h3 className={LBL}>Data</h3>
+    <div className="flex flex-wrap gap-2"><select value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select><select value={S.id} onChange={e=>set(c=>({...c,s:e.target.value}))} className={SEL}>{Y.sems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select><button className={BTN} onClick={addYear}>＋ Year</button><button className={BTN} onClick={addSem}>＋ Semester</button></div></>)}
+   {A('dt','Data','Backup, import and clearing',<>
     <div className="flex flex-wrap gap-2"><button className={BTN} onClick={()=>clearScores()}>Clear all scores here</button>
      {CAN_FILE&&<><button className={BTN} onClick={exportData}>Export data</button><label className={BTN+' cursor-pointer'}>Import data<input type="file" accept="application/json,.json" onChange={importData} className="hidden"/></label></>}</div>
-    <p className="text-xs text-muted">Everything saves automatically. Every change can be undone with the Undo button at the top of the screen. Export a backup now and then.</p></section></>};
+    <p className="text-xs text-muted">Everything saves automatically. Every change can be undone with the Undo button at the top of the screen. Export a backup now and then.</p></>)}</>};
 
  const ProfileView=()=>{const g=prof.group,cloudA=!!acct.cloud&&!guest,gc=!!(g&&g.cloud&&!guest);
   const photo=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f)resizeImg(f).then(p=>prof.rename({pic:p})).catch(()=>setPm('Could not read that image.'))};
   const run=async(fn,ok)=>{setPm('');const r=await fn();if(r==='ok'){setPm(ok);setPf(f=>({...f,o:'',n:'',n2:'',go:'',gn:'',gn2:''}))}else setPm(r)};
   const pw=(k,ph)=><TextIn type="password" v={pf[k]} on={v=>setPf({...pf,[k]:v})} ph={ph}/>;
   const sec=CARD+' flex flex-col gap-3 p-5 sm:p-6';
-  const tog=k=>setAccO({...accO,[k]:!accO[k]});
-  const AH=(t,sub)=><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">{t}</span><span className="block text-xs text-muted">{sub}</span></span>;
-  return <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+  return <div className="flex flex-col gap-4">
    <section className={sec}><h2 className="text-lg font-extrabold">Profile</h2>
     {guest?<p className="text-sm text-muted">You are in guest mode. Save this session as an account from the banner to keep it.</p>:<>
      <div className="flex items-center gap-4"><Avatar a={acct} s="h-20 w-20" t="text-4xl"/><div className="flex flex-col gap-2"><label className={BTN+' cursor-pointer'}>{acct.pic?'Change picture':'Upload picture'}<input type="file" accept="image/*" className="hidden" onChange={photo}/></label>{acct.pic&&<button className={BTN} onClick={()=>prof.rename({pic:''})}>Remove picture</button>}</div></div>
      <label className="text-sm font-semibold">Name<TextIn v={acct.name||''} on={v=>prof.rename({name:v})} cls="mt-1"/></label>
      <label className="text-sm font-semibold">Bio<TextIn v={acct.bio||''} on={v=>prof.rename({bio:v.slice(0,80)})} ph="Program and year (optional)" cls="mt-1"/></label></>}</section>
-   {(cloudA||gc)&&<div className="flex flex-col gap-5">
-    {cloudA&&<Acc open={accO.a} onToggle={()=>tog('a')} head={AH('Account passcode','Change how you unlock this account')}><p className="text-sm text-muted">Signed in as <b className="text-ink">{acct.cloud.sn}</b>. After changing it, other devices must remove this account and unlock it again with the new passcode.</p>{pw('o','Current passcode')}{pw('n','New passcode (6+ characters)')}{pw('n2','Repeat new passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changePass(pf.o,pf.n,pf.n2),'Account passcode changed.')}>Change passcode</button></Acc>}
-    {gc&&<Acc open={accO.g} onToggle={()=>tog('g')} head={AH('Group passcode','Change the passcode for '+g.name)}><p className="text-sm text-muted">Group <b className="text-ink">{g.name}</b>. After changing it, members must rejoin the group with the new passcode.</p>{pw('go','Current group passcode')}{pw('gn','New group passcode (6+ characters)')}{pw('gn2','Repeat new group passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeGroupPass(pf.go,pf.gn,pf.gn2),'Group passcode changed.')}>Change group passcode</button>
-     <label className="mt-2 text-sm font-semibold">Recovery email<Tip t="Members who forget a passcode can email this address from the unlock screen. It is stored with the group and visible to people who join it."/><TextIn type="email" v={g.rec||''} on={v=>prof.setRec(v)} ph="name@example.com" cls="mt-1"/></label></Acc>}</div>}
-   <section className={sec}><h2 className="text-lg font-extrabold">Session</h2><p className="text-sm text-muted">Switch to another account or group.</p><button className={BTN+' self-start'} onClick={onSwitch}>Switch account</button></section>
-   {pm&&<p className="rounded-2xl border border-line bg-ink/[.06] px-4 py-3 text-sm font-semibold lg:col-span-2" role="status">{pm}</p>}
-   <div className="mt-3 flex flex-col gap-4 lg:col-span-2"><h2 className="px-1 text-2xl font-black tracking-tight sm:text-3xl">Settings</h2>
-    <div className={cx(CARD,'p-5 sm:p-8')}><div className="grid gap-x-10 gap-y-8 lg:grid-cols-2">{Settings()}</div></div></div></div>};
+   <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+    {Settings()}
+    {cloudA&&A('a','Account passcode','Change how you unlock this account',<><p className="text-sm text-muted">Signed in as <b className="text-ink">{acct.cloud.sn}</b>. After changing it, other devices must remove this account and unlock it again with the new passcode.</p>{pw('o','Current passcode')}{pw('n','New passcode (6+ characters)')}{pw('n2','Repeat new passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changePass(pf.o,pf.n,pf.n2),'Account passcode changed.')}>Change passcode</button></>)}
+    {gc&&A('g','Group passcode','Change the passcode for '+g.name,<><p className="text-sm text-muted">Group <b className="text-ink">{g.name}</b>. After changing it, members must rejoin the group with the new passcode.</p>{pw('go','Current group passcode')}{pw('gn','New group passcode (6+ characters)')}{pw('gn2','Repeat new group passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeGroupPass(pf.go,pf.gn,pf.gn2),'Group passcode changed.')}>Change group passcode</button>
+     <label className="mt-2 text-sm font-semibold">Recovery email<Tip t="Members who forget a passcode can email this address from the unlock screen. It is stored with the group and visible to people who join it."/><TextIn type="email" v={g.rec||''} on={v=>prof.setRec(v)} ph="name@example.com" cls="mt-1"/></label></>)}</div>
+   {pm&&<p className="rounded-2xl border border-line bg-ink/[.06] px-4 py-3 text-sm font-semibold" role="status">{pm}</p>}
+   <section className={sec}><h2 className="text-lg font-extrabold">Session</h2><p className="text-sm text-muted">Switch to another account or group.</p><button className={BTN+' self-start'} onClick={onSwitch}>Switch account</button></section></div>};
   return <div className="mx-auto w-full max-w-[1240px] overflow-x-clip px-5 pb-44 pt-[var(--tp)] sm:px-8 md:pb-40">
   <main className="flex flex-col gap-6 sm:gap-7">
    {Top()}{tab!=='o'&&<h1 className="px-1 pt-2 text-[2.1rem] font-black leading-none tracking-tight sm:text-5xl">{TITLES[tab]||'Overview'}</h1>}{Banners()}
-   <div key={tab} className="anim-rise flex flex-col gap-8 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='f'?ForecastView():tab==='w'?GwaPage():ProfileView()}</div></main>
+   <div key={tab} className="anim-rise flex flex-col gap-8 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='w'?ReportPage():ProfileView()}</div></main>
   <BottomNav tab={tab} on={k=>{setPill(false);setTab(k)}}/>
   <Sheet open={adding} onClose={()=>setAdding(false)} title="Add subject">
    <label className="text-sm font-semibold">Code<TextIn v={nf.code} on={v=>setNf({...nf,code:v})} ph="Subject code" cls="mt-1"/></label>
    <label className="text-sm font-semibold">Name (optional)<TextIn v={nf.name} on={v=>setNf({...nf,name:v})} cls="mt-1"/></label>
-   <div className="flex flex-col gap-1.5"><span className="text-sm font-semibold">Type<Tip t="Major subjects feed the Majors GWA on the GWA tab. Gen Ed subjects count toward the Overall GWA only."/></span><Seg v={nf.kind||'major'} on={v=>setNf({...nf,kind:v})} opts={[['major','Major'],['gen','Gen Ed']]} cls="w-full"/></div>
+   <div className="flex flex-col gap-1.5"><span className="text-sm font-semibold">Type<Tip t="Major subjects feed the Majors GWA on the Overview tab. Gen Ed subjects count toward the Overall GWA only."/></span><select value={nf.kind||'major'} onChange={e=>setNf({...nf,kind:e.target.value})} className={SEL+' selc w-full'}><option value="major">Major</option><option value="gen">Gen Ed</option></select></div>
    <label className="text-sm font-semibold">Credit units<div className="mt-1"><Num v={nf.units} on={v=>setNf({...nf,units:v})} w="w-full"/></div></label>
    <label className="text-sm font-semibold">Retention grade <span className="text-xs font-normal text-muted">(optional)</span><div className="mt-1"><Num v={nf.ret} on={v=>setNf({...nf,ret:v})} ph={'e.g. '+(C.id==='ph'?'2.50':C.id==='gpa'?'2.0':'75')} w="w-full"/></div><span className="mt-1 block text-xs font-normal text-muted">The lowest grade you must keep. Leave blank to use the default ({fg(retOf(null).g)}).</span></label>
    <button className={BTNP} onClick={addSub}>Add subject</button></Sheet>
-  <Sheet open={!!shr} onClose={closeShare} title="Share your grades">{shr&&<>
+  <Sheet open={!!shr} onClose={closeShare} title={shr&&shr.mode==='report'?'Export report card':'Share your grades'}>{shr&&<>
    <div className="mx-auto w-full max-w-[17rem] overflow-hidden rounded-[1.75rem] border border-line bg-ink/[.06] shadow-xl" style={{aspectRatio:'9/16'}}>{shr.url?<img src={shr.url} alt="Preview of your story image" className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-sm text-muted">Creating image…</div>}</div>
-   <Switch on={shr.hide} onChange={()=>{const h=!shr.hide;setShr({...shr,hide:h});genStory(h,shr.mode)}} label="Hide raw scores" sub={shr.mode==='actual'?'Shows only your GWAs, not each subject.':'Shows only your GWA and target status.'}/>
-   <button className={BTNP} disabled={!shr.blob} onClick={sendStory}>Share or save image</button></>}</Sheet>
+   <Switch on={shr.hide} onChange={()=>{const h=!shr.hide;setShr({...shr,hide:h});genStory(h,shr.mode)}} label={shr.mode==='report'?'Hide subject grades':'Hide raw scores'} sub={shr.mode==='report'?'Shows only the GWA totals, not each subject.':shr.mode==='actual'?'Shows only your GWAs, not each subject.':'Shows only your GWA and target status.'}/>
+   <button className={BTNP} disabled={!shr.blob} onClick={sendStory}>{shr.mode==='report'?'Export as Image':'Share or save image'}</button></>}</Sheet>
  </div>;
 }
 
@@ -779,37 +789,40 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const ga=sh&&sh.t==='editAcct'?book.list.find(a=>a.id===sh.id):null,gg=sh&&sh.t==='editGroup'?book.groups.find(g=>g.id===sh.id):null,um=sh&&sh.t==='unlock'&&grp&&grp.members?{mid:sh.mid,...(grp.members[sh.mid]||{})}:null;
 
  /* ---- cards ---- */
- const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex cursor-pointer flex-col gap-2.5 p-3 hover:border-accent/60 hover:shadow-md sm:p-4')}>
-  <div className="flex items-start justify-between"><GroupIcon g={g} s="h-12 w-12 sm:h-14 sm:w-14" t="text-2xl sm:text-3xl"/><button onClick={e=>{e.stopPropagation();setSh({t:'editGroup',id:g.id});setArm(null);setCm('');setGp('')}} className="-mr-1 -mt-1 rounded-lg p-1.5 text-sm text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label="Edit group">Edit</button></div>
-  <div className="min-w-0"><div className="truncate text-sm font-extrabold sm:text-base">{g.name}</div><div className="mt-0.5 truncate text-[11px] text-muted sm:text-xs">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'this device'}</div></div></div>;
- const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise flex cursor-pointer items-center gap-3 p-3 hover:border-accent/60 hover:shadow-md')}>
-  <Avatar a={a} s="h-14 w-14" t="text-3xl"/>
-  <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><span className="truncate font-extrabold">{a.name||'Untitled'}</span><span className="shrink-0 text-xs" title={a.cloud?'Cloud account':'Local-only account'}>{a.cloud?'Cloud':'Local'}</span></div><div className="line-clamp-2 text-xs leading-snug text-muted">{a.bio||'No bio yet'}</div></div>
-  <button onClick={e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})}} className="-mr-1 self-start rounded-lg p-1.5 text-sm text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label="Edit account">Edit</button></div>;
- const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex cursor-pointer items-center gap-3 border-dashed p-3 hover:border-accent/60')} style={{animationDelay:i*40+'ms'}}>
-  <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-14 w-14" t="text-3xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
-  <div className="min-w-0 flex-1"><div className="truncate font-extrabold">{m.n||'Account'}</div><div className="line-clamp-2 text-xs leading-snug text-muted">{m.b||'Tap to unlock with its passcode'}</div></div></div>;
+ const EditBtn=(fn,label)=><button onClick={fn} className="absolute right-2 top-2 rounded-lg px-1.5 py-1 text-xs text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label={label}>Edit</button>;
+ const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2.5 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
+  {EditBtn(e=>{e.stopPropagation();setSh({t:'editGroup',id:g.id});setArm(null);setCm('');setGp('')},'Edit group')}
+  <GroupIcon g={g} s="h-14 w-14" t="text-3xl"/>
+  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{g.name}</div><div className="mt-0.5 truncate text-xs text-muted">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'this device'}</div></div></div>;
+ const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
+  {EditBtn(e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})},'Edit account')}
+  <Avatar a={a} s="h-16 w-16" t="text-3xl"/>
+  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{a.name||'Untitled'}</div><div className="text-[11px] font-semibold text-muted" title={a.cloud?'Cloud account':'Local-only account'}>{a.cloud?'Cloud':'Local'}</div></div>
+  <div className="line-clamp-2 text-xs leading-snug text-muted">{a.bio||'No bio yet'}</div></div>;
+ const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 border-dashed p-4 pt-5 text-center hover:border-accent/60 sm:w-48')} style={{animationDelay:i*40+'ms'}}>
+  <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-16 w-16" t="text-3xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
+  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{m.n||'Account'}</div></div><div className="line-clamp-2 text-xs leading-snug text-muted">{m.b||'Tap to unlock with its passcode'}</div></div>;
 
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',cloud:CLOUD,pass:'',rec:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({name:'',pass:''});setCm('');setSh({t:'joinGroup'})};
- const Top=<div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2.5"><TigerLogo className="h-10 w-10"/><span className="text-sm font-extrabold">Grades Tracker</span></div>
-  <div className="flex items-center gap-2"><span className="hidden text-[11px] text-muted sm:inline">{busy?'Updating from cloud…':at?'Updated '+rel(at):''}</span>{CLOUD&&<button className={BTN+' !px-3'} onClick={ctl.refresh} aria-label="Refresh from cloud"><span className={busy?'inline-block animate-spin':''}>↻</span></button>}<button className={BTN} onClick={()=>setSh({t:'theme'})}>Theme</button></div></div>;
- const GroupsScreen=()=>{const recent=book.list.slice().sort((a,b)=>(b.last||0)-(a.last||0)).slice(0,3);return <>
-  <div className="anim-rise pb-4 pt-6 sm:pt-8"><h1 className="text-3xl font-black tracking-tight sm:text-5xl">Your groups</h1><p className="mt-1 text-sm text-muted">Open a group, then pick your account.</p></div>
-  {book.groups.length?<div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{book.groups.map(GroupCard)}</div>
-   :<div className={cx(CARD,'p-6 text-center')}><p className="font-bold">No groups yet</p><p className="mt-1 text-sm text-muted">Create a group, or join one with its passcode, using the buttons below.</p></div>}
-  {recent.length>0&&<><h2 className="mb-3 mt-8 text-lg font-extrabold">Recent accounts</h2><div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{recent.map(AcctCard)}</div></>}
-  <div className="mt-10 flex flex-col gap-2.5 border-t border-line/60 pt-5"><div className={LBL}>Add a group</div>
-   <div className="flex flex-wrap gap-2"><button className={BTN} onClick={NewG}>＋ Create group</button><button className={BTN} onClick={JoinG} disabled={!CLOUD}>Join a group</button></div>
-   {!CLOUD&&<p className="text-xs text-muted">Cloud sync is off. Add your database URL in config.js to join groups and sync between devices.</p>}</div></>};
+ const Top=<div className="flex flex-col items-center gap-3 text-center"><div className="flex items-center gap-2.5"><TigerLogo className="h-11 w-11"/><span className="text-lg font-extrabold">Grades Tracker</span></div>
+  <div className="flex items-center justify-center gap-2"><span className="text-[11px] text-muted">{busy?'Updating from cloud…':at?'Updated '+rel(at):''}</span>{CLOUD&&<button className={BTN+' !px-3'} onClick={ctl.refresh} aria-label="Refresh from cloud"><span className={busy?'inline-block animate-spin':''}>↻</span></button>}<button className={BTN} onClick={()=>setSh({t:'theme'})}>Theme</button></div></div>;
+ const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <>
+  <div className="anim-rise pb-5 pt-7 text-center sm:pt-9"><h1 className="text-3xl font-black tracking-tight sm:text-5xl">Your groups</h1><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Open a group, then pick your account.</p></div>
+  {book.groups.length?<div className="flex flex-wrap justify-center gap-3">{book.groups.map(GroupCard)}</div>
+   :<div className={cx(CARD,'mx-auto max-w-md p-6 text-center')}><p className="font-bold">No groups yet</p><p className="mt-1 text-sm text-muted">Create a group, or join one with its passcode, using the buttons below.</p></div>}
+  {people.length>0&&<><h2 className="mb-3 mt-9 text-center text-lg font-extrabold">Profiles</h2><div className="flex flex-wrap justify-center gap-3">{people.map(AcctCard)}</div></>}
+  <div className="mt-10 flex flex-col items-center gap-2.5 border-t border-line/60 pt-5 text-center"><div className={LBL}>Add a group</div>
+   <div className="flex flex-wrap justify-center gap-2"><button className={BTN+' !px-3 !py-1.5 !text-xs'} onClick={NewG}>＋ Create group</button><button className={BTN+' !px-3 !py-1.5 !text-xs'} onClick={JoinG} disabled={!CLOUD}>Join a group</button></div>
+   {!CLOUD&&<p className="max-w-sm text-xs text-muted">Cloud sync is off. Add your database URL in config.js to join groups and sync between devices.</p>}</div></>};
  
 const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a.last||0)||(a.name||'').localeCompare(b.name||'')),rs=remotesOf(grp);return <>
-  <div className="anim-rise flex items-center gap-3 pb-5 pt-6 sm:pt-10"><button className={BTN+' !px-3'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-12 w-12" t="text-2xl"/><div className="min-w-0 flex-1"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'this device only'}</div></div>
-   <button className={BTN+' !px-3'} onClick={()=>{setSh({t:'editGroup',id:grp.id});setArm(null);setCm('');setGp('')}} aria-label="Edit group">Edit</button></div>
-  <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2"><button className={BTNP} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:!CLOUD})}}>＋ New Account{CLOUD?' (cloud)':''}</button>{CLOUD&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:true})}}>or create a local-only account</button>}</div>
+  <div className="anim-rise relative flex flex-col items-center gap-2 pb-5 pt-14 text-center sm:pt-14"><button className={BTN+' !px-3 absolute left-0 top-2'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-16 w-16" t="text-3xl"/><div className="min-w-0 max-w-full"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'this device only'}</div></div>
+   <button className={BTN+' !px-3 absolute right-0 top-2'} onClick={()=>{setSh({t:'editGroup',id:grp.id});setArm(null);setCm('');setGp('')}} aria-label="Edit group">Edit</button></div>
+  <div className="mb-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2"><button className={BTNP} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:!CLOUD})}}>＋ New Account{CLOUD?' (cloud)':''}</button>{CLOUD&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:true})}}>or create a local-only account</button>}</div>
   {!ls.length&&!rs.length&&<p className={cx(CARD,'p-6 text-center text-sm text-muted')}>No accounts in this group yet. Tap “New Account” to add the first one.</p>}
-  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">{ls.map(AcctCard)}{rs.map(LockedCard)}</div>
+  <div className="flex flex-wrap justify-center gap-3">{ls.map(AcctCard)}{rs.map(LockedCard)}</div>
   <div className="mt-8 flex flex-col items-center gap-3 text-center text-xs text-muted">
    {CLOUD&&<button className="font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign in with a sync name and passcode</button>}
    {CAN_FILE&&<label className="cursor-pointer font-semibold underline decoration-dotted underline-offset-4 hover:text-ink">Import a backup into this group<input type="file" accept="application/json,.json" onChange={pickBackup} className="hidden"/></label>}
