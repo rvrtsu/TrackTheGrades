@@ -2,7 +2,15 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v18)
+## What's new in this version (v20)
+- **Base application toggle (per subject).** In a subject's Options, directly beside the Base box, choose **At the end** (default) or **Per term**.
+  - *At the end:* Raw Combined = (Prelim × Prelim weight) + (Final × Final weight), then Final Semestral = (Raw Combined / 100) × (100 − Base) + Base.
+  - *Per term:* Transmuted Prelim = (Prelim / 100) × (100 − Base) + Base, the same for Finals, then Final Semestral = (Transmuted Prelim × Prelim weight) + (Transmuted Final × Final weight).
+  - The choice is saved per subject (`bmode`) and syncs with the account. Period weights are still scaled to 100%, as before. The Semestral breakdown in Options shows the working for the selected method.
+- **Blank grading periods stay blank.** A period with no scores entered at all (Prelims or Finals) now shows a dash on the Report Card and is left out of the GWA, instead of showing 5.00. Once at least one score is entered in a period, blank activity rows inside it still count as 0. The Finals (semestral) column needs every period to have at least one score.
+- Service worker cache is `gtf-v20`. The Firebase rules do not need to change.
+
+### Earlier (v18)
 - **Group admins.** The person who creates a group is its admin. Only admins see **Group passcode** (including the recovery email) and the new **Manage members** section in Profile and Settings. In Manage members an admin can make a member an admin, remove admin access, step down, or **transfer adminship** (a second "Final warning" step confirms the transfer). A group always keeps at least one admin, and the last admin cannot step down. The cloud copy of a group stores its admins at `groups/<key>/admins`, so every device agrees, and each change re-reads the newest list from the cloud first. Only admins see the cloud-wide "Delete group from the cloud too" button on the home screen.
   - *Groups that already existed:* the first account that opens the group after this update becomes its admin (a device that joined the group never claims it). If that is the wrong person, they can transfer adminship from Manage members.
   - *Honest limit:* the database rules in Part 1 are open (anyone with the group's link can write), so admin rights are enforced by the app, not by the database. This is fine for a classmates' group. Real server-side enforcement would need Firebase Authentication.

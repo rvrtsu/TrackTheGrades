@@ -227,8 +227,8 @@ const mxs=a=>+a.m||100;
 // "allIn" tells whether every score is really entered. The forecaster below still treats blank scores as the open slots it solves for.
 const pcalc=(s,p)=>{const acts=actsOf(s,p),live=acts.filter(a=>wgt(a)>0);let W=0,K=0,Wk=0,n=0;
  live.forEach(a=>{const w=wgt(a),x=ap(a);W+=w;if(x!=null){K+=w*x;Wk+=w;n++}});
- const total=live.length,allIn=total>0&&n===total,complete=total>0,raw=W>0?K/W:null,soFar=Wk>0?K/Wk:null;
- return{acts,live,W,K,n,total,complete,allIn,raw,soFar,grade:raw,gradeSoFar:soFar}};
+ const total=live.length,allIn=total>0&&n===total,touched=n>0,complete=total>0&&touched,raw=W>0?K/W:null,soFar=Wk>0?K/Wk:null;
+ return{acts,live,W,K,n,total,touched,complete,allIn,raw,soFar,grade:raw,gradeSoFar:soFar}};
 // forecast for one period. T is the wanted RAW period grade; entered scores stay fixed, missing ones use the what-if sliders.
 const pproj=(s,p,T)=>{const c=pcalc(s,p),wi=a=>+wiv(s,a)||0,miss=c.live.filter(a=>ap(a)==null);
  const Wm=miss.reduce((t,a)=>t+wgt(a),0),pts=T*c.W-c.K,uni=Wm>0?pts/Wm:null;
@@ -236,12 +236,16 @@ const pproj=(s,p,T)=>{const c=pcalc(s,p),wi=a=>+wiv(s,a)||0,miss=c.live.filter(a
  let Kp=c.K;miss.forEach(a=>{Kp+=wgt(a)*wi(a)});const Rp=c.W>0?Kp/c.W:null;
  return{...c,miss,Wm,uni,alone,Rneed:T,proj:Rp}};
 const wavg=(vals,W)=>{let t=0,w=0;vals.forEach((v,i)=>{if(v!=null){t+=W[i]*v;w+=W[i]}});return w>0?t/w:null};
+// BASE APPLICATION (per subject): 'end' (default) = combine the raw period grades first, then apply the Base once;
+// 'term' = apply the Base to each period grade first, then combine the transmuted grades with the period weights.
+const bmodeOf=s=>s&&s.bmode==='term'?'term':'end';
+const gradeOf=(s,vals,W,B)=>{if(bmodeOf(s)==='term'){const t=vals.map(v=>v==null?null:trans(v,B));return wavg(t,W)}const r=wavg(vals,W);return r==null?null:trans(r,B)};
 // semestral grade from real scores only (needs every period complete); the Base is applied here
-const semCalc=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),cc=P.map(p=>pcalc(s,p)),act=cc.filter(c=>c.total>0),done=act.length>0&&act.every(c=>c.raw!=null),raw=done?wavg(cc.map(c=>c.total>0?c.raw:null),W):null;
- return{W,B,cc,done,raw,grade:raw==null?null:trans(raw,B)}};
+const semCalc=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),cc=P.map(p=>pcalc(s,p)),act=cc.filter(c=>c.total>0),done=act.length>0&&act.every(c=>c.raw!=null&&c.touched),raw=done?wavg(cc.map(c=>c.total>0?c.raw:null),W):null;
+ const vals=cc.map(c=>c.total>0?c.raw:null);return{W,B,cc,done,raw,vals,grade:done?gradeOf(s,vals,W,B):null}};
 const semActual=(s,P)=>semCalc(s,P).grade;
 // semestral grade using real scores plus what-if values for anything missing
-const semProjC=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),pr=P.map(p=>pproj(s,p,0)),raw=wavg(pr.map(x=>x.proj),W);return{W,B,pr,raw,grade:raw==null?null:trans(raw,B)}};
+const semProjC=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),pr=P.map(p=>pproj(s,p,0)),vals=pr.map(x=>x.proj),raw=wavg(vals,W);return{W,B,pr,raw,vals,grade:raw==null?null:gradeOf(s,vals,W,B)}};
 // raw grade needed in period i so the RAW semestral grade lands on Rs, given the other periods' projections
 const needIn=(prj,W,i,Rs)=>{let o=0,Wt=W[i];prj.forEach((x,j)=>{if(j!==i&&x!=null){o+=W[j]*x;Wt+=W[j]}});return W[i]>0?(Rs*Wt-o)/W[i]:null};
 const gwa=a=>{let u=0,t=0;a.forEach(([e,n])=>{if(e!=null&&+n>0){u+=+n;t+=e*n}});return u?t/u:null};
@@ -496,6 +500,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const addAct=(id,p)=>updSub(id,s=>{const l=actsOf(s,{id:p});return{...s,acts:{...s.acts,[p]:[...l,{id:uid(),name:'Activity '+(l.length+1),w:'10',s:'',m:''}]}}});
  const delAct=(id,p,aid)=>updSub(id,s=>({...s,acts:{...s.acts,[p]:actsOf(s,{id:p}).filter(a=>a.id!==aid)}}));
  const setSBase=(id,v)=>updSub(id,s=>({...s,sbase:v}),'sb');
+ const setBMode=(id,m)=>updSub(id,s=>({...s,bmode:m==='term'?'term':'end'}));
  const setRet=(id,v)=>updSub(id,s=>({...s,ret:v}),'rt');
  const setPW=(id,i,v)=>updSub(id,s=>{const pw={...(s.pw||{})};pw[P[i].id]=v;if(P.length===2){pw[P[1-i].id]=v!==''&&Number.isFinite(+v)?String(+(100-Math.min(100,Math.max(0,+v))).toFixed(2)):''}return{...s,pw}},'pw'+i);
  const setPWs=(id,arr)=>updSub(id,s=>({...s,pw:Object.fromEntries(P.map((p,i)=>[p.id,String(arr[i])]))}));
@@ -869,7 +874,7 @@ const Banners=()=><>
   {subs.length>1&&<p className="mt-3 text-center text-[11px] text-muted sm:hidden">Swipe the card left or right to change subject</p>}</div>;
 
  /* ---- tracker body ---- */
-  const BaseBox=s=>{const o=s.sbase,has=o!==undefined&&o!=='';return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Base<Tip t="The curve. It applies only to the semestral grade: (Raw ÷ 100) × (100 − Base) + Base. Leave blank to use the default."/></span><div className="flex items-center gap-2"><Num v={has?o:''} on={v=>setSBase(s.id,v)} ph={f2(C.base)} w="w-24"/><span className="text-xs text-muted">Blank uses the default ({f2(C.base)})</span></div></div>};
+  const BaseBox=s=>{const o=s.sbase,has=o!==undefined&&o!=='',bm=bmodeOf(s);return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Base<Tip t="The curve. At the end (default): combine the period grades first, then Final = (Raw ÷ 100) × (100 − Base) + Base. Per term: apply that formula to each period grade first, then combine them with the period weights. Leave the box blank to use the default Base."/></span><div className="flex flex-wrap items-center gap-2"><Num v={has?o:''} on={v=>setSBase(s.id,v)} ph={f2(C.base)} w="w-24"/><Seg sm v={bm} on={m=>setBMode(s.id,m)} opts={[['end','At the end'],['term','Per term']]}/></div><span className="text-xs text-muted">Blank uses the default ({f2(C.base)}). {bm==='term'?'The Base is applied to each period grade, then the periods are combined.':'The periods are combined first, then the Base is applied once.'}</span></div>};
  const RetBox=s=>{const o=s.ret,has=o!==undefined&&o!==null&&o!=='',rt=retOf(s);return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Retention grade<Tip t="The lowest grade you must keep in this subject. Blank uses the default passing mark from Settings."/></span><div className="flex items-center gap-2"><Num v={has?o:''} on={v=>setRet(s.id,v)} ph={fg(retOf(null).g)} w="w-24"/><span className="text-xs text-muted">needs about {rt.pct>100?'more than 100':f2(rt.pct)}% semestral</span></div></div>};
  const DetailsBox=s=><div className="flex flex-col gap-3"><span className="text-sm font-bold">Subject details</span>
   <div className="grid grid-cols-[1fr_5.5rem] gap-3"><label className="text-xs font-semibold text-muted">Code<TextIn v={s.code} on={v=>setF(s.id,'code',v.toUpperCase())} cls="mt-1"/></label><label className="text-xs font-semibold text-muted">Units<Num v={s.units} on={v=>setF(s.id,'units',v)} w="mt-1 w-full"/></label></div>
@@ -879,37 +884,10 @@ const Banners=()=><>
   <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold">Period weights<Tip t="How much each period counts toward the semestral grade. With two periods, the other one balances to 100 automatically."/></span>{has&&<button className="text-xs font-semibold text-accent-text underline" onClick={()=>resetPW(s.id)}>Reset to default</button>}</div>
   <div className="flex flex-wrap items-center gap-3">{P.map((p,i)=><label key={p.id} className="flex items-center gap-1.5 text-xs font-semibold text-muted">{p.name}<Num v={s.pw&&s.pw[p.id]!==undefined?s.pw[p.id]:String(p.w)} on={v=>setPW(s.id,i,v)} w="w-[4.5rem]"/>%</label>)}</div>
   {Math.abs(tot-100)>.005&&<p className="text-xs text-bad">Weights total {f2(tot)}%. The grade is scaled to 100%.</p>}</div>};
- const SemMath=s=>{const sc=semCalc(s,P),pj=semProjC(s,P),B=sc.B,R=sc.raw!=null?sc.raw:pj.raw,T=R==null?null:trans(R,B);return <div className="flex flex-col gap-2 rounded-2xl bg-ink/[.06] p-3">
-  <div className="grid grid-cols-3 gap-2 text-center"><div><div className="text-[10px] font-bold text-muted">Raw semestral{sc.raw==null&&R!=null?' (projected)':''}</div><div className="text-base font-black tabular-nums">{R==null?'—':f2(R)}</div></div><div><div className="text-[10px] font-bold text-muted">Base</div><div className="text-base font-black tabular-nums">{f2(B)}</div></div><div><div className="text-[10px] font-bold text-muted">After Base</div><div className="text-base font-black tabular-nums">{T==null?'—':f2(T)}</div></div></div>
-  {R!=null&&<p className="text-xs text-muted">({f2(R)} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(T)}</b></p>}</div>};
- const Options=(s,p,isLast)=>{const o=!!opt[s.id];return <div className="overflow-hidden rounded-3xl border border-line/60 bg-ink/[.06] shadow-[0_8px_30px_-14px_rgb(var(--ink)/.2)]">
-  <button onClick={()=>setOpt({...opt,[s.id]:!o})} aria-expanded={o} className="flex w-full items-center gap-3.5 p-4 text-left transition hover:bg-ink/[.09] sm:p-5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC.s}/></svg></span><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">Options</span><span className="block text-xs text-muted">Details, weights, base, retention, reverse calculator</span></span><Chev open={o}/></button>
-  <div className={cx('acc',o&&'open')} inert={!o}><div><div className="grid gap-5 border-t border-line/50 p-4 sm:p-5 md:grid-cols-2 md:gap-x-8 md:gap-y-6">
-   {DetailsBox(s)}{WeightsBox(s)}{BaseBox(s)}{RetBox(s)}
-   {isLast&&<div className="md:col-span-2">{SemMath(s)}</div>}<div className="md:col-span-2">{Reverse(s,p)}</div>
-   <div className="flex gap-2 md:col-span-2"><button className={BTN+' flex-1'} onClick={()=>ask({title:'Clear scores?',msg:'Every score in '+(s.code||'this subject')+' will be emptied. Blank scores count as 0.',yes:'Clear scores',onYes:()=>clearScores([s.id])})}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>ask({title:'Delete '+(s.code||'this subject')+'?',msg:'The subject, all of its activities and every score will be removed. You can undo this with the Undo button.',yes:'Delete subject',onYes:()=>delSub(s.id)})}>Delete subject</button></div></div></div></div></div>};
-
-const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=actsOf(s,p).some(a=>a.est),md=rvMode[k]||'r',B=sbaseOf(s);return <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line p-3">
-  <div className="text-sm font-bold">Reverse calculator <span className="text-xs font-semibold text-muted">for {p.name}</span></div>
-  <p className="text-xs text-muted">Know the released {p.name.toLowerCase()} grade but not the scores? Enter it and the blank scores are worked out. {md==='r'?'The grade is used as a raw period grade (the curve is applied later, on the semestral grade).':'The grade already includes the Base, so raw = (grade − Base) ÷ (100 − Base) × 100.'}</p>
-  <Seg v={md} on={x=>setRvMode({...rvMode,[k]:x})} opts={[['r','Raw grade'],['b','Includes Base '+f2(B)]]} cls="w-full sm:w-auto sm:self-start"/>
-  <div className="flex flex-wrap items-center gap-2"><Num v={s.rel&&s.rel[p.id]} on={v=>setRel(s.id,p.id,v)} ph={'released '+p.name.toLowerCase()+' grade'} w="w-44"/><button className={BTNP} onClick={()=>rvFill(s,p)}>Fill possible scores</button>{hasEst&&<button className={BTN} onClick={()=>rvClear(s,p)}>Clear possible scores</button>}</div>
-  {m&&<p className={cx('text-xs font-semibold',m.bad?'text-bad':'text-good')}>{m.msg}</p>}</div>};
- const PeriodBlock=(s,p)=>{const c=pcalc(s,p),acts=c.acts,pi=P.indexOf(p),w=wts(s,P)[pi],R=c.raw!=null?c.raw:c.soFar,wsum=acts.reduce((t,a)=>t+wgt(a),0);
-  return <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line/60 bg-ink/[.06] p-3 sm:gap-4 sm:p-5">
-   <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{p.name} <span className="ml-1 text-xs font-semibold text-muted">{f2(w)}%<span className="hidden sm:inline"> of semestral</span></span></h4><button className={BTN+' !py-1.5'} onClick={()=>setEdit(!edit)}>{edit?'✓ Done':'Edit activities'}</button></div>
-   {!acts.length&&<p className="text-sm text-muted">No activities yet. Add one below.</p>}
-   <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-4">{acts.map(a=>{const x=ap(a);return edit
-    ?<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 w-0 min-w-0 flex-1 !text-left px-3')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-14 shrink-0 !px-1 sm:w-[4.5rem]"/><span className="shrink-0 text-muted">%</span><button className={BTNX+' !h-11 !w-11 shrink-0 !p-0'} onClick={()=>ask({title:'Delete this activity?',msg:'“'+(a.name||'Activity')+'” and its score will be removed from '+p.name+'. You can undo this with the Undo button.',yes:'Delete activity',onYes:()=>delAct(s.id,p.id,a.id)})} aria-label="Remove activity" title="Remove activity">✕</button></div>
-    :<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-3"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{a.name||'Activity'}</div><div className="text-xs text-muted">{f2(wgt(a))}% · {x==null?'blank · counts as 0':f2(x)+'%'}</div>{a.est&&<span className="mt-0.5 inline-block rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span>}</div>
-     <Num nav v={a.s} on={v=>setAct(s.id,p.id,a.id,'s',v)} ph="score" bad={x!=null&&x>100} w={cx('w-16 shrink-0 !px-1 sm:w-20',a.est&&'!border-accent/60 !italic')}/><span className="shrink-0 text-muted">/</span><Num v={a.m} on={v=>setAct(s.id,p.id,a.id,'m',v)} ph="100" w="w-14 shrink-0 !px-1 sm:w-16"/></div>})}</div>
-   <button className={BTNP+' self-start'} onClick={()=>{addAct(s.id,p.id);setEdit(true)}}>＋ Add Extra Activity</button>
-   {acts.length>0&&<p className={cx('text-xs',Math.abs(wsum-100)>.005?'text-bad':'text-muted')}>Activity weights total {f2(wsum)}%{Math.abs(wsum-100)>.005?' · the grade is scaled to 100%':''}</p>}
-   <div className="grid grid-cols-3 gap-2 rounded-xl bg-ink/[.06] p-2 text-center sm:p-3">
-    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">{p.name} grade{c.raw==null&&R!=null?' so far':''}</div><div className="text-base font-black tabular-nums sm:text-lg">{R==null?'—':f2(R)}</div></div>
-    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Weight</div><div className="text-base font-black tabular-nums sm:text-lg">{f2(w)}%</div></div>
-    <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Activities</div><div className="text-base font-black tabular-nums sm:text-lg">{c.n}/{c.total}</div></div></div>
-   </div>};
+ const SemMath=s=>{const sc=semCalc(s,P),pj=semProjC(s,P),B=sc.B,bm=bmodeOf(s),real=sc.raw!=null,R=real?sc.raw:pj.raw,vals=real?sc.vals:pj.vals,T=real?sc.grade:pj.grade;return <div className="flex flex-col gap-2 rounded-2xl bg-ink/[.06] p-3">
+  <div className="grid grid-cols-3 gap-2 text-center"><div><div className="text-[10px] font-bold text-muted">Raw semestral{!real&&R!=null?' (projected)':''}</div><div className="text-base font-black tabular-nums">{R==null?'—':f2(R)}</div></div><div><div className="text-[10px] font-bold text-muted">Base</div><div className="text-base font-black tabular-nums">{f2(B)}</div></div><div><div className="text-[10px] font-bold text-muted">After Base</div><div className="text-base font-black tabular-nums">{T==null?'—':f2(T)}</div></div></div>
+  {R!=null&&bm==='end'&&<p className="text-xs text-muted">Base at the end: ({f2(R)} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(T)}</b></p>}
+  {R!=null&&bm==='term'&&<div className="flex flex-col gap-0.5 text-xs text-muted"><span>Base per term, then combined by weight:</span>{P.map((p,i)=>vals[i]==null?null:<span key={p.id}>{p.name}: ({f2(vals[i])} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(trans(vals[i],B))}</b> × {f2(sc.W[i])}%</span>)}<span>Semestral = <b className="text-ink">{f2(T)}</b></span></div>}</div>};
   const TrackerBody=()=>{const s=cur,sem=semActual(s,P),sp=semProjC(s,P),eq=sem==null?null:eqv(sem),isLast=P.length<2||pcur.id===P[last0].id;
   const Bg=(l,v,sub,hi,cls,big)=><div key={l} className={cx('min-w-0 rounded-2xl border px-3 py-2.5 sm:rounded-3xl sm:p-4',hi?'border-accent/40 bg-accent/15':'border-line/60 bg-ink/[.06]',cls)}><div className="truncate text-[11px] font-bold text-muted sm:text-xs">{l}</div><div className={cx('mt-0.5 truncate font-black leading-none tabular-nums tracking-tight',big?'text-3xl sm:text-5xl':'text-2xl sm:text-4xl')}>{v}</div>{sub&&<div className="mt-1 line-clamp-2 text-[10px] font-semibold leading-snug text-muted sm:text-xs">{sub}</div>}</div>;
   const two=P.length===2,semV=eq!=null?fg(eq):sp.grade!=null?fg(eqv(sp.grade)):'—',semSub=sem!=null?<>{f2(sem)+'%'}<br/>{sem>=retOf(s).pct-1e-9?'Meets retention':'Below '+fg(retOf(s).g)}</>:sp.grade!=null?'Projected · '+f2(sp.grade)+'%':'Complete every period',nCards=P.length>1?P.length+1:P.length;
