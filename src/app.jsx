@@ -189,9 +189,9 @@ const mkCode=()=>{const a=new Uint8Array(6);crypto.getRandomValues(a);return[...
 const normCode=c=>String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const fmtCode=c=>c&&c.length===6?c.slice(0,3)+'-'+c.slice(3):(c||'');
 /* ---- developer account ----
-   The username is fixed in the app. The password is NOT stored in this file: it is checked by Firebase Authentication
+   No developer e-mail or password is stored in this file: the sign-in is checked by Firebase Authentication
    (email + password, see README Part 4), and the database rules only let that one signed-in user read or change everything. */
-const DEV_USER='dev_roeverjosh',DEV_EMAIL=DEV_USER+'@gradely.app',DEVK='gtf-dev-rt',APIKEY=String(CFG.apiKey||'').trim();
+const DEVK='gtf-dev-rt',APIKEY=String(CFG.apiKey||'').trim();
 const DEV={tok:'',exp:0,rt:(()=>{try{return localStorage.getItem(DEVK)||''}catch(e){return''}})()};
 const devOn=()=>!!DEV.rt;
 const devSignOut=()=>{DEV.tok='';DEV.rt='';DEV.exp=0;try{localStorage.removeItem(DEVK)}catch(e){}};
@@ -200,10 +200,10 @@ const devTok=async()=>{if(!DEV.rt)return'';if(DEV.tok&&Date.now()<DEV.exp-60000)
  if(!r.ok){devSignOut();throw new Error('expired')}
  const j=await r.json();DEV.tok=j.id_token;DEV.rt=j.refresh_token||DEV.rt;DEV.exp=Date.now()+(+j.expires_in||3600)*1000;try{localStorage.setItem(DEVK,DEV.rt)}catch(e){}return DEV.tok};
 const devSignIn=async(u,p)=>{
- if(String(u||'').trim().toLowerCase().replace(/@gradely\.app$/,'')!==DEV_USER)return'Wrong developer username or password.';
+ const em=String(u||'').trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)||!p)return'Enter the developer email and password.';
  if(!APIKEY)return'Developer sign-in needs your Firebase Web API key. Add apiKey to config.js (README, Part 4).';
  if(!navigator.onLine)return'You need an internet connection for that.';
- try{const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(APIKEY),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:DEV_EMAIL,password:String(p||''),returnSecureToken:true})});
+ try{const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(APIKEY),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:String(p||''),returnSecureToken:true})});
   if(!r.ok){let m='';try{const j=await r.json();m=(j&&j.error&&j.error.message)||''}catch(e){}
    return /EMAIL_NOT_FOUND/.test(m)?'The developer user is not created in Firebase yet (README, Part 4).':/OPERATION_NOT_ALLOWED/.test(m)?'Turn on Email/Password sign-in in Firebase Authentication first (README, Part 4).':/REFERER|REFERRER/i.test(m)?'Firebase blocked this website for the API key. Add https://rvrtsu.github.io/* to the key\u2019s website restrictions in Google Cloud.':/API.?KEY/i.test(m)?'The apiKey in config.js is not valid.':/TOO_MANY/.test(m)?'Too many attempts. Try again later.':'Wrong developer username or password.'}
   const j=await r.json();DEV.tok=j.idToken;DEV.rt=j.refreshToken;DEV.exp=Date.now()+(+j.expiresIn||3600)*1000;try{localStorage.setItem(DEVK,DEV.rt)}catch(e){}return'ok'}
@@ -356,6 +356,11 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v35',notes:[
+ 'New Tracker tutorial: swipe through sample subject cards to see how grades, scores, Options and the Reverse Calculator work, with a live Reverse Calculator you can try',
+ 'Replay the tutorial any time from Settings, the Replay Tutorial button in the Tracker, or the new Tracker tutorial button in the home header',
+ 'Home header rebuilt as a solid, flush app bar that wraps cleanly and stays clear of the status bar and notch on every screen size',
+ 'Removed the blur effects that could leave the screen looking blurred or blank']},
  {v:'v33',notes:[
  'Home header: everything now stays inside the bar on every screen size, with more space below the status bar and notch']},
  {v:'v32',notes:[
@@ -403,59 +408,92 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v33';
+const APP_VER='v35';
+// the changelog is shown to every user: never display e-mail addresses, usernames, keys or sign-in details in it
+const NOTE_BLOCK=/@\S|\bdev_\w+|developer[\s-]*(?:sign|log|user|pass|email|account|cred)|\bapi[\s-]?key\b|\bcredentials?\b|\badmin(?:istrator)?[\s-]*(?:login|password|email|user)/i;
+const SAFE_NOTES=RELEASE_NOTES.map(r=>({...r,notes:r.notes.filter(x=>!NOTE_BLOCK.test(String(x)))})).filter(r=>r.notes.length);
 /* ---- one-time contextual tab tutorials ---- */
 const tipSeen=k=>{try{return localStorage.getItem('gtf-tip-'+k)==='1'}catch(e){return false}};
 const tipDone=k=>{try{localStorage.setItem('gtf-tip-'+k,'1')}catch(e){}};
-/* ---- Tracker tutorial: a guided tour that spotlights the real controls (swipe, grades, scores, options, reverse calculator) ---- */
+/* ---- Tracker tutorial: a swipeable walkthrough built from sample subject cards.
+   It never touches your real grades, so it can be replayed from anywhere (Settings, the Tracker, the home header). ---- */
+const ttF=n=>(Math.round(n*100)/100).toFixed(2);
+const ttPct=(s,m)=>{const a=parseFloat(s),b=parseFloat(m);return isFinite(a)&&isFinite(b)&&b>0?a/b*100:null};
+const TtCard=({n,c,p,f,s,hi,cls=''})=><div className={cx('rounded-2xl border bg-surface2 p-3 text-left',hi?'border-accent ring-2 ring-accent/40':'border-line/70',cls)}>
+ <div className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="truncate text-sm font-extrabold">{n}</div><div className="truncate text-[11px] font-semibold text-muted">{c}</div></div><span className="shrink-0 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-black tabular-nums text-accent-text">{s}</span></div>
+ <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">{[['Prelims',p],['Finals',f],['Semestral',s]].map(([l,v])=><div key={l} className="min-w-0 rounded-xl bg-ink/[.06] px-1 py-1.5"><div className="truncate text-[9px] font-bold uppercase tracking-wide text-muted">{l}</div><div className="text-sm font-black tabular-nums">{v}</div></div>)}</div></div>;
+const TtSwipeDemo=()=>{const L=[['Calculus II','MATH 102','1.75','1.50','1.50'],['Chemistry','CHEM 101','2.00','—','2.00'],['Programming','CS 111','1.25','1.50','1.25']];
+ return <div className="w-[15rem] max-w-full" aria-hidden="true"><div className="overflow-hidden rounded-2xl"><div className="flex gap-3" style={{width:'max-content',animation:'ttSwipe 6s ease-in-out infinite'}}>{L.map(x=><TtCard key={x[1]} n={x[0]} c={x[1]} p={x[2]} f={x[3]} s={x[4]} cls="w-[15rem] shrink-0"/>)}</div></div>
+  <div className="mt-2.5 flex items-center justify-center gap-2 text-sm font-black text-muted"><span>‹</span><span className="rounded-full bg-accent/20 px-3 py-0.5 text-[11px] font-bold text-accent-text">swipe</span><span>›</span></div></div>};
+const TtScores=()=>{const [a,setA]=useState('16'),[b,setB]=useState(''),pa=ttPct(a,20),pb=ttPct(b,50),g=.3*(pa||0)+.7*(pb||0);
+ const Row=(n,w,v,on,mx,p)=><div className="flex min-w-0 items-center gap-2"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{n}</div><div className="text-[11px] text-muted">{w}% · {p==null?'blank · counts as 0':ttF(p)+'%'}</div></div><Num v={v} on={on} ph="score" w="w-16 shrink-0 !px-1"/><span className="shrink-0 text-muted">/</span><span className="w-8 shrink-0 text-center text-sm font-bold text-muted">{mx}</span></div>;
+ return <div className="w-full max-w-sm rounded-2xl border border-line/70 bg-surface2 p-3 text-left">
+  <Seg v="p1" on={()=>{}} opts={[['p1','Prelims'],['p2','Finals']]} cls="w-full" sm/>
+  <div className="mt-3 flex flex-col gap-2.5">{Row('Quiz 1',30,a,setA,20,pa)}{Row('Long exam',70,b,setB,50,pb)}</div>
+  <div className="mt-3 flex items-center justify-between rounded-xl bg-ink/[.06] px-3 py-2"><span className="text-[11px] font-bold uppercase tracking-wide text-muted">Prelims grade so far</span><b className="text-lg tabular-nums">{ttF(g)}%</b></div>
+  <p className="mt-2 text-[11px] text-muted">Try typing a score. Blank scores count as 0 until you enter them.</p></div>};
+const TtOptions=()=>{const [o,setO]=useState(false);
+ return <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-line/70 bg-surface2 text-left">
+  <button onClick={()=>setO(v=>!v)} aria-expanded={o} className="flex w-full items-center gap-3 p-3 text-left transition hover:bg-ink/[.06]"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC.s}/></svg></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold">Options</span><span className="block truncate text-[11px] text-muted">Details, weights, base, retention, reverse calculator</span></span><Chev open={o}/></button>
+  <div className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col gap-1.5 border-t border-line/50 p-3 text-sm font-semibold">
+   {['Subject','Grading System','Base Configuration'].map(x=><div key={x} className="rounded-xl bg-ink/[.06] px-3 py-2">{x}</div>)}
+   <div className="rounded-xl border-2 border-accent bg-accent/15 px-3 py-2 font-extrabold">Forecasting <span className="ml-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-accent-ink">Reverse calculator</span></div></div></div></div>
+  {!o&&<p className="border-t border-line/50 px-3 py-2 text-[11px] text-muted">Tap Options to open it.</p>}</div>};
+const TtReverse=()=>{const [md,setMd]=useState('r'),[rel,setRel]=useState('90'),[fill,setFill]=useState(null),B=10,G=parseFloat(rel),
+  raw=!isFinite(G)?null:md==='r'?G:(G-B)/(100-B)*100,need=raw==null?null:(raw-.4*80)/.6,bad=need!=null&&(need>100||need<0);
+ const doFill=()=>{if(need==null){setFill({bad:true,msg:'Type the released grade first.'});return}if(need>100){setFill({bad:true,msg:'Not possible: it would need more than 100 on the long exam.'});return}if(need<0){setFill({bad:true,msg:'Not possible: the quiz alone already passes that grade.'});return}setFill({bad:false,msg:'Done. The blank score is now a possible score.',v:need})};
+ return <div className="w-full max-w-sm rounded-2xl border-2 border-dashed border-accent bg-accent/10 p-3 text-left shadow-[0_0_0_4px_rgb(var(--accent)/.14)]">
+  <div className="flex items-center gap-2"><span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-accent-ink">Forecast tool</span></div>
+  <div className="mt-1.5 text-sm font-bold">Reverse calculator <span className="text-xs font-semibold text-muted">for Finals</span></div>
+  <Seg v={md} on={x=>{setMd(x);setFill(null)}} opts={[['r','Raw grade'],['b','Includes Base '+B]]} cls="mt-2 w-full" sm/>
+  <div className="mt-2 flex flex-wrap items-center gap-2"><Num v={rel} on={v=>{setRel(v);setFill(null)}} ph="released finals grade" w="w-36"/><button className={BTNP} onClick={doFill}>Fill possible scores</button>{fill&&!fill.bad&&<button className={BTN} onClick={()=>setFill(null)}>Clear</button>}</div>
+  <div className="mt-3 flex flex-col gap-2 rounded-xl bg-surface/70 p-2.5 text-sm">
+   <div className="flex items-center justify-between gap-2"><span className="font-semibold">Quiz (40%)</span><b className="tabular-nums">80</b></div>
+   <div className="flex items-center justify-between gap-2"><span className="font-semibold">Long exam (60%)</span>{fill&&!fill.bad?<span className="flex items-center gap-1.5"><span className="rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span><b className="tabular-nums italic">{ttF(fill.v)}</b></span>:<span className="text-xs font-semibold text-muted">blank</span>}</div></div>
+  {fill&&<p className={cx('mt-2 text-xs font-semibold',fill.bad?'text-bad':'text-good')}>{fill.msg}</p>}
+  {!fill&&need!=null&&<p className={cx('mt-2 text-xs font-semibold',bad?'text-bad':'text-muted')}>{bad?'That grade is out of reach with a quiz of 80.':'You would need about '+ttF(need)+' on the long exam.'}</p>}</div>};
+const TtPath=()=><div className="flex flex-wrap items-center justify-center gap-1.5 text-xs font-extrabold" aria-hidden="true">{['Subject','Options','Forecasting','Reverse calculator'].map((x,k,a)=><React.Fragment key={x}><span className={cx('rounded-full px-3 py-1.5',k===a.length-1?'bg-accent text-accent-ink':'bg-ink/[.08]')}>{x}</span>{k<a.length-1&&<span className="text-muted">›</span>}</React.Fragment>)}</div>;
 const TT=[
- {t:'Welcome to the Tracker',d:'A one-minute tour of how to track a subject, move between subjects and forecast the grade you need. You can replay it any time from the Replay Tutorial button at the top of the Tracker.',logo:true},
- {t:'Swipe to change subject',d:'Swipe the subject card left or right to jump to the next or previous subject. You can also tap a subject tab, use the ‹ › buttons, or press the ← → keys on a computer.',demo:true,sel:'[data-tt="tabs"]'},
- {t:'Your grades at a glance',d:'These cards show the raw grade of each period and your Semestral grade. The highlighted period is the one you are editing. Blank scores count as 0 until you enter them.',ic:IC.f,sel:'[data-tt="grades"]'},
- {t:'Add and edit scores',d:'Pick a period with the switch (Prelims or Finals). Tap Edit Activities to add activities and set their weights, tap Done, then type a score for each one.',ic:'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',sel:'[data-tt="period"]',prep:'close'},
- {t:'Options',d:'Options holds the subject details, period weights, the lowest grade you must keep (retention), the Base curve and the forecasting tools. Tap it to open or close it.',ic:IC.s,sel:'[data-tt="options"]',prep:'close'},
- {t:'The Reverse Calculator',d:'This highlighted box is the Reverse Calculator. It works out the scores you still need. Use it when only your Prelim grade is out and you want to forecast the Finals score, or when you know a released period grade but not the individual scores.',ic:IC.f,sel:'[data-rev]',prep:'open'},
- {t:'How to use it',ic:IC.f,sel:'[data-rev]',prep:'open',list:[
+ {t:'Welcome to the Tracker',d:'A quick swipe-through of how to track a subject and forecast the grade you need. Swipe left and right, or tap Next. You can replay it any time from Settings, the Replay Tutorial button in the Tracker, or the home header.',v:()=><TigerLogo className="h-20 w-20"/>},
+ {t:'Swipe between subjects',d:'In the Tracker, swipe the subject card left or right to jump to the next or previous subject. You can also tap a subject tab, use the ‹ › buttons, or press the ← → keys on a computer.',v:()=><TtSwipeDemo/>},
+ {t:'Read your grade cards',d:'Each subject shows the grade of every period and your Semestral grade. The highlighted card is the period you are editing. A dash means no scores have been entered yet.',v:()=><TtCard hi n="Calculus II" c="MATH 102 · 3 units" p="1.75" f="—" s="1.75" cls="w-full max-w-xs"/>},
+ {t:'Add and edit scores',d:'Pick a period with the switch, then type a score for each activity. Tap Edit Activities to add activities and set their weights, then tap Done.',v:()=><TtScores/>},
+ {t:'Everything else lives in Options',d:'Options holds the subject details, period weights, the lowest grade you must keep, the Base curve and the forecasting tools. Tap it below to see how it opens.',v:()=><TtOptions/>},
+ {t:'Meet the Reverse Calculator',hl:true,d:'It works out the scores you still need. Use it to forecast the Finals score you need when only your Prelim grade is out, or when you know a released period grade but not the individual scores. Try it below.',v:()=><TtReverse/>},
+ {t:'How to use it',hl:true,v:()=><TtPath/>,list:[
+  'Open the subject, then tap Options and find Forecasting.',
   'Switch to the period you want to forecast, for example Finals.',
   'Choose Raw grade, or Includes Base if the grade you were given already has the Base added.',
   'Type the grade you are aiming for or the released grade in the box.',
   'Tap Fill possible scores. Blank scores are worked out and tagged Possible score.',
   'Tap Clear possible scores to remove them and go back to your real scores.']},
- {t:'You are all set',d:'Tap the Replay Tutorial button at the top of the Tracker whenever you want to see this again.',ic:'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',sel:'[data-tt="replay"]',prep:'close'}];
-function TrackerTour({open,onClose,openOpts,closeOpts}){
- const [i,setI]=useState(0),[dir,setDir]=useState(1),[rect,setRect]=useState(null),cardR=useRef(null),t0=useRef(null),n=TT.length,st=TT[i],last=i===n-1;
+ {t:'You are all set',d:'Replay this tutorial any time from Settings, the Replay Tutorial button at the top of the Tracker, or the Tracker tutorial button in the home header.',v:()=><span className="grid h-16 w-16 place-items-center rounded-2xl bg-accent/20 text-accent-text ring-1 ring-accent/30"><svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>}];
+function TrackerTour({open,onClose}){
+ const n=TT.length,[i,setI]=useState(0),[dx,setDx]=useState(0),[drag,setDrag]=useState(false),g=useRef(null),vw=useRef(null),dxR=useRef(0),last=i===n-1;
  useLock(open);
- useEffect(()=>{if(open){setI(0);setDir(1)}},[open]);
- const go=d=>{const j=Math.max(0,Math.min(n-1,i+d));if(j===i)return;setDir(d);setI(j)};
- useEffect(()=>{if(!open)return;const k=e=>{if(e.key==='Escape'){e.stopImmediatePropagation();onClose()}else if(e.key==='ArrowRight')go(1);else if(e.key==='ArrowLeft')go(-1)};window.addEventListener('keydown',k,true);return()=>window.removeEventListener('keydown',k,true)},[open,i]);
- // each step: open/close Options if needed, scroll the target into the free area above the card, then keep the spotlight on it
- useEffect(()=>{if(!open)return;let raf=0,live=true,t1,t2;const q=()=>st.sel?document.querySelector(st.sel):null;
-  const measure=()=>{const el=q();if(!el){setRect(null);return}const r=el.getBoundingClientRect(),vh=window.innerHeight;setRect({l:Math.max(4,r.left-6),t:Math.max(4,r.top-6),w:Math.min(window.innerWidth-8,r.width+12),h:Math.max(24,Math.min(r.height+12,vh-8-Math.max(4,r.top-6)))})};
-  const loop=(until)=>{const f=()=>{if(!live)return;measure();if(Date.now()<until)raf=requestAnimationFrame(f)};f()};
-  if(st.prep==='open')openOpts();else if(st.prep==='close')closeOpts();
-  const wait=st.prep==='open'?520:st.prep==='close'?380:60;
-  t1=setTimeout(()=>{const el=q();if(el){const r=el.getBoundingClientRect(),vh=window.innerHeight,cardH=(cardR.current&&cardR.current.offsetHeight)||300,top0=84,avail=vh-cardH-top0-12,want=r.height<=avail?top0+(avail-r.height)/2:top0;window.scrollBy({top:r.top-want,behavior:REDUCED()?'auto':'smooth'})}loop(Date.now()+900)},wait);
-  const on=()=>measure();window.addEventListener('resize',on);window.addEventListener('scroll',on,{passive:true});
-  return()=>{live=false;clearTimeout(t1);clearTimeout(t2);cancelAnimationFrame(raf);window.removeEventListener('resize',on);window.removeEventListener('scroll',on)}},[open,i]);
+ useEffect(()=>{if(open){setI(0);setDx(0);setDrag(false);g.current=null}},[open]);
+ const go=d=>setI(v=>Math.max(0,Math.min(n-1,v+d)));
+ useEffect(()=>{if(!open)return;const k=e=>{if(e.key==='Escape'){e.stopImmediatePropagation();onClose()}else if(e.key==='ArrowRight'){const t=e.target;if(t&&/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))return;go(1)}else if(e.key==='ArrowLeft'){const t=e.target;if(t&&/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))return;go(-1)}};window.addEventListener('keydown',k,true);return()=>window.removeEventListener('keydown',k,true)},[open]);
  if(!open)return null;
- return createPortal(<div className="fixed inset-0 z-[90]" role="dialog" aria-modal="true" aria-label="Tracker tutorial" style={{touchAction:'none',overscrollBehavior:'contain'}}>
-  <div className="absolute inset-0"/>
-  {rect?<div aria-hidden="true" className="pointer-events-none absolute rounded-3xl transition-all duration-300 ease-out" style={{left:rect.l,top:rect.t,width:rect.w,height:rect.h,boxShadow:'0 0 0 9999px rgb(0 0 0/.62),0 0 0 2px rgb(var(--accent)),0 0 0 7px rgb(var(--accent)/.28)'}}/>:<div aria-hidden="true" className="anim-fade pointer-events-none absolute inset-0 bg-black/60 backdrop-blur-[2px]"/>}
-  <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-6">
-   <div ref={cardR} className="anim-sheet gcs pointer-events-auto relative flex w-full max-w-md select-none flex-col overflow-hidden rounded-[1.75rem]" style={{marginBottom:'env(safe-area-inset-bottom,0px)',touchAction:'pan-y'}}
-    onTouchStart={e=>{const t=e.touches[0];t0.current={x:t.clientX,y:t.clientY}}}
-    onTouchEnd={e=>{const a=t0.current,t=e.changedTouches[0];t0.current=null;if(!a)return;const dx=t.clientX-a.x,dy=t.clientY-a.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.3)go(dx<0?1:-1)}}>
-    <div className="flex h-12 items-center justify-between px-5"><span className="text-xs font-bold text-muted">Tracker tutorial · {i+1} of {n}</span>{!last&&<button onClick={onClose} className="rounded-full px-3 py-1.5 text-sm font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink">Skip</button>}</div>
-    <div key={i} className={cx('flex flex-col gap-3 px-5 pb-3',dir>0?'slide-r':'slide-l')}>
-     <div className="flex items-start gap-3.5">
-      {st.logo?<TigerLogo className="h-12 w-12 shrink-0"/>:st.demo?<div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-xl bg-ink/[.07]" aria-hidden="true"><div className="absolute inset-y-1.5 left-1/2 -ml-7 w-14 rounded-lg border border-accent/60 bg-accent/25" style={{animation:'swipeHint 2.4s ease-in-out infinite'}}/></div>
-       :<span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/20 text-accent-text ring-1 ring-accent/30" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={st.ic}/></svg></span>}
-      <div className="min-w-0"><h2 className="text-xl font-black leading-tight tracking-tight">{st.t}</h2>{st.d&&<p className="mt-1.5 text-sm leading-relaxed text-muted">{st.d}</p>}</div></div>
-     {st.list&&<ol className="flex flex-col gap-2">{st.list.map((x,k)=><li key={k} className="flex items-start gap-2.5 text-sm leading-snug"><span className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent text-[11px] font-black text-accent-ink">{k+1}</span><span>{x}</span></li>)}</ol>}
-    </div>
-    <div className="flex items-center justify-center gap-1.5 pb-3 pt-1" role="tablist" aria-label="Tutorial steps">{TT.map((_,k)=><button key={k} role="tab" aria-selected={k===i} aria-label={'Step '+(k+1)} onClick={()=>{setDir(k>i?1:-1);setI(k)}} className={cx('h-1.5 rounded-full transition-all duration-300',k===i?'w-5 bg-accent':'w-1.5 bg-ink/20 hover:bg-ink/30')}/>)}</div>
-    <div className="flex gap-2.5 px-5 pb-5">{i>0&&<button onClick={()=>go(-1)} className={BTN+' !py-3'}>Back</button>}<button onClick={last?onClose:()=>go(1)} className={BTNP+' flex-1 !py-3 !text-base'} autoFocus>{last?'Done':'Next'}</button></div>
-   </div></div></div>,document.body);
+ const down=e=>{if(e.pointerType==='mouse'&&e.button!==0)return;if(e.target.closest&&e.target.closest('input,select,textarea,[data-noswipe]'))return;dxR.current=0;g.current={x:e.clientX,y:e.clientY,id:e.pointerId,lock:''}};
+ const move=e=>{const s=g.current;if(!s||s.id!==e.pointerId)return;const ddx=e.clientX-s.x,ddy=e.clientY-s.y;
+  if(!s.lock){if(Math.abs(ddx)>8&&Math.abs(ddx)>Math.abs(ddy)*1.2){s.lock='x';setDrag(true);try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}}else if(Math.abs(ddy)>10){g.current=null;return}}
+  if(s.lock==='x'){dxR.current=ddx;setDx(ddx)}};
+ const up=e=>{const s=g.current,d=dxR.current;g.current=null;dxR.current=0;if(!s||s.lock!=='x'){setDrag(false);setDx(0);return}const w=(vw.current&&vw.current.offsetWidth)||320,th=Math.max(48,w*.16);setDrag(false);setDx(0);if(e.type!=='pointercancel'){if(d<-th)go(1);else if(d>th)go(-1)}};
+ const edge=(i===0&&dx>0)||(i===n-1&&dx<0),dxe=edge?dx*.3:dx;
+ return createPortal(<div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Tracker tutorial" style={{paddingTop:'max(.75rem,env(safe-area-inset-top,0px))',paddingBottom:'max(.75rem,env(safe-area-inset-bottom,0px))'}}>
+  <div className="anim-sheet relative flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-[1.75rem] border border-line bg-surface shadow-[0_24px_60px_-20px_rgb(0_0_0/.7)]">
+   <div className="flex h-12 shrink-0 items-center justify-between px-5"><span className="text-xs font-bold text-muted">Tracker tutorial · {i+1} of {n}</span>{!last?<button onClick={onClose} className="rounded-full px-3 py-1.5 text-sm font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink">Skip</button>:<button onClick={onClose} aria-label="Close tutorial" className="rounded-full px-3 py-1.5 text-sm font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink">✕</button>}</div>
+   <div ref={vw} className="min-h-0 flex-1 select-none overflow-y-auto overflow-x-hidden overscroll-contain" style={{touchAction:'pan-y'}} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+    <div className="flex items-stretch" style={{transform:'translate3d(calc('+(-i*100)+'% + '+dxe+'px),0,0)',transition:drag?'none':'transform .38s cubic-bezier(.2,.8,.2,1)',willChange:'transform'}}>
+     {TT.map((s,k)=><section key={k} inert={k!==i} aria-hidden={k!==i} aria-label={s.t} className="flex w-full shrink-0 basis-full flex-col gap-3.5 px-5 pb-3">
+      <div className="flex min-h-[10.5rem] items-center justify-center rounded-3xl bg-ink/[.04] p-3.5">{s.v&&s.v()}</div>
+      <div><div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black leading-tight tracking-tight">{s.t}</h2>{s.hl&&<span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-accent-ink">Highlight</span>}</div>{s.d&&<p className="mt-1.5 text-sm leading-relaxed text-muted">{s.d}</p>}</div>
+      {s.list&&<ol className="flex flex-col gap-2">{s.list.map((x,j)=><li key={j} className="flex items-start gap-2.5 text-sm leading-snug"><span className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent text-[11px] font-black text-accent-ink">{j+1}</span><span>{x}</span></li>)}</ol>}
+     </section>)}</div></div>
+   <div className="flex shrink-0 items-center justify-center gap-1.5 pb-3 pt-1" role="tablist" aria-label="Tutorial steps">{TT.map((_,k)=><button key={k} role="tab" aria-selected={k===i} aria-label={'Step '+(k+1)} onClick={()=>setI(k)} className={cx('h-1.5 rounded-full transition-all duration-300',k===i?'w-5 bg-accent':'w-1.5 bg-ink/20 hover:bg-ink/30')}/>)}</div>
+   <div className="flex shrink-0 gap-2.5 px-5 pb-5">{i>0&&<button onClick={()=>go(-1)} className={BTN+' !py-3'}>Back</button>}<button onClick={last?onClose:()=>go(1)} className={BTNP+' flex-1 !py-3 !text-base'} autoFocus>{last?'Done':'Next'}</button></div>
+  </div></div>,document.body);
 }
 /* ---- Add to Home Screen ---- */
 window.__gtfBIP=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__gtfBIP=e});
@@ -473,7 +511,7 @@ function A2HS({open,onClose}){
  const iosC=<div key="ios" className={cx('flex flex-col gap-3 rounded-2xl border p-4',ios?'border-accent bg-accent/10':'border-line bg-ink/[.06]')}><div className="text-sm font-extrabold">iPhone / iPad (Safari){ios&&<span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-black uppercase text-accent-ink">Your device</span>}</div><ol className="flex flex-col gap-2.5"><Step n="1">Tap the <b>Share</b> icon {Share} in Safari’s toolbar (bottom of the screen, or top on iPad).</Step><Step n="2">Scroll down and select <b>Add to Home Screen</b> {Plus}.</Step><Step n="3">Tap <b>Add</b>. Open Gradely from your Home Screen.</Step></ol><p className="text-xs text-muted">iOS cannot show an automatic install prompt. If you do not see the option, open this page in Safari first.</p></div>;
  const andC=<div key="and" className={cx('flex flex-col gap-3 rounded-2xl border p-4',!ios?'border-accent bg-accent/10':'border-line bg-ink/[.06]')}><div className="text-sm font-extrabold">Android (Chrome){!ios&&<span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-black uppercase text-accent-ink">Your device</span>}</div>{bip&&<button className={BTNP} onClick={async()=>{try{bip.prompt();const r=await bip.userChoice;window.__gtfBIP=null;setBip(null);if(r&&r.outcome==='accepted'){a2Done();onClose()}}catch(e){}}}>Install app</button>}<ol className="flex flex-col gap-2.5"><Step n="1">Tap the <b>⋮</b> menu at the top right of Chrome.</Step><Step n="2">Tap <b>Install app</b> or <b>Add to Home screen</b>.</Step><Step n="3">Confirm, then open Gradely from your Home screen.</Step></ol></div>;
  return <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Add to Home Screen">
-  <div className="anim-fade absolute inset-0 bg-black/55 backdrop-blur-sm"/>
+  <div className="anim-fade absolute inset-0 bg-black/55"/>
   <div className="anim-sheet gcs relative max-h-[94dvh] w-full overflow-y-auto overscroll-contain rounded-t-[2rem] sm:max-w-lg sm:rounded-[2rem]" style={{paddingBottom:'env(safe-area-inset-bottom,0px)'}}>
    <div className="flex flex-col gap-5 p-6"><div className="flex flex-col items-center gap-2 text-center"><TigerLogo className="h-16 w-16"/><h2 className="text-2xl font-black tracking-tight">Add Gradely to your Home Screen</h2><p className="text-sm text-muted">Install it like an app: it opens full screen, works offline and keeps you signed in.</p></div>
     {ios?[iosC,andC]:[andC,iosC]}
@@ -484,23 +522,23 @@ const UpdateBanner=({u})=>{const [busy,setBusy]=useState(false),[oldO,setOldO]=u
  if(!u.on)return null;
  const go=()=>{if(busy)return;setBusy(true);u.apply()};
  // no close button, no backdrop dismiss and Escape is ignored: the update is required
- return createPortal(<div role="alertdialog" aria-modal="true" aria-labelledby="upd-t" aria-describedby="upd-d" className="anim-fade fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-md" style={{paddingTop:'max(1rem,env(safe-area-inset-top,0px))',paddingBottom:'max(1rem,env(safe-area-inset-bottom,0px))'}} onKeyDown={e=>{if(e.key==='Escape')e.preventDefault()}}>
+ return createPortal(<div role="alertdialog" aria-modal="true" aria-labelledby="upd-t" aria-describedby="upd-d" className="anim-fade fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/60 p-4" style={{paddingTop:'max(1rem,env(safe-area-inset-top,0px))',paddingBottom:'max(1rem,env(safe-area-inset-bottom,0px))'}} onKeyDown={e=>{if(e.key==='Escape')e.preventDefault()}}>
   <div className="gcs anim-sheet my-auto flex w-full max-w-md flex-col gap-5 rounded-[2rem] p-6 sm:p-8">
    <div className="flex flex-col items-center gap-3 text-center">
     <div className="relative grid h-16 w-16 place-items-center rounded-2xl bg-accent text-accent-ink"><span className="absolute inset-0 animate-ping rounded-2xl bg-accent opacity-25"/><svg viewBox="0 0 24 24" className="relative h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg></div>
     <h2 id="upd-t" className="text-2xl font-black tracking-tight">Update Available</h2>
     <p id="upd-d" className="text-sm text-muted">A new version ({APP_VER}) is ready. Please update to keep your grades and sync working correctly. Your data and session are kept.</p></div>
-   <div className="flex max-h-[42vh] flex-col gap-3 overflow-y-auto"><div className="rounded-2xl border border-accent/40 bg-accent/10 p-4"><h3 className="mb-2 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-accent-text">What’s New <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-accent-ink">{RELEASE_NOTES[0].v}</span></h3>
-    <ul className="flex flex-col gap-2 text-sm font-semibold">{RELEASE_NOTES[0].notes.map((n,i)=><li key={i} className="flex gap-2"><span className="text-accent-text" aria-hidden="true">•</span><span className="min-w-0">{n}</span></li>)}</ul></div>
+   <div className="flex max-h-[42vh] flex-col gap-3 overflow-y-auto"><div className="rounded-2xl border border-accent/40 bg-accent/10 p-4"><h3 className="mb-2 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-accent-text">What’s New <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-accent-ink">{SAFE_NOTES[0].v}</span></h3>
+    <ul className="flex flex-col gap-2 text-sm font-semibold">{SAFE_NOTES[0].notes.map((n,i)=><li key={i} className="flex gap-2"><span className="text-accent-text" aria-hidden="true">•</span><span className="min-w-0">{n}</span></li>)}</ul></div>
    <div className="rounded-2xl border border-line/60 bg-ink/[.04]"><button onClick={()=>setOldO(o=>!o)} aria-expanded={oldO} className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-xs font-extrabold uppercase tracking-wider text-muted">Previous updates<Chev open={oldO}/></button>
-    <div className={cx('acc',oldO&&'open')} inert={!oldO}><div><div className="flex flex-col gap-4 px-4 pb-4">{RELEASE_NOTES.slice(1).map(r=><div key={r.v}><div className="mb-1 text-xs font-bold text-muted">{r.v}</div><ul className="flex flex-col gap-1.5 text-xs text-muted">{r.notes.map((n,i)=><li key={i} className="flex gap-2"><span aria-hidden="true">•</span><span className="min-w-0">{n}</span></li>)}</ul></div>)}</div></div></div></div></div>
+    <div className={cx('acc',oldO&&'open')} inert={!oldO}><div><div className="flex flex-col gap-4 px-4 pb-4">{SAFE_NOTES.slice(1).map(r=><div key={r.v}><div className="mb-1 text-xs font-bold text-muted">{r.v}</div><ul className="flex flex-col gap-1.5 text-xs text-muted">{r.notes.map((n,i)=><li key={i} className="flex gap-2"><span aria-hidden="true">•</span><span className="min-w-0">{n}</span></li>)}</ul></div>)}</div></div></div></div></div>
    <button ref={btn} onClick={go} disabled={busy} className="w-full rounded-2xl bg-accent px-5 py-4 text-base font-black text-accent-ink shadow-lg transition active:scale-[.98] disabled:opacity-70">{busy?'Updating…':'Refresh & Update Now'}</button></div></div>,document.body)};
 
 function Sheet({open,onClose,title,children,wide}){
  useEffect(()=>{if(!open)return;const k=e=>e.key==='Escape'&&onClose();window.addEventListener('keydown',k);const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{window.removeEventListener('keydown',k);document.body.style.overflow=o}},[open]);
  if(!open)return null;
  return <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-  <div onClick={onClose} className="anim-fade absolute inset-0 bg-black/35 backdrop-blur-sm"/>
+  <div onClick={onClose} className="anim-fade absolute inset-0 bg-black/35"/>
   <div className={cx('anim-sheet relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain gcs rounded-t-[2rem] sm:rounded-[2rem]',wide?'sm:max-w-2xl':'sm:max-w-lg')} style={{paddingBottom:'env(safe-area-inset-bottom,0px)'}}>
    <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line/40 px-6 py-4"><h2 className="text-lg font-extrabold">{title}</h2><button onClick={onClose} aria-label="Close" className={BTN+' !px-3'}>✕</button></div>
    <div className="flex flex-col gap-7 p-6">{children}</div></div></div>;
@@ -584,7 +622,7 @@ function ConfirmHost(){
  const two=!!o.final,second=two&&o.step===2,soft=o.tone==='accent',title=second?'Final warning':o.title,msg=second?o.final:o.msg,label=two&&!second?(o.next||'Continue'):(o.yes||'Delete'),
   go=()=>{if(two&&!second){setO({...o,step:2});return}const f=o.onYes;setO(null);try{f&&f()}catch(e){}};
  return createPortal(<div className="fixed inset-0 z-[95] flex items-end justify-center p-4 sm:items-center" style={{paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 1rem)'}}>
-  <div onClick={()=>setO(null)} className="anim-fade absolute inset-0 bg-black/45 backdrop-blur-sm"/>
+  <div onClick={()=>setO(null)} className="anim-fade absolute inset-0 bg-black/45"/>
   <div key={o.step} role="alertdialog" aria-modal="true" aria-labelledby="cf-t" aria-describedby="cf-m" className="anim-sheet gcs relative w-full max-w-sm rounded-[1.75rem] p-6 text-center">
    <div className={cx('mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full',soft?'bg-accent/20 text-accent-text':'bg-bad/15 text-bad')}>{soft
     ?<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC.g}/></svg>
@@ -622,7 +660,7 @@ function Onboarding({open,onClose}){
  if(!open)return null;
  const s=TSL[i],last=i===n-1;
  return createPortal(<div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Welcome tour">
-  <div className="anim-fade absolute inset-0 bg-black/45 backdrop-blur-md"/>
+  <div className="anim-fade absolute inset-0 bg-black/45"/>
   <div className="anim-sheet gcs relative flex w-full max-w-md select-none flex-col overflow-hidden rounded-t-[2rem] sm:rounded-[2rem]" style={{paddingBottom:'env(safe-area-inset-bottom,0px)',touchAction:'pan-y'}}
    onTouchStart={e=>{const t=e.touches[0];t0.current={x:t.clientX,y:t.clientY}}}
    onTouchEnd={e=>{const a=t0.current,t=e.changedTouches[0];t0.current=null;if(!a)return;const dx=t.clientX-a.x,dy=t.clientY-a.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.3)go(dx<0?1:-1)}}>
@@ -907,7 +945,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const shortS=n=>{n=String(n||'');return n.replace(/\s*[\(\[].*$/,'').replace(/\bsemester\b/ig,'Sem').trim()||n};
  // flat header: undo/redo on the left, the compact year-and-semester pill in the middle, cloud sync and the account/group switcher on the right
  const Top=()=><header className="sticky z-30" style={{top:'var(--tp)'}}>
-  <div className="gc hdr flex items-center justify-between gap-2 rounded-full p-1.5 max-[359px]:gap-1">
+  <div className="gc hdr flex items-center justify-between gap-2 rounded-2xl p-1.5 max-[359px]:gap-1">
    <div className="flex shrink-0 items-center gap-1">
     <button onClick={undo} disabled={!past.current.length} aria-label="Undo" title="Undo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button onClick={redo} disabled={!fut.current.length} aria-label="Redo" title="Redo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button></div>
@@ -1052,10 +1090,9 @@ const Banners=()=><>
   <div className="grid grid-cols-3 gap-2 text-center"><div><div className="text-[10px] font-bold text-muted">Raw semestral{!real&&R!=null?' (projected)':''}</div><div className="text-base font-black tabular-nums">{R==null?'—':f2(R)}</div></div><div><div className="text-[10px] font-bold text-muted">Base</div><div className="text-base font-black tabular-nums">{f2(B)}</div></div><div><div className="text-[10px] font-bold text-muted">After Base</div><div className="text-base font-black tabular-nums">{T==null?'—':f2(T)}</div></div></div>
   {R!=null&&bm==='end'&&<p className="text-xs text-muted">Base at the end: ({f2(R)} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(T)}</b></p>}
   {R!=null&&bm==='term'&&<div className="flex flex-col gap-0.5 text-xs text-muted"><span>Base per term, then combined by weight:</span>{P.map((p,i)=>vals[i]==null?null:<span key={p.id}>{p.name}: ({f2(vals[i])} ÷ 100) × (100 − {f2(B)}) + {f2(B)} = <b className="text-ink">{f2(trans(vals[i],B))}</b> × {f2(sc.W[i])}%</span>)}<span>Semestral = <b className="text-ink">{f2(T)}</b></span></div>}</div>};
-const [tt,setTt]=useState(false),ttInit=useRef(false);
-const startTt=()=>{ttInit.current=!!(cur&&opt[cur.id]);setTt(true)};
-const openOpts=()=>{cur&&setOpt(o=>o[cur.id]?o:{...o,[cur.id]:true})},closeOpts=()=>{cur&&setOpt(o=>o[cur.id]?{...o,[cur.id]:false}:o)};
-const closeTt=()=>{tipDone('tt');setTt(false);ttInit.current?openOpts():closeOpts();setTimeout(()=>{try{window.scrollTo({top:0,behavior:REDUCED()?'auto':'smooth'})}catch(e){}},60)};
+const [tt,setTt]=useState(false);
+const startTt=()=>setTt(true);
+const closeTt=()=>{tipDone('tt');setTt(false)};
 // the tutorial opens once, the first time the Tracker is shown; Replay Tutorial reopens it
 useEffect(()=>{if(tab==='t'&&!tt&&!tipSeen('tt')){const i=setTimeout(()=>{if(!tipSeen('tt'))startTt()},700);return()=>clearTimeout(i)}},[tab]);
 const Pill=(t,sub,ic,kids,wide)=><section className="flex flex-col gap-3.5 rounded-[1.75rem] border border-line/60 bg-ink/[.035] p-4 shadow-[0_6px_24px_-16px_rgb(var(--ink)/.25)] sm:p-5"><header className="flex items-center gap-2.5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent-text" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ic}/></svg></span><div className="min-w-0"><h4 className="text-sm font-extrabold leading-tight">{t}</h4><p className="text-xs leading-snug text-muted">{sub}</p></div></header>{kids}</section>;
@@ -1119,6 +1156,9 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     <div className="flex items-center justify-between rounded-2xl border border-line/60 bg-ink/[.06] px-3 py-2.5 text-sm"><span className="font-semibold text-muted">Preview</span><b className="text-lg tabular-nums">{fw(ayAll!=null?ayAll:1.66432)}</b></div></>)}
    {A('sd','Haptics','Vibration feedback',<>
     <Switch on={fxs.hap} onChange={()=>togFx('hap')} label="Haptic feedback" sub="Short vibrations on phones that support them."/></>)}
+   {A('tut','Tutorial','Replay the Tracker walkthrough',<>
+    <p className="text-sm text-muted">Swipe through sample subject cards to see how the Tracker works, including the Reverse Calculator. It never changes your real grades.</p>
+    <button className={BTNP+' self-start'} onClick={startTt}>▶ Replay Tracker tutorial</button></>)}
    {A('gp','Grading periods and Base','Weights and the curve',<>
     {rp.map((p,i)=><div key={p.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-ink/[.06] p-3">
      <TextIn v={p.name} on={v=>setPeriod(i,{name:v})} ph="Period name" cls="min-w-[8rem] flex-1"/>
@@ -1193,7 +1233,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     <button disabled={jb} className={BTNP} onClick={async()=>{setJb(true);setJm('');try{const r=await prof.joinGroup(jf.name,jf.pass);if(String(r).startsWith('ok')){setJgO(false);setPm('You joined the group.')}else setJm(r)}catch(e){setJm('Something went wrong. Try again.')}setJb(false)}}>{jb?'Working…':'Join group'}</button></>
     :<p className="text-sm text-muted">Cloud sync is off, so groups can only be joined from this device. Add your database URL in config.js to join a group with a passcode.</p>}
    {swc&&swc.groups.length>0&&<div><div className={LBL}>Groups already on this device</div><div className="mt-2 flex flex-col gap-2">{swc.groups.map(g=><button key={g.id} onClick={()=>{swc.join(g.id);setJgO(false);setPm('You joined '+g.name+'.')}} className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.04] p-2.5 text-left transition hover:border-accent/60"><GroupIcon g={g} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1 truncate text-sm font-extrabold">{g.name}</span><span className="text-xs font-bold text-accent-text">Add</span></button>)}</div></div>}</Sheet>
-  <TrackerTour open={tt&&tab==='t'} onClose={closeTt} openOpts={openOpts} closeOpts={closeOpts}/>
+  <TrackerTour open={tt} onClose={closeTt}/>
   <Sheet open={swO&&!!swc} onClose={()=>setSwO(false)} title="Switch group or account">{swc&&<>
    <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.06] p-3"><Avatar a={acct} s="h-12 w-12" t="text-2xl"/><div className="min-w-0 flex-1"><div className="truncate font-extrabold">{acct.name||'Account'}</div><div className="truncate text-xs text-muted">{swc.cur?'Viewing '+swc.cur.name:''}{swc.mine.length>1?' · in '+swc.mine.length+' groups':''}</div></div></div>
    <div><div className={LBL}>Your groups</div><div className="mt-2 flex flex-col gap-2">{swc.groups.slice().sort((x,y)=>(swc.mine.includes(y.id)?1:0)-(swc.mine.includes(x.id)?1:0)).map(g=>{const mem=swc.mine.includes(g.id),on=mem&&g.id===swc.gid;return <div key={g.id} className={cx('flex items-center gap-3 rounded-2xl border p-2.5 transition',on?'border-accent bg-accent/15':'border-line bg-ink/[.04]')}>
@@ -1242,9 +1282,13 @@ const fdate=t=>{try{return t?new Date(t).toLocaleString([],{dateStyle:'medium',t
 const TA=({v,on,ph,cls='',rows=4})=><textarea value={v} rows={rows} placeholder={ph} onChange={e=>on(e.target.value)} className={cx(INP,'w-full resize-y !text-left p-3.5',cls)}/>;
 const RSTAT=[['open','Open'],['prog','In progress'],['done','Resolved']],RCAT={bug:'Bug',ui:'Display',sync:'Sync / data',other:'Other'};
 function DevDashboard({onExit}){
- const [tab,setTab]=useState('reports'),[D,setD]=useState({g:{},s:{},r:{},h:{}}),[ld,setLd]=useState(true),[er,setEr]=useState(''),[q,setQ]=useState(''),[flt,setFlt]=useState('all'),[sel,setSel]=useState(null),[f,setF]=useState({}),[bz,setBz]=useState(false),[note,setNote]=useState(''),[raw,setRaw]=useState(false);
+ const [tab,setTab]=useState('reports'),[D,setD]=useState({g:{},s:{},r:{},h:{}}),[ld,setLd]=useState(true),[er,setEr]=useState(''),[q,setQ]=useState(''),[flt,setFlt]=useState('all'),[sel,setSel]=useState(null),[f,setF]=useState({}),[bz,setBz]=useState(false),[note,setNote]=useState(''),[raw,setRaw]=useState(false),[hf,setHf]=useState('all'),mem=useRef([]);
  const load=async()=>{setLd(true);setEr('');try{const[g,s,r,h]=await Promise.all([dget('groups'),dget('sync'),dget('reports'),dget('devhist').catch(()=>({}))]);setD({g:g||{},s:s||{},r:r||{},h:h||{}})}catch(e){if(!devOn()){onExit();return}setEr('Could not load the database. Check your connection and that the database rules from the README (Part 1) are published.')}setLd(false)};
  useEffect(()=>{load()},[]);
+ // Ctrl/Cmd+Z = Undo, Ctrl/Cmd+Shift+Z or Ctrl+Y = Redo (ignored while typing or while a detail sheet is open)
+ useEffect(()=>{const k=e=>{if(!(e.ctrlKey||e.metaKey)||bz||ld||sel)return;const t=e.target;if(t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable))return;const key=String(e.key).toLowerCase();
+  if(key==='z'&&!e.shiftKey){if(undoT){e.preventDefault();doUndo(undoT)}}else if(key==='y'||(key==='z'&&e.shiftKey)){if(redoT){e.preventDefault();redoAsk(redoT)}}};
+  window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k)});
  const run=async(fn,ok,after)=>{setBz(true);setNote('');try{await fn();setNote(ok||'Saved ✓');if(after)after();await load()}catch(e){setNote('That did not work ('+(e&&e.message||'error')+'). Check the database rules.')}setBz(false)};
 
  /* ---- history: every change is recorded in the cloud (devhist = small summary, devdata = the before/after values) so it can be undone, redone or restored later ---- */
@@ -1256,19 +1300,24 @@ function DevDashboard({onExit}){
   for(const sp of specs){const b=await dget(sp.p),a=typeof sp.a==='function'?sp.a(b):sp.a;ops.push({p:sp.p,b:b===undefined?null:b,a:a===undefined?null:a})}
   await applyOps(ops,true);
   const id='h'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  try{await dput('devdata/'+id,JSON.stringify(ops));await dput('devhist/'+id,{t:Date.now(),l:label,d:isDel?1:0,u:0});
-   const old=Object.entries(D.h||{}).filter(([,v])=>v&&typeof v==='object').sort((x,y)=>(x[1].t||0)-(y[1].t||0));
+  const ent={t:Date.now(),l:label,d:isDel?1:0,u:0};let saved=false;
+  try{await dput('devdata/'+id,JSON.stringify(ops));await dput('devhist/'+id,ent);saved=true}catch(e){}
+  // if the cloud history could not be written, keep the change in this session's memory (never on disk) so Undo and Restore still work until the dashboard is closed
+  if(!saved)mem.current=[{k:id,...ent,ops,local:1},...mem.current].slice(0,40);
+  else try{const old=Object.entries(D.h||{}).filter(([,v])=>v&&typeof v==='object').sort((x,y)=>(x[1].t||0)-(y[1].t||0));
    for(const[k]of old.slice(0,Math.max(0,old.length-79))){await ddel('devhist/'+k);await ddel('devdata/'+k)}}catch(e){}};
- const H=Object.entries(D.h||{}).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,...v})).sort((a,b)=>(b.t||0)-(a.t||0));
+ const H=[...Object.entries(D.h||{}).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,...v})),...mem.current.filter(m=>!(D.h||{})[m.k])].sort((a,b)=>(b.t||0)-(a.t||0));
  const newestT=H.length?H[0].t||0:0,undoT=H.find(h=>!h.u)||null,redoT=H.filter(h=>h.u&&(h.ut||0)>newestT).sort((a,b)=>(b.ut||0)-(a.ut||0))[0]||null;
- const doUndo=h=>run(async()=>{const ops=JSON.parse(await dget('devdata/'+h.k)||'[]');if(!ops.length)throw new Error('history data missing');await applyOps(ops,false);await dpatch('devhist/'+h.k,{u:1,ut:Date.now()})},h.d?'Restored ✓':'Undone ✓');
- const doRedo=h=>run(async()=>{const ops=JSON.parse(await dget('devdata/'+h.k)||'[]');if(!ops.length)throw new Error('history data missing');await applyOps(ops,true);await dpatch('devhist/'+h.k,{u:0,ut:null})},'Redone ✓');
+ const getOps=async h=>{const ops=h.ops||JSON.parse(await dget('devdata/'+h.k)||'[]');if(!ops.length)throw new Error('history data missing');return ops};
+ const mark=async(h,p)=>{if(h.local)mem.current=mem.current.map(m=>m.k===h.k?{...m,...p}:m);else await dpatch('devhist/'+h.k,p)};
+ const doUndo=h=>run(async()=>{await applyOps(await getOps(h),false);await mark(h,{u:1,ut:Date.now()})},h.d?'Restored ✓':'Undone ✓');
+ const doRedo=h=>run(async()=>{await applyOps(await getOps(h),true);await mark(h,{u:0,ut:null})},'Redone ✓');
  const redoAsk=h=>h.d?ask({title:'Delete again?',msg:'“'+h.l+'” will be applied again.',yes:'Delete again',onYes:()=>doRedo(h)}):doRedo(h);
  const G=Object.entries(D.g).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,meta:v.meta||{},m:v.m||{},adm:admKeys(v.admins)})).sort((a,b)=>(a.meta.n||'').localeCompare(b.meta.n||''));
  const A=Object.entries(D.s).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,n:v.n||'',b:v.b||'',t:v.t,x:v.x===1,d:v.d,size:typeof v.d==='string'?v.d.length:0})).sort((a,b)=>(a.n||'~').localeCompare(b.n||'~'));
  const R=Object.entries(D.r).filter(([,v])=>v&&typeof v==='object').map(([k,v])=>({k,...v,s:v.s||'open'})).sort((a,b)=>(b.t||0)-(a.t||0));
  const ql=q.trim().toLowerCase(),has=(...x)=>!ql||x.some(y=>String(y||'').toLowerCase().includes(ql));
- const Hh=H.filter(h=>has(h.l)),Gs=G.filter(g=>has(g.meta.n,g.meta.c,g.k)),As=A.filter(a=>has(a.n,a.b,a.k)),Rs=R.filter(r=>(flt==='all'||r.s===flt)&&has(r.m,r.ct,r.c,r.k)),openN=R.filter(r=>r.s!=='done').length;
+ const Hh=H.filter(h=>(hf!=='del'||h.d)&&has(h.l)),delN=H.filter(h=>h.d&&!h.u).length,Gs=G.filter(g=>has(g.meta.n,g.meta.c,g.k)),As=A.filter(a=>has(a.n,a.b,a.k)),Rs=R.filter(r=>(flt==='all'||r.s===flt)&&has(r.m,r.ct,r.c,r.k)),openN=R.filter(r=>r.s!=='done').length;
  const sg=sel&&sel.t==='g'?G.find(x=>x.k===sel.k):null,sa=sel&&sel.t==='a'?A.find(x=>x.k===sel.k):null,sr=sel&&sel.t==='r'?R.find(x=>x.k===sel.k):null;
  const pick=(t,k,init)=>{setSel({t,k});setF(init);setNote('');setRaw(false)};
  const close=()=>{setSel(null);setNote('')};
@@ -1278,7 +1327,7 @@ function DevDashboard({onExit}){
  const stats=a=>{try{const d=JSON.parse(a.d),ys=d.years||[],ss=ys.flatMap(y=>y.sems||[]);return ys.length+' year'+(ys.length===1?'':'s')+' · '+ss.length+' semester'+(ss.length===1?'':'s')+' · '+ss.reduce((n,s)=>n+(s.subs||[]).length,0)+' subjects'}catch(e){return'No readable data'}};
  const Tab=(id,l,n)=><button key={id} onClick={()=>{setTab(id);setQ('')}} className={cx('min-w-0 flex-1 truncate rounded-xl px-1.5 py-2.5 text-[13px] font-bold transition sm:px-3 sm:text-sm',tab===id?'bg-accent text-accent-ink':'text-muted hover:bg-ink/[.07]')}>{l}{n!=null&&<span className="ml-1.5 text-xs opacity-80">{n}</span>}</button>;
  return <div className="mx-auto max-w-3xl px-4 pb-20 pt-[var(--tp)] sm:px-8">
-  <div className="flex flex-wrap items-center gap-3 pb-4 pt-2"><TigerLogo className="h-10 w-10"/><div className="min-w-0 flex-1"><h1 className="text-xl font-black tracking-tight sm:text-2xl">Developer Dashboard</h1><p className="text-xs text-muted">Signed in as {DEV_USER} · {APP_VER}</p></div>
+  <div className="flex flex-wrap items-center gap-3 pb-4 pt-2"><TigerLogo className="h-10 w-10"/><div className="min-w-0 flex-1"><h1 className="text-xl font-black tracking-tight sm:text-2xl">Developer Dashboard</h1><p className="text-xs text-muted">Developer session · {APP_VER}</p></div>
    <button className={BTN} onClick={load} disabled={ld}>{ld?'Loading…':'↻ Refresh'}</button><button className={BTN} onClick={()=>{devSignOut();onExit()}}>Sign out</button></div>
   <div className={cx(CARD,'mb-3 flex flex-col gap-1.5 p-2')}><div className="flex gap-2">
    <button disabled={bz||ld||!undoT} onClick={()=>doUndo(undoT)} className={BTN+' flex-1'} aria-label="Undo the last change"><HIc d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" cls="h-4 w-4"/>Undo</button>
@@ -1291,8 +1340,8 @@ function DevDashboard({onExit}){
   {ld&&!G.length&&!A.length&&!R.length&&!er&&<p className="py-10 text-center text-sm text-muted">Loading the database…</p>}
   <div className="stagger flex flex-col gap-2.5">
   {tab==='reports'&&(Rs.length?Rs.map(r=>Row(r.k,()=>pick('r',r.k,{dn:r.dn||''}),(RCAT[r.c]||'Report')+' · '+fdate(r.t),(r.ct||'No contact')+' · '+(r.v||''),r.m,Pill(RSTAT.find(x=>x[0]===r.s)?.[1]||'Open',r.s==='done'?'bg-good/15 text-good':r.s==='prog'?'bg-accent/20 text-accent-text':'bg-bad/15 text-bad'))):!ld&&<p className="py-8 text-center text-sm text-muted">No reports here.</p>)}
-  {tab==='history'&&<>{!!H.length&&<div className="flex items-center justify-between gap-2 px-1"><p className="text-xs text-muted">Deletes can be restored from here. The newest {Math.min(H.length,80)} changes are kept in the cloud.</p><button disabled={bz} className="shrink-0 text-xs font-semibold text-bad underline decoration-dotted underline-offset-4" onClick={()=>ask({title:'Clear the history?',msg:'Undo, Redo and Restore will no longer work for these changes.',yes:'Clear history',onYes:()=>run(async()=>{await ddel('devhist');await ddel('devdata')},'History cleared ✓')})}>Clear history</button></div>}
-   {Hh.length?Hh.map(h=><div key={h.k} className={cx(CARD,'flex items-center gap-3 p-3.5')}><span className="min-w-0 flex-1"><span className="block break-words text-sm font-extrabold leading-snug">{h.l}</span><span className="block text-xs text-muted">{fdate(h.t)}{h.u?' · '+(h.d?'restored ':'undone ')+fdate(h.ut):''}</span></span>{h.u?Pill(h.d?'Restored':'Undone','bg-good/15 text-good'):h.d?Pill('Deleted','bg-bad/15 text-bad'):null}<button disabled={bz} className={BTN+' shrink-0 !px-3 !py-1.5 !text-xs'} onClick={()=>h.u?redoAsk(h):doUndo(h)}>{h.u?(h.d?'Delete again':'Redo'):(h.d?'Restore':'Undo')}</button></div>):!ld&&<p className="py-8 text-center text-sm text-muted">No changes yet. Edits and deletes you make here will appear in this list.</p>}</>}
+  {tab==='history'&&<><div className="flex flex-wrap gap-1.5" role="group" aria-label="History filter">{[['all','All changes',H.length],['del','Recently deleted',delN]].map(([k,l,c])=><button key={k} onClick={()=>setHf(k)} aria-pressed={hf===k} className={cx('rounded-full border px-3 py-1.5 text-xs font-bold transition',hf===k?'border-accent bg-accent/20 text-accent-text':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{l}<span className="ml-1.5 opacity-80">{c}</span></button>)}</div>{!!H.length&&<div className="flex items-center justify-between gap-2 px-1"><p className="text-xs text-muted">Deletes can be restored from here. The newest {Math.min(H.length,80)} changes are kept in the cloud.</p><button disabled={bz} className="shrink-0 text-xs font-semibold text-bad underline decoration-dotted underline-offset-4" onClick={()=>ask({title:'Clear the history?',msg:'Undo, Redo and Restore will no longer work for these changes.',yes:'Clear history',onYes:()=>run(async()=>{mem.current=[];await ddel('devhist');await ddel('devdata')},'History cleared ✓')})}>Clear history</button></div>}
+   {Hh.length?Hh.map(h=><div key={h.k} className={cx(CARD,'flex items-center gap-3 p-3.5')}><span className="min-w-0 flex-1"><span className="block break-words text-sm font-extrabold leading-snug">{h.l}</span><span className="block text-xs text-muted">{fdate(h.t)}{h.u?' · '+(h.d?'restored ':'undone ')+fdate(h.ut):''}</span></span>{h.local&&Pill('This session only','bg-accent/20 text-accent-text')}{h.u?Pill(h.d?'Restored':'Undone','bg-good/15 text-good'):h.d?Pill('Deleted','bg-bad/15 text-bad'):null}<button disabled={bz} className={BTN+' shrink-0 !px-3 !py-1.5 !text-xs'} onClick={()=>h.u?redoAsk(h):doUndo(h)}>{h.u?(h.d?'Delete again':'Redo'):(h.d?'Restore':'Undo')}</button></div>):!ld&&<p className="py-8 text-center text-sm text-muted">{hf==='del'?'Nothing has been deleted recently.':'No changes yet. Edits and deletes you make here will appear in this list.'}</p>}</>}
   {tab==='groups'&&(Gs.length?Gs.map(g=>Row(g.k,()=>pick('g',g.k,{n:g.meta.n||'',i:g.meta.i||'',r:g.meta.r||''}),g.meta.n||'Unnamed group',Object.keys(g.m).length+' member card'+(Object.keys(g.m).length===1?'':'s')+' · '+g.adm.length+' admin'+(g.adm.length===1?'':'s'),'Key '+g.k.slice(0,8)+'…',g.meta.c?Pill(fmtCode(g.meta.c)):null)):!ld&&<p className="py-8 text-center text-sm text-muted">No groups here.</p>)}
   {tab==='accounts'&&(As.length?As.map(a=>Row(a.k,()=>pick('a',a.k,{n:a.n,b:a.b,d:''}),a.n||(a.x?'Deleted account':'Unnamed account'),a.x?'Deleted by developer · '+fdate(a.t):(a.b||'No bio')+' · updated '+fdate(a.t),'Key '+a.k.slice(0,8)+'… · '+Math.round(a.size/1024*10)/10+' KB',a.x?Pill('Deleted','bg-bad/15 text-bad'):null)):!ld&&<p className="py-8 text-center text-sm text-muted">No accounts here.</p>)}
   </div>
@@ -1335,24 +1384,24 @@ function DevDashboard({onExit}){
 /* ---- home header: a flush, full-width Material-style app bar. Large while the page is at the top, condenses once you scroll ---- */
 const HIc=({d,cls='h-[18px] w-[18px]'})=><svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>;
 const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7';
-function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2hs,showA2hs}){
+function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onTutorial,onJoin,onReport,onA2hs,showA2hs}){
  const [col,setCol]=useState(false),[h,setH]=useState(0),ref=useRef(null),colR=useRef(false);
  // collapse after 56px of scroll, expand again only when back near the top (hysteresis stops flicker)
  useEffect(()=>{let raf=0;const f=()=>{raf=0;const y=window.scrollY||document.documentElement.scrollTop||0,n=colR.current?y>6:y>56;if(n!==colR.current){colR.current=n;setCol(n)}};const on=()=>{if(!raf)raf=requestAnimationFrame(f)};f();window.addEventListener('scroll',on,{passive:true});return()=>{window.removeEventListener('scroll',on);if(raf)cancelAnimationFrame(raf)}},[]);
  // the bar is position:fixed, so a spacer keeps the page layout steady (its height is the expanded bar, so collapsing never shifts the content)
  useLayoutEffect(()=>{let tm=0,ro=null;const m=()=>{if(!colR.current&&ref.current)setH(ref.current.offsetHeight)},lazy=()=>{clearTimeout(tm);tm=setTimeout(m,480)};m();window.addEventListener('resize',lazy);try{document.fonts&&document.fonts.ready.then(m)}catch(e){}try{if(window.ResizeObserver&&ref.current){ro=new ResizeObserver(lazy);ro.observe(ref.current)}}catch(e){}return()=>{clearTimeout(tm);window.removeEventListener('resize',lazy);ro&&ro.disconnect()}},[showA2hs]);
  const status=!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
- const IB='grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink transition hover:bg-ink/[.08] active:scale-95 disabled:opacity-40',
-  CH='inline-flex h-9 max-w-full items-center gap-1.5 rounded-xl border border-line/70 bg-ink/[.05] px-3 text-[13px] font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40';
- return <div style={{height:h||undefined}} className="mb-1">
-  <header ref={ref} className="fixed inset-x-0 top-0 z-30 flex justify-center">
-   <div className={cx('w-full max-w-6xl overflow-hidden border-b border-line/60 bg-surface/[.88] backdrop-blur-xl transition-[border-radius,box-shadow,padding] duration-300 ease-out sm:border-x',col?'rounded-b-2xl shadow-[0_10px_24px_-12px_rgb(0_0_0/.5)]':'rounded-b-[2rem] shadow-[0_2px_8px_-3px_rgb(0_0_0/.22)]')} style={{paddingTop:col?'calc(var(--tp) + .25rem)':'calc(var(--tp) + .75rem)',paddingBottom:col?'.625rem':'1rem',paddingLeft:'env(safe-area-inset-left,0px)',paddingRight:'env(safe-area-inset-right,0px)',backgroundImage:'linear-gradient(180deg,rgb(var(--accent)/.10),rgb(var(--accent)/0) 75%)',WebkitBackdropFilter:'blur(20px) saturate(1.5)',backdropFilter:'blur(20px) saturate(1.5)'}}>
-    <div className="flex items-center gap-3 px-4 sm:px-8">
-     <TigerLogo className={cx('shrink-0 drop-shadow-sm transition-all duration-300',col?'h-9 w-9':'h-14 w-14 max-[359px]:h-11 max-[359px]:w-11')}/>
-     <span aria-hidden="true" className={cx('w-px shrink-0 bg-line transition-all duration-300',col?'h-6':'h-10')}/>
+ const IB='grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink transition hover:bg-ink/[.08] active:scale-95 disabled:opacity-40',
+  CH='inline-flex h-9 min-w-0 max-w-full items-center gap-1.5 rounded-lg border border-line bg-surface2 px-3 text-[13px] font-bold text-ink transition hover:bg-ink/[.08] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40';
+ // Material top app bar: a solid, flush, full-width surface (no blur, no pill) with a soft tonal tint and an elevation shadow
+ return <div style={{height:h||undefined}} className="mb-2">
+  <header ref={ref} className="fixed inset-x-0 top-0 z-30">
+   <div className={cx('mx-auto w-full max-w-6xl rounded-b-2xl border-x border-b border-line bg-surface/[.97] text-ink transition-shadow duration-300 max-sm:rounded-b-xl max-sm:border-x-0',col?'shadow-[0_3px_10px_-4px_rgb(0_0_0/.35)]':'shadow-[0_8px_20px_-10px_rgb(0_0_0/.38)]')} style={{paddingTop:col?'calc(var(--tp) + .125rem)':'calc(var(--tp) + .5rem)',paddingBottom:col?'.5rem':'.875rem',paddingLeft:'max(1rem,env(safe-area-inset-left,0px))',paddingRight:'max(1rem,env(safe-area-inset-right,0px))',backgroundImage:'linear-gradient(180deg,rgb(var(--accent)/.16),rgb(var(--accent)/.04))'}}>
+    <div className="flex min-w-0 items-center gap-3">
+     <TigerLogo className={cx('shrink-0 transition-all duration-300',col?'h-9 w-9':'h-14 w-14 max-[359px]:h-11 max-[359px]:w-11')}/>
      <div className="min-w-0 flex-1">
       <div className={cx('truncate font-black leading-none tracking-tight transition-all duration-300',col?'text-lg':'text-[28px] max-[359px]:text-2xl')}>Gradely</div>
-      <div key={col?'s':'t'} className="anim-fade mt-1.5 flex items-center gap-1.5 truncate text-xs font-semibold text-muted">{col?<><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></>:<span className="truncate">Track, Forecast, and Ace your Sem</span>}</div>
+      <div key={col?'s':'t'} className="anim-fade mt-1.5 flex min-w-0 items-center gap-1.5 text-xs font-semibold text-muted">{col?<><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></>:<span className="truncate">Track, Forecast, and Ace your Sem</span>}</div>
      </div>
      <div className="flex shrink-0 items-center">
       {cloud&&<button className={IB} onClick={onRefresh} aria-label="Refresh from cloud"><span className={busy?'animate-spin':''}><HIc d={HI_SYNC}/></span></button>}
@@ -1360,12 +1409,13 @@ function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2
      </div>
     </div>
     <div className={cx('acc',!col&&'open')} inert={col}><div>
-     <div className="flex flex-wrap gap-2 px-4 pb-0.5 pt-3.5 sm:px-8" role="toolbar" aria-label="Quick actions">
-      <span className="inline-flex h-9 max-w-full items-center gap-2 rounded-xl px-1 text-xs font-semibold text-muted"><span className={cx('h-2 w-2 rounded-full',dot)}/>{status}</span>
-      <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls="h-4 w-4"/>How it works</button>
-      <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls="h-4 w-4"/>Join with code</button>
-      {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls="h-4 w-4"/>Install app</button>}
-      <button className={CH} onClick={onReport}><HIc d={HI_BUG} cls="h-4 w-4"/>Report a problem</button>
+     <div className="flex flex-wrap gap-2 pt-3" role="toolbar" aria-label="Quick actions">
+      <span className="inline-flex h-9 min-w-0 max-w-full items-center gap-2 px-1 text-xs font-semibold text-muted"><span className={cx('h-2 w-2 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></span>
+      <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTutorial}><HIc d={HI_TOUR} cls="h-4 w-4 shrink-0"/><span className="truncate">Tracker tutorial</span></button>
+      <button className={CH} onClick={onTour}><HIc d={HI_TOUR} cls="h-4 w-4 shrink-0"/><span className="truncate">How it works</span></button>
+      <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls="h-4 w-4 shrink-0"/><span className="truncate">Join with code</span></button>
+      {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls="h-4 w-4 shrink-0"/><span className="truncate">Install app</span></button>}
+      <button className={CH} onClick={onReport}><HIc d={HI_BUG} cls="h-4 w-4 shrink-0"/><span className="truncate">Report a problem</span></button>
      </div>
     </div></div>
    </div>
@@ -1406,7 +1456,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
- const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
+ const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onTutorial={ctl.tutorial} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
  const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <>
   <div className="anim-rise pb-5 pt-7 text-center sm:pt-9"><h1 className="text-3xl font-black tracking-tight sm:text-5xl">Your groups</h1><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Open a group, then pick your account.</p></div>
   {book.groups.length?<div className="flex flex-wrap justify-center gap-3">{book.groups.map(GroupCard)}</div>
@@ -1520,7 +1570,7 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    {Err()}<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.submitReport(rp),()=>setRp({...rp,done:true,m:''}),true)}>{cb?'Sending…':'Send report'}</button></>}</Sheet>
   <Sheet open={!!sh&&sh.t==='dev'} onClose={()=>setSh(null)} title="Developer sign-in">
    <p className="text-sm text-muted">For the Gradely developers only. This opens the dashboard for reports, groups and accounts.</p>
-   <TextIn v={dv.u} on={v=>setDv({...dv,u:v})} ph="Developer username"/><TextIn type="password" v={dv.p} on={v=>setDv({...dv,p:v})} ph="Password"/>
+   <TextIn type="email" v={dv.u} on={v=>setDv({...dv,u:v})} ph="Developer email"/><TextIn type="password" v={dv.p} on={v=>setDv({...dv,p:v})} ph="Password"/>
    {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.devLogin(dv.u,dv.p),()=>{})}>{cb?'Signing in…':'Sign in'}</button></Sheet>
   <Sheet open={!!sh&&sh.t==='theme'} onClose={()=>setSh(null)} title="Theme"><ThemePicker theme={theme} setTheme={setTheme}/></Sheet>
  </div>;
@@ -1536,7 +1586,7 @@ function Root(){
  const upd=useSwUpdate(),[dev,setDev]=useState(devOn);
  // welcome tour: opens once for a brand-new install; devices that already have accounts never see it unless they replay it
  const [a2,setA2]=useState(()=>!isStandalone()&&!a2Seen()),closeA2=()=>{a2Done();setA2(false)};
- const [tour,setTour]=useState(()=>!tourSeen()&&!bk.current.list.length);
+ const [tour,setTour]=useState(()=>!tourSeen()&&!bk.current.list.length),[tut,setTut]=useState(false);
  useEffect(()=>{if(!tour&&!tourSeen())tourDone()},[]);
  const closeTour=()=>{tourDone();setTour(false)};
  useEffect(()=>{try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}},[]); // ask the browser not to evict saved data and the session
@@ -1720,7 +1770,7 @@ function Root(){
   try{if(await gkey(g.cloud.sn,o)!==g.cloud.k)return'The current group passcode is wrong.';const k=await gkey(g.cloud.sn,n);if(k===g.cloud.k)return'Choose a different passcode.';const ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose another passcode.';
    const c0=await gread(g.cloud.k);if(!c0||!c0.meta)return'Group not found in the cloud.';const old=g.cloud.k;await gwrite(k,undefined,{...c0,meta:{...c0.meta,t:Date.now()}});g.cloud={...g.cloud,k};save();try{await gremove(old)}catch(x){}if(g.code){try{await dput('codes/'+g.code,{k,sn:g.cloud.sn,t:Date.now()})}catch(x){}}return'ok'}catch(x){return BADNET}};
  
-const ctl={open,guest,createGroup,joinGroup,joinByCode,newCode,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,del,refresh,canAdmin,submitReport,devLogin,tour:()=>setTour(true),a2hs:()=>setA2(true)};
+const ctl={open,guest,createGroup,joinGroup,joinByCode,newCode,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,del,refresh,canAdmin,submitReport,devLogin,tour:()=>setTour(true),tutorial:()=>setTut(true),a2hs:()=>setA2(true)};
 
  if(dev)return <><ErrorBoundary title="Something went wrong"><DevDashboard onExit={()=>setDev(false)}/></ErrorBoundary><ConfirmHost/></>;
  let view;
@@ -1734,6 +1784,6 @@ const ctl={open,guest,createGroup,joinGroup,joinByCode,newCode,editGroup,enableG
   const gO=cur.guest?null:grp(gNow),admin={is:!!(gO&&admMine(gO,a)),rows:gO?memRows(gO):[],set:(r,on)=>setRole(gNow,r,on),give:r=>giveAdmin(gNow,r),refresh};
   view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(gNow),changeGroupPass:(o,n,n2)=>changeGroupPass(gNow,o,n,n2),changeUsername:(nn,pw)=>changeUsername(cur.id,nn,pw),joinGroup:async(nm,pw)=>{const r=await joinGroup(nm,pw);if(String(r).startsWith('ok:')){const gid=r.slice(3),x=acc(cur.id);if(x&&!gidsOf(x).includes(gid))rename(cur.id,{gids:[...gidsOf(x),gid]});setCur(c=>({...c,gid}));return'ok'}return r},changeGroupName:(nn,pw)=>changeGroupName(gNow,nn,pw),setRec:e=>{if(admin.is)editGroup(gNow,{rec:e})},tour:()=>setTour(true),admin}} swc={cur.guest?null:{cur:grp(gNow),gid:gNow,mine:gidsOf(a),groups:bk.current.groups,accts:bk.current.list.filter(x=>gidsOf(x).includes(gNow)),aid:cur.id,setGroup:g=>setCur(c=>({...c,gid:g})),pick:id=>switchAcct(id,gNow),join:g=>rename(cur.id,{gids:[...gidsOf(a),g]})}}/>;
  }
- return <><ErrorBoundary title="Something went wrong"><div key={cur?'app':'home'} className="anim-rise">{view}</div></ErrorBoundary><UpdateBanner u={upd}/><ConfirmHost/><Onboarding open={tour&&!a2} onClose={closeTour}/><A2HS open={a2} onClose={closeA2}/></>;
+ return <><ErrorBoundary title="Something went wrong"><div key={cur?'app':'home'} className="anim-rise">{view}</div></ErrorBoundary><UpdateBanner u={upd}/><ConfirmHost/><Onboarding open={tour&&!a2} onClose={closeTour}/><TrackerTour open={tut} onClose={()=>{tipDone('tt');setTut(false)}}/><A2HS open={a2} onClose={closeA2}/></>;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);

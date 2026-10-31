@@ -1,8 +1,8 @@
 // Service worker: caches the app for offline use.
-// When you change any app file, bump CACHE (e.g. gradely-v34) so devices pick up the update.
+// When you change any app file, bump CACHE (e.g. gradely-v36) so devices pick up the update.
 // Update flow: a new version installs quietly and WAITS. The app shows "Update Available! Tap to refresh";
 // tapping it sends SKIP_WAITING, the new worker activates, and the page reloads once on controllerchange.
-const CACHE = 'gradely-v33';
+const CACHE = 'gradely-v35';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/tiger.svg', './icons/icon-maskable-512.png', './icons/creator-joshua.jpg', './icons/creator-jhon.jpg'];
 // Third-party files the page needs (cached too, so it works with no internet)
 const CDN = [
