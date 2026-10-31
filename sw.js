@@ -1,6 +1,8 @@
 // Service worker: caches the app for offline use.
-// When you change any app file, bump CACHE (e.g. gtf-v2) so devices pick up the update.
-const CACHE = 'gtf-v17';
+// When you change any app file, bump CACHE (e.g. gtf-v19) so devices pick up the update.
+// Update flow: a new version installs quietly and WAITS. The app shows "Update Available! Tap to refresh";
+// tapping it sends SKIP_WAITING, the new worker activates, and the page reloads once on controllerchange.
+const CACHE = 'gtf-v19';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/tiger.svg', './icons/icon-maskable-512.png'];
 // Third-party files the page needs (cached too, so it works with no internet)
 const CDN = [
@@ -11,11 +13,20 @@ const CDN = [
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
-    await c.addAll(SHELL);
+    // bypass the browser HTTP cache so a new version never installs stale files
+    await Promise.all(SHELL.map((u) => fetch(new Request(u, { cache: 'reload' })).then((r) => {
+      if (!r.ok) throw new Error('precache failed: ' + u);
+      return c.put(u, r);
+    })));
     // opaque cross-origin responses must be stored with put(), not add()
     await Promise.all(CDN.map((u) => fetch(u, { mode: 'no-cors' }).then((r) => c.put(u, r)).catch(() => {})));
-    await self.skipWaiting();
+    // no skipWaiting() here on purpose: the person chooses when to switch (see the message handler)
   })());
+});
+
+// The app posts this when the person taps "Update Available! Tap to refresh"
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

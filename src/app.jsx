@@ -128,6 +128,7 @@ const fw=g=>g==null||!Number.isFinite(g)?'—':g.toFixed(GD);
 const fpc=n=>n==null||!Number.isFinite(n)?'—':n.toFixed(2)+'%';
 const rel=t=>{if(!t)return'not yet';const s=Math.max(0,(Date.now()-t)/1000);if(s<20)return'just now';if(s<60)return Math.floor(s)+' sec ago';const m=Math.floor(s/60);if(m<60)return m+' min ago';const h=Math.floor(m/60);if(h<24)return h+' hr ago';return Math.floor(h/24)+' d ago'};
 const cx=(...a)=>a.filter(Boolean).join(' ');
+const REDUCED=()=>{try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}};
 
 /* =====================================================================
    3. DATA, ACCOUNTS ("book") AND STORAGE
@@ -149,6 +150,11 @@ const mig=d=>{if(!d||!Array.isArray(d.years))return d;const cfg=d.cfg||{},per=Ar
 const BK='gtf-book',EMO=[],GEMO=[];
 const okState=d=>d&&Array.isArray(d.years)&&d.years.length&&d.years.every(y=>y&&Array.isArray(y.sems)&&y.sems.length);
 const defGroup=()=>({id:'g'+uid(),name:'General',icon:''});
+// An account can belong to several groups: gids is the full list, gid (the first one) is kept for older saves
+const gidsOf=a=>a?(Array.isArray(a.gids)&&a.gids.length?a.gids:a.gid?[a.gid]:[]):[];
+// group admins: g.adm is a list of member ids (mid). Cloud groups mirror it at groups/<key>/admins (an object of mid:true).
+const admKeys=o=>o&&typeof o==='object'?Object.keys(o).filter(k=>o[k]):[];
+const admOf=g=>g&&Array.isArray(g.adm)?g.adm:[];
 const mkBook=d=>{const g=defGroup(),id=uid();return{list:[{id,name:'My Account',bio:'',emoji:'',gid:g.id}],data:{[id]:d},groups:[g]}};
 const normBook=j=>{try{
  if(j&&Array.isArray(j.list)&&j.data&&typeof j.data==='object'){
@@ -156,13 +162,24 @@ const normBook=j=>{try{
   const seen={};gs=gs.filter(g=>seen[g.name.toLowerCase()]?false:(seen[g.name.toLowerCase()]=1));
   if(!gs.length&&j.list.length)gs=[defGroup()]; // only to rescue accounts saved by an older version
   const by=Object.fromEntries(gs.map(g=>[g.name,g.id])),ids=new Set(gs.map(g=>g.id));
-  const list=j.list.map(a=>{const n={...a};if(!n.gid||!ids.has(n.gid))n.gid=by[n.group]||gs[0].id;delete n.group;return n});
+  const list=j.list.map(a=>{const n={...a};if(!n.gid||!ids.has(n.gid))n.gid=by[n.group]||gs[0].id;delete n.group;
+   const gl=[...new Set([...(Array.isArray(n.gids)?n.gids:[]),n.gid].filter(x=>ids.has(x)))];n.gids=gl.length?gl:[n.gid];n.gid=n.gids[0];return n});
   return{list,data:j.data,groups:gs}}
  if(okState(j))return mkBook(j)}catch(e){}return null};
 const loadRaw=()=>{let b=null;try{b=normBook(JSON.parse(localStorage.getItem(BK)))}catch(e){}if(!b)try{b=normBook(JSON.parse(localStorage.getItem('gtf-v1')))}catch(e){}if(!b)b={list:[],data:{},groups:[]}; // first launch: strictly empty, no groups and no accounts
  return b};
 const loadBook=()=>{const b=loadRaw();Object.keys(b.data).forEach(k=>{b.data[k]=mig(b.data[k])});return b};
 const saveBook=b=>{try{localStorage.setItem(BK,JSON.stringify(b))}catch(e){}};
+/* ---- persistent login ----
+   This app signs in with account passcodes over the Realtime Database REST API and does not load the Firebase Auth SDK.
+   The equivalent of Firebase's browserLocalPersistence is used here: the signed-in state, the active account id and the active
+   group id live in localStorage, so a refresh, a reopen or a service-worker update restores the exact session with no login screen. */
+const AUTH_PERSISTENCE='browserLocalPersistence',SK='gtf-session';
+const readSession=()=>{try{let s=null;try{s=JSON.parse(localStorage.getItem(SK))}catch(e){}
+ if(!s||!s.aid)s={aid:localStorage.getItem('gtf-active-account'),gid:localStorage.getItem('gtf-active-group'),auth:localStorage.getItem('gtf-auth')==='1'};
+ return s&&s.auth===true&&s.aid?{aid:s.aid,gid:s.gid||null}:null}catch(e){return null}};
+const writeSession=(aid,gid)=>{try{localStorage.setItem(SK,JSON.stringify({v:1,auth:true,persistence:AUTH_PERSISTENCE,aid,gid:gid||null,t:Date.now()}));localStorage.setItem('gtf-auth','1');localStorage.setItem('gtf-active-account',aid);if(gid)localStorage.setItem('gtf-active-group',gid);else localStorage.removeItem('gtf-active-group')}catch(e){}};
+const clearSession=()=>{try{[SK,'gtf-auth','gtf-active-account','gtf-active-group'].forEach(k=>localStorage.removeItem(k))}catch(e){}};
 const THEMES=[{"id":"sun","name":"Yellow Light","bar":"#F6F6F3","sw":["#FFFFFF","#FACC15","#1C1B18"]},{"id":"dark","name":"Yellow Dark","bar":"#0E0E11","sw":["#1C1C21","#FBBF24","#F6F6F8"]},{"id":"blue","name":"Blue Light","bar":"#F4F8FF","sw":["#FFFFFF","#2563EB","#0F1D36"]},{"id":"bluedk","name":"Blue Dark","bar":"#080D18","sw":["#111A2C","#60A5FA","#EEF4FF"]},{"id":"red","name":"Red Light","bar":"#FFF7F7","sw":["#FFFFFF","#DC2626","#2E1014"]},{"id":"reddk","name":"Red Dark","bar":"#140909","sw":["#221114","#F87171","#FFF0F1"]},{"id":"green","name":"Green Light","bar":"#F5FCF7","sw":["#FFFFFF","#16A34A","#0E281A"]},{"id":"greendk","name":"Green Dark","bar":"#08120D","sw":["#101F17","#4ADE80","#ECFCF1"]},{"id":"mono","name":"Monochrome","bar":"#FAFAFA","sw":["#FFFFFF","#111111","#737373"]},{"id":"lav","name":"Lavender","bar":"#F7F5FF","sw":["#FFFFFF","#7C3AED","#1E1B3A"]}];
 // Report card export looks (the canvas is drawn in buildStory)
 const RTHEMES=[
@@ -185,6 +202,8 @@ const gurl=(k,sub)=>DB+'/groups/'+k+(sub?'/'+sub:'')+'.json';
 const gread=async k=>{const r=await fetch(gurl(k),{cache:'no-store'});if(!r.ok)throw new Error('get '+r.status);return r.json()};
 const gwrite=async(k,sub,o)=>{const r=await fetch(gurl(k,sub),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});if(!r.ok)throw new Error('put '+r.status)};
 const gremove=async(k,sub)=>{const r=await fetch(gurl(k,sub),{method:'DELETE'});if(!r.ok)throw new Error('del '+r.status)};
+const gget=async(k,sub)=>{const r=await fetch(gurl(k,sub),{cache:'no-store'});if(!r.ok)throw new Error('get '+r.status);return r.json()};
+const gpatch=async(k,sub,o)=>{const r=await fetch(gurl(k,sub),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});if(!r.ok)throw new Error('put '+r.status)};
 const premove=async k=>{const r=await fetch(curl(k),{method:'DELETE'});if(!r.ok)throw new Error('del '+r.status)};
 
 /* =====================================================================
@@ -204,10 +223,12 @@ const wts=(s,P)=>P.map(p=>{const o=s.pw&&s.pw[p.id],v=o===undefined||o===null||o
 const wiv=(s,a)=>s.wi&&s.wi[a.id]!==undefined?s.wi[a.id]:'85';
 const mxs=a=>+a.m||100;
 // one grading period of one subject (raw), using only what has been entered
+// ZERO-ASSUMPTION: an activity with a weight but a blank score counts as 0 in the grade (K only adds entered scores, so a blank adds 0 and W still includes its weight).
+// "allIn" tells whether every score is really entered. The forecaster below still treats blank scores as the open slots it solves for.
 const pcalc=(s,p)=>{const acts=actsOf(s,p),live=acts.filter(a=>wgt(a)>0);let W=0,K=0,Wk=0,n=0;
  live.forEach(a=>{const w=wgt(a),x=ap(a);W+=w;if(x!=null){K+=w*x;Wk+=w;n++}});
- const total=live.length,complete=total>0&&n===total,raw=complete&&W>0?K/W:null,soFar=Wk>0?K/Wk:null;
- return{acts,live,W,K,n,total,complete,raw,soFar,grade:raw,gradeSoFar:soFar}};
+ const total=live.length,allIn=total>0&&n===total,complete=total>0,raw=W>0?K/W:null,soFar=Wk>0?K/Wk:null;
+ return{acts,live,W,K,n,total,complete,allIn,raw,soFar,grade:raw,gradeSoFar:soFar}};
 // forecast for one period. T is the wanted RAW period grade; entered scores stay fixed, missing ones use the what-if sliders.
 const pproj=(s,p,T)=>{const c=pcalc(s,p),wi=a=>+wiv(s,a)||0,miss=c.live.filter(a=>ap(a)==null);
  const Wm=miss.reduce((t,a)=>t+wgt(a),0),pts=T*c.W-c.K,uni=Wm>0?pts/Wm:null;
@@ -216,7 +237,7 @@ const pproj=(s,p,T)=>{const c=pcalc(s,p),wi=a=>+wiv(s,a)||0,miss=c.live.filter(a
  return{...c,miss,Wm,uni,alone,Rneed:T,proj:Rp}};
 const wavg=(vals,W)=>{let t=0,w=0;vals.forEach((v,i)=>{if(v!=null){t+=W[i]*v;w+=W[i]}});return w>0?t/w:null};
 // semestral grade from real scores only (needs every period complete); the Base is applied here
-const semCalc=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),cc=P.map(p=>pcalc(s,p)),act=cc.filter(c=>c.total>0),done=act.length>0&&act.every(c=>c.complete),raw=done?wavg(cc.map(c=>c.total>0?c.raw:null),W):null;
+const semCalc=(s,P)=>{const W=wts(s,P),B=sbaseOf(s),cc=P.map(p=>pcalc(s,p)),act=cc.filter(c=>c.total>0),done=act.length>0&&act.every(c=>c.raw!=null),raw=done?wavg(cc.map(c=>c.total>0?c.raw:null),W):null;
  return{W,B,cc,done,raw,grade:raw==null?null:trans(raw,B)}};
 const semActual=(s,P)=>semCalc(s,P).grade;
 // semestral grade using real scores plus what-if values for anything missing
@@ -292,6 +313,32 @@ const Acc=({open,onToggle,head,children,cls='',sa})=><section className={cx(CARD
  <div className={cx('acc',open&&'open')} inert={!open}><div><div className="flex flex-col gap-4 p-4 pt-1">{children}</div></div></div></section>;
 
 // Modal sheet (bottom sheet on phones, centred card on larger screens)
+/* ---- PWA auto-update: detect a waiting service worker, show a banner, activate it on tap and reload once ---- */
+function useSwUpdate(){
+ const [waiting,setWaiting]=useState(null),rl=useRef(false);
+ useEffect(()=>{
+  if(!('serviceWorker' in navigator))return;
+  let reg=null,dead=false,hadCtl=!!navigator.serviceWorker.controller;
+  const track=w=>{if(!w)return;const check=()=>{if(dead)return;if(w.state==='installed'&&navigator.serviceWorker.controller)setWaiting(w);else if(w.state==='redundant')setWaiting(x=>x===w?null:x)};check();w.addEventListener('statechange',check)};
+  // the first install also fires controllerchange (clients.claim): only reload when an older version was already running
+  const onCtl=()=>{if(!hadCtl){hadCtl=true;return}if(rl.current)return;rl.current=true;window.location.reload()};
+  navigator.serviceWorker.addEventListener('controllerchange',onCtl);
+  navigator.serviceWorker.register('./sw.js').then(r=>{if(dead)return;reg=r;if(r.waiting&&navigator.serviceWorker.controller)setWaiting(r.waiting);track(r.installing);r.addEventListener('updatefound',()=>track(r.installing));r.update().catch(()=>{})}).catch(()=>{});
+  const ck=()=>{if(!document.hidden&&reg)reg.update().catch(()=>{})},iv=setInterval(ck,20*60*1000);
+  document.addEventListener('visibilitychange',ck);window.addEventListener('online',ck);
+  return()=>{dead=true;clearInterval(iv);navigator.serviceWorker.removeEventListener('controllerchange',onCtl);document.removeEventListener('visibilitychange',ck);window.removeEventListener('online',ck)}},[]);
+ const apply=()=>{if(!waiting)return;try{waiting.postMessage({type:'SKIP_WAITING'})}catch(e){}
+  // safety net: if controllerchange never arrives, reload anyway
+  setTimeout(()=>{if(!rl.current){rl.current=true;window.location.reload()}},4000)};
+ return{on:!!waiting,apply,dismiss:()=>setWaiting(null)};
+}
+const UpdateBanner=({u})=>!u.on?null:createPortal(<div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 z-[80] flex justify-center px-4" style={{top:'calc(var(--tp) + 3.9rem)'}}>
+ <div className="gcs anim-sheet pointer-events-auto flex w-full max-w-sm items-center gap-1.5 rounded-full py-1.5 pl-4 pr-1.5">
+  <span className="relative mr-1 flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60"/><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent"/></span>
+  <button onClick={u.apply} className="min-w-0 flex-1 truncate text-left text-sm font-extrabold">Update Available! <span className="font-semibold text-muted">Tap to refresh</span></button>
+  <button onClick={u.apply} className="shrink-0 rounded-full bg-accent px-3.5 py-1.5 text-xs font-extrabold text-accent-ink transition active:scale-95">Refresh</button>
+  <button onClick={u.dismiss} aria-label="Dismiss update notice" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted transition hover:bg-ink/[.09]"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>,document.body);
+
 function Sheet({open,onClose,title,children,wide}){
  useEffect(()=>{if(!open)return;const k=e=>e.key==='Escape'&&onClose();window.addEventListener('keydown',k);const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{window.removeEventListener('keydown',k);document.body.style.overflow=o}},[open]);
  if(!open)return null;
@@ -360,10 +407,76 @@ const GroupIcon=({g,s='h-14 w-14',t='text-3xl'})=>g&&g.pic?<img src={g.pic} alt=
 /* =====================================================================
    7. APP  (one profile: Tracker, Forecaster, Settings)
    ===================================================================== */
-function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,theme,setTheme,prof}){
- const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('o'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0),[pill,setPill]=useState(false),[accO,setAccO]=useState({a:false,g:false}),[rcf,setRcfS]=useState(()=>{try{const j=JSON.parse(localStorage.getItem('gtf-rcf')||'{}');return{a:j.a==='p'?'p':'g',b:j.b==='p'?'p':'g'}}catch(e){return{a:'g',b:'g'}}}),[exT,setExT]=useState(()=>{try{const t=localStorage.getItem('gtf-ext');return RTHEMES.some(x=>x.id===t)?t:'light'}catch(e){return'light'}});
- const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false}),genTok=useRef(0);
- const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState('');
+
+/* =====================================================================
+   6b. DELETE CONFIRMATION (every delete asks first) AND THE WELCOME TOUR
+   ===================================================================== */
+const CF={set:null};
+// ask({title,msg,yes,onYes,tone,final,next}) opens the confirmation. With "final" a second "Final warning" step follows the first one.
+const ask=o=>{if(CF.set)CF.set({...o,step:1});else if(window.confirm((o.title||'Are you sure?')+(o.msg?'\n\n'+o.msg:''))&&(!o.final||window.confirm(o.final)))o.onYes&&o.onYes()};
+// lock page scroll while a dialog is open, without fighting a Sheet that already locked it
+const useLock=on=>useEffect(()=>{if(!on)return;const was=document.body.style.overflow==='hidden';if(!was)document.body.style.overflow='hidden';return()=>{if(!was)document.body.style.overflow=''}},[on]);
+function ConfirmHost(){
+ const [o,setO]=useState(null),safe=useRef(null);
+ useEffect(()=>{CF.set=setO;return()=>{CF.set=null}},[]);
+ useLock(!!o);
+ useEffect(()=>{if(!o)return;const k=e=>{if(e.key==='Escape'){e.stopImmediatePropagation();setO(null)}};window.addEventListener('keydown',k,true);const t=setTimeout(()=>{try{safe.current&&safe.current.focus()}catch(e){}},60);
+  return()=>{window.removeEventListener('keydown',k,true);clearTimeout(t)}},[!!o,o&&o.step]);
+ if(!o)return null;
+ const two=!!o.final,second=two&&o.step===2,soft=o.tone==='accent',title=second?'Final warning':o.title,msg=second?o.final:o.msg,label=two&&!second?(o.next||'Continue'):(o.yes||'Delete'),
+  go=()=>{if(two&&!second){setO({...o,step:2});return}const f=o.onYes;setO(null);try{f&&f()}catch(e){}};
+ return createPortal(<div className="fixed inset-0 z-[95] flex items-end justify-center p-4 sm:items-center" style={{paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 1rem)'}}>
+  <div onClick={()=>setO(null)} className="anim-fade absolute inset-0 bg-black/45 backdrop-blur-sm"/>
+  <div key={o.step} role="alertdialog" aria-modal="true" aria-labelledby="cf-t" aria-describedby="cf-m" className="anim-sheet gcs relative w-full max-w-sm rounded-[1.75rem] p-6 text-center">
+   <div className={cx('mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full',soft?'bg-accent/20 text-accent-text':'bg-bad/15 text-bad')}>{soft
+    ?<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC.g}/></svg>
+    :<svg viewBox="0 0 20 20" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6h12M8 6V4h4v2M6 6l.7 10h6.6L14 6M9 9v4M11 9v4"/></svg>}</div>
+   <h2 id="cf-t" className="text-lg font-extrabold">{title}</h2>
+   {msg&&<p id="cf-m" className="mt-1.5 text-sm leading-relaxed text-muted">{msg}</p>}
+   <div className="mt-5 grid grid-cols-2 gap-2.5">
+    <button ref={safe} onClick={()=>setO(null)} className={BTN+' !py-3'}>{second?'Go back':'Cancel'}</button>
+    <button onClick={go} className={soft?BTNP+' !py-3':'inline-flex items-center justify-center rounded-xl bg-bad px-3.5 py-3 text-sm font-bold text-white transition hover:brightness-110 active:scale-[.97]'}>{label}</button></div></div></div>,document.body);
+}
+
+// ---- welcome tour: shown once, the first time the app is opened (replay it from Profile or the home screen) ----
+const TOUR_KEY='gtf-onboard';
+const tourSeen=()=>{try{return localStorage.getItem(TOUR_KEY)==='1'}catch(e){return false}};
+const tourDone=()=>{try{localStorage.setItem(TOUR_KEY,'1')}catch(e){}};
+const TSL=[
+ {t:'Welcome to Grades',d:'Track every score, see where each subject is heading and plan the finals you need to reach your target GWA.',logo:true},
+ {t:'Start with a group',d:'A group keeps classmates’ accounts together. Create one, or join an existing group with its name and passcode. Whoever creates a group is its admin and manages its members and passcode.',ic:IC.g,hint:'Home › Create group, or Join a group'},
+ {t:'Add your account',d:'Open a group and add your account. A passcode syncs it across your devices, or keep it on this device only. Your grades stay behind that passcode.',ic:IC.p,hint:'Open a group › New Account'},
+ {t:'Add subjects and activities',d:'Add each subject in the Tracker, then list its quizzes and exams with their weights. A blank score counts as 0 until you enter it.',ic:IC.t,hint:'Tracker › Add subject'},
+ {t:'Track and forecast',d:'Enter scores as they come in. The Overview shows your GWA, and every subject shows the score you still need to hit your target.',ic:IC.f,hint:'Overview, Tracker and Report'}];
+function Onboarding({open,onClose}){
+ const [i,setI]=useState(0),[dir,setDir]=useState(1),t0=useRef(null),n=TSL.length;
+ useLock(open);
+ useEffect(()=>{if(open){setI(0);setDir(1)}},[open]);
+ const go=d=>{const j=Math.max(0,Math.min(n-1,i+d));if(j===i)return;setDir(d);setI(j)};
+ useEffect(()=>{if(!open)return;const k=e=>{if(e.key==='Escape'){e.stopImmediatePropagation();onClose()}else if(e.key==='ArrowRight')go(1);else if(e.key==='ArrowLeft')go(-1)};window.addEventListener('keydown',k,true);return()=>window.removeEventListener('keydown',k,true)},[open,i]);
+ if(!open)return null;
+ const s=TSL[i],last=i===n-1;
+ return createPortal(<div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Welcome tour">
+  <div className="anim-fade absolute inset-0 bg-black/45 backdrop-blur-md"/>
+  <div className="anim-sheet gcs relative flex w-full max-w-md select-none flex-col overflow-hidden rounded-t-[2rem] sm:rounded-[2rem]" style={{paddingBottom:'env(safe-area-inset-bottom,0px)',touchAction:'pan-y'}}
+   onTouchStart={e=>{const t=e.touches[0];t0.current={x:t.clientX,y:t.clientY}}}
+   onTouchEnd={e=>{const a=t0.current,t=e.changedTouches[0];t0.current=null;if(!a)return;const dx=t.clientX-a.x,dy=t.clientY-a.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.3)go(dx<0?1:-1)}}>
+   <div className="flex h-14 items-center justify-between px-5"><span className="text-xs font-bold text-muted">{i+1} of {n}</span>{!last&&<button onClick={onClose} className="rounded-full px-3 py-1.5 text-sm font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink">Skip</button>}</div>
+   <div key={i} className={cx('flex min-h-[19.5rem] flex-col items-center px-8 pb-3 text-center',dir>0?'slide-r':'slide-l')}>
+    {s.logo?<TigerLogo className="h-28 w-28 drop-shadow-lg"/>
+     :<div className="grid h-28 w-28 place-items-center rounded-[2rem] bg-accent/20 text-accent-text ring-1 ring-accent/30"><svg viewBox="0 0 24 24" className="h-14 w-14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={s.ic}/></svg></div>}
+    <h2 className="mt-6 text-2xl font-black tracking-tight">{s.t}</h2>
+    <p className="mt-2 max-w-sm text-[15px] leading-relaxed text-muted">{s.d}</p>
+    {s.hint&&<span className="mt-4 rounded-full bg-ink/[.07] px-3.5 py-1.5 text-xs font-bold">{s.hint}</span>}</div>
+   <div className="flex items-center justify-center gap-2 pb-4 pt-1" role="tablist" aria-label="Tour steps">{TSL.map((_,k)=><button key={k} role="tab" aria-selected={k===i} aria-label={'Step '+(k+1)} onClick={()=>{setDir(k>i?1:-1);setI(k)}} className={cx('h-2 rounded-full transition-all duration-300',k===i?'w-6 bg-accent':'w-2 bg-ink/20 hover:bg-ink/30')}/>)}</div>
+   <div className="flex gap-2.5 px-6 pb-6">{i>0&&<button onClick={()=>go(-1)} className={BTN+' !py-3.5'}>Back</button>}<button onClick={last?onClose:()=>go(1)} className={BTNP+' flex-1 !py-3.5 !text-base'}>{last?'Get started':'Next'}</button></div></div></div>,document.body);
+}
+
+function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,theme,setTheme,prof,swc}){
+ const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState(()=>{try{const t=localStorage.getItem('gtf-tab');return['o','t','w','p'].includes(t)?t:'o'}catch(e){return'o'}}),[swO,setSwO]=useState(false),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0),[pill,setPill]=useState(false),[accO,setAccO]=useState({a:false,g:false}),[rcf,setRcfS]=useState(()=>{try{const j=JSON.parse(localStorage.getItem('gtf-rcf')||'{}');return{a:j.a==='p'?'p':'g',b:j.b==='p'?'p':'g'}}catch(e){return{a:'g',b:'g'}}}),[exT,setExT]=useState(()=>{try{const t=localStorage.getItem('gtf-ext');return RTHEMES.some(x=>x.id===t)?t:'light'}catch(e){return'light'}});
+ useEffect(()=>{try{localStorage.setItem('gtf-tab',tab)}catch(e){}},[tab]);
+ const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false}),nav=useRef({busy:false,target:-1,enter:0}),flip=useRef({}),flipEl=useRef(null),genTok=useRef(0);
+ const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState(''),[ydel,setYdel]=useState(null);
  const setRcf=(k,v)=>{const n={...rcf,[k]:v};setRcfS(n);try{localStorage.setItem('gtf-rcf',JSON.stringify(n))}catch(e){}};
  const togFx=k=>{const v=!fxs[k];FX.set(k,v);setFxs({...fxs,[k]:v})};
  const commit=n=>{ref.current=n;setSt(n);onSave(n)};
@@ -411,6 +524,12 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const addYear=()=>set(c=>{const y=uid(),s=uid();return{...c,y,s,years:[...c.years,{id:y,name:(ords[c.years.length]||(c.years.length+1)+'th')+' Year',sems:[{id:s,name:'1st Semester',subs:[]}]}]}});
  const addSem=()=>set(c=>{const s=uid(),n=Y.sems.length;return{...c,s,years:c.years.map(y=>y.id!==Y.id?y:{...y,sems:[...y.sems,{id:s,name:(ords[n]||(n+1)+'th')+' Semester',subs:[]}]})}});
  const rename=(f,v)=>set(c=>({...c,years:c.years.map(y=>y.id!==Y.id?y:f==='y'?{...y,name:v}:{...y,sems:y.sems.map(x=>x.id!==S.id?x:{...x,name:v})})}),'rn'+f);
+ // reorder and delete academic years and semesters (every change can be undone with Undo)
+ const swapAt=(a,i,j)=>{if(i<0||j<0||i>=a.length||j>=a.length)return a;const b=[...a];[b[i],b[j]]=[b[j],b[i]];return b};
+ const mvYear=(id,d)=>set(c=>{const i=c.years.findIndex(y=>y.id===id);return{...c,years:swapAt(c.years,i,i+d)}});
+ const mvSem=(yid,id,d)=>set(c=>({...c,years:c.years.map(y=>{if(y.id!==yid)return y;const i=y.sems.findIndex(x=>x.id===id);return{...y,sems:swapAt(y.sems,i,i+d)}})}));
+ const delYear=id=>{set(c=>{if(c.years.length<=1)return c;const i=c.years.findIndex(y=>y.id===id),a=c.years.filter(y=>y.id!==id);if(c.y!==id&&a.some(y=>y.id===c.y))return{...c,years:a};const nx=a[Math.min(i,a.length-1)];return{...c,y:nx.id,s:nx.sems[0].id,years:a}});setYdel(null)};
+ const delSem=(yid,id)=>{set(c=>{const yr=c.years.find(y=>y.id===yid);if(!yr||yr.sems.length<=1)return c;const i=yr.sems.findIndex(x=>x.id===id),a=yr.sems.filter(x=>x.id!==id),years=c.years.map(y=>y.id!==yid?y:{...y,sems:a});if(c.y===yid&&c.s===id)return{...c,s:a[Math.min(i,a.length-1)].id,years};return{...c,years}});setYdel(null)};
  const addSub=()=>{if(!nf.code.trim())return;const m={...mk(nf.code.trim().toUpperCase(),nf.name.trim(),nf.units||'3','',P),ret:nf.ret||'',kind:nf.kind||'major'};upd(x=>({...x,subs:[...x.subs,m]}));setSid(m.id);setNf({code:'',name:'',units:'3',ret:'',kind:'major'});setAdding(false)};
  const delSub=id=>upd(x=>({...x,subs:x.subs.filter(s=>s.id!==id)}));
  const clearScores=ids=>upd(x=>({...x,subs:x.subs.map(s=>!ids||ids.includes(s.id)?{...s,rel:{},acts:Object.fromEntries(Object.entries(s.acts||{}).map(([k,l])=>[k,l.map(a=>({...a,s:'',m:'',est:false}))]))}:s)}));
@@ -474,15 +593,40 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const tFor=(s,i)=>{const W=wts(s,P),B=sbaseOf(s);if(i===last0){const prj=P.map(p=>pproj(s,p,0).proj);return needIn(prj,W,i,untrans(Ts,B))}return +tg[P[i].id]||Math.max(0,untrans(C.pass,B))};
 
  /* ---- subject navigation: tab bar inside the card header, arrows, keyboard, swipe ---- */
- const goTo=i=>{if(i<0||i>=subs.length||i===idx)return;setDir(i>idx?1:-1);setSid(subs[i].id);setEdit(false);setRvMsg(null)};
+ // The outgoing card glides away on the compositor (transform + opacity only), the subject swaps, then the new card glides in with an iOS-style ease-out. Rapid taps retarget instead of stacking.
+ const goTo=(i,x0)=>{if(i<0||i>=subs.length)return;const n=nav.current;
+  if(n.busy){n.target=i;return}
+  if(i===idx)return;
+  const from=idx,el=swRef.current,d=i>idx?1:-1;
+  const commit=()=>{if(!n.busy)return;n.busy=false;const j=n.target;if(j<0||j>=subs.length)return;
+   if(j===from){const e=swRef.current;if(e&&e.animate){e.getAnimations().forEach(a=>a.cancel());e.animate([{opacity:0},{opacity:1}],{duration:220,easing:'ease-out'})}return}
+   n.enter=j>from?1:-1;setDir(n.enter);setSid(subs[j].id);setEdit(false);setRvMsg(null)};
+  n.target=i;
+  if(!el||!el.animate||REDUCED()){n.busy=true;commit();return}
+  n.busy=true;
+  const W=el.offsetWidth||360,x=x0||0,to=-d*Math.min(120,W*.2);
+  const a=el.animate([{transform:'translate3d('+x+'px,0,0)',opacity:x?1-Math.min(Math.abs(x)/(W*1.3),.3):1},{transform:'translate3d('+to+'px,0,0)',opacity:0}],{duration:x?170:140,easing:x?'cubic-bezier(.2,.7,.3,1)':'cubic-bezier(.4,0,1,1)',fill:'forwards'});
+  a.onfinish=commit;a.oncancel=commit;setTimeout(commit,500)};
+ useLayoutEffect(()=>{const n=nav.current,el=swRef.current;if(!n.enter||!el||!el.animate)return;const d=n.enter;n.enter=0;
+  el.getAnimations().forEach(a=>a.cancel());
+  const W=el.offsetWidth||360,x=Math.round(Math.min(140,W*.22))*d;
+  el.animate([{transform:'translate3d('+x+'px,0,0)',opacity:0},{opacity:1,offset:.35},{transform:'translate3d(0,0,0)',opacity:1}],{duration:520,easing:'cubic-bezier(.16,1,.3,1)'})},[cur&&cur.id]);
+ // list re-ordering glides (FLIP): rows that moved slide from where they were to where they are
+ useLayoutEffect(()=>{const root=flipEl.current;if(!root){flip.current={};return}const now={},rd=REDUCED();
+  root.querySelectorAll('[data-flip]').forEach(el=>{const k=el.getAttribute('data-flip'),t=el.offsetTop,p=flip.current[k];now[k]=t;
+   if(!rd&&el.animate&&p!==undefined&&Math.abs(p-t)>1&&el.offsetHeight>0)el.animate([{transform:'translate3d(0,'+(p-t)+'px,0)'},{transform:'translate3d(0,0,0)'}],{duration:420,easing:'cubic-bezier(.2,.9,.25,1)'})});
+  flip.current=now});
  useEffect(()=>{if(!cur)return;const el=document.getElementById('tab-'+cur.id);if(el&&el.scrollIntoView)try{el.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}catch(e){}},[cur&&cur.id,tab]);
  useEffect(()=>{if(tab!=='t'&&tab!=='f')return;const k=e=>{if(/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||'')))return;if(e.key==='ArrowRight')goTo(idx+1);if(e.key==='ArrowLeft')goTo(idx-1)};window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k)});
- const onTS=e=>{if(e.target.closest&&e.target.closest('input,select,textarea,[data-noswipe]'))return;const t=e.touches[0];sw.current={on:true,x:t.clientX,y:t.clientY,lock:null,t:Date.now()}};
+ const rub=(d,W)=>{const a=Math.abs(d);return Math.sign(d)*Math.min(W*.3,Math.pow(a,.78)*1.8)};
+ const onTS=e=>{if(nav.current.busy)return;if(e.target.closest&&e.target.closest('input,select,textarea,[data-noswipe]'))return;const el=swRef.current;if(el&&el.getAnimations)el.getAnimations().forEach(a=>a.cancel());const t=e.touches[0];sw.current={on:true,x:t.clientX,y:t.clientY,lock:null,t:Date.now(),cx:0}};
  const onTM=e=>{const s=sw.current;if(!s.on)return;const t=e.touches[0],dx=t.clientX-s.x,dy=t.clientY-s.y;if(!s.lock&&(Math.abs(dx)>10||Math.abs(dy)>10))s.lock=Math.abs(dx)>Math.abs(dy)*1.3?'x':'y';
-  if(s.lock==='x'&&swRef.current){const el=swRef.current,edge=(dx>0&&idx===0)||(dx<0&&idx===subs.length-1);el.style.transition='none';el.style.transform='translateX('+(dx*(edge?.18:.55))+'px)';el.style.opacity=String(1-Math.min(Math.abs(dx)/520,.4))}};
- const onTE=e=>{const s=sw.current;if(!s.on)return;s.on=false;const el=swRef.current,t=e.changedTouches[0],dx=t.clientX-s.x,v=Math.abs(dx)/Math.max(1,Date.now()-s.t);
-  if(el){el.style.transition='transform .4s cubic-bezier(.2,.8,.2,1),opacity .4s';el.style.transform='';el.style.opacity=''}
-  if(s.lock==='x'&&(Math.abs(dx)>70||(v>.5&&Math.abs(dx)>30)))goTo(dx<0?idx+1:idx-1)};
+  if(s.lock==='x'&&swRef.current){const el=swRef.current,W=el.offsetWidth||360,edge=(dx>0&&idx===0)||(dx<0&&idx===subs.length-1),x=edge?rub(dx,W):dx*.85;s.cx=x;el.style.transform='translate3d('+x+'px,0,0)';el.style.opacity=String(1-Math.min(Math.abs(x)/(W*1.3),.3))}};
+ const onTE=e=>{const s=sw.current;if(!s.on)return;s.on=false;const el=swRef.current;if(!el)return;const t=e.changedTouches[0],dx=t.clientX-s.x,v=Math.abs(dx)/Math.max(1,Date.now()-s.t),W=el.offsetWidth||360,cx=s.cx||0,co=el.style.opacity||'1';
+  const go=s.lock==='x'&&(Math.abs(dx)>Math.min(90,W*.22)||(v>.45&&Math.abs(dx)>28))&&!(dx>0&&idx===0)&&!(dx<0&&idx===subs.length-1);
+  el.style.transform='';el.style.opacity='';
+  if(go){goTo(dx<0?idx+1:idx-1,cx);return}
+  if(cx&&el.animate&&!REDUCED())el.animate([{transform:'translate3d('+cx+'px,0,0)',opacity:co},{transform:'translate3d(0,0,0)',opacity:1}],{duration:480,easing:'cubic-bezier(.2,1.12,.3,1)'})};
 
  /* ---- share / export as image ---- */
  const buildStory=async(hide,mode,theme)=>{
@@ -601,14 +745,30 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
     <button onClick={redo} disabled={!fut.current.length} aria-label="Redo" title="Redo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button></div>
    <button onClick={()=>setPill(v=>!v)} aria-haspopup="dialog" aria-expanded={pill} aria-label={'Year and semester: '+Y.name+', '+S.name} className="flex h-9 max-w-[44vw] items-center gap-1 rounded-full bg-ink/[.07] pl-3.5 pr-2.5 text-[13px] font-extrabold leading-none transition active:scale-95 sm:h-10 sm:max-w-sm sm:text-sm"><span className="truncate">{shortY(Y.name)} - {shortS(S.name)}</span><svg viewBox="0 0 20 20" className={cx('h-4 w-4 shrink-0 text-muted transition-transform duration-300',pill&&'rotate-180')} {...IS} strokeWidth="2"><path d="M5 7.5l5 5 5-5"/></svg></button>
    <div className="flex items-center gap-1 justify-self-end">{SyncBtn()}
-    <button onClick={onSwitch} aria-label="Switch account or group" title="Switch account or group" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d={IC.g}/></svg></button></div></div>
+    <button onClick={()=>swc?setSwO(true):onSwitch()} aria-haspopup="dialog" aria-label="Switch account or group" title={swc&&swc.cur?'Group: '+swc.cur.name+' · switch account or group':'Switch account or group'} className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d={IC.g}/></svg></button></div></div>
   {pill&&<><div className="fixed inset-0 z-40" onClick={()=>setPill(false)}/>
    <div role="dialog" aria-label="Choose year and semester" className="gcs anim-sheet absolute inset-x-0 top-full z-50 mx-auto mt-2 max-h-[60dvh] w-[22rem] max-w-full overflow-y-auto overscroll-contain rounded-3xl p-3">
     {st.years.map(y=><div key={y.id} className="px-1 py-2"><div className={LBL}>{y.name}</div>
      <div className="mt-2 flex flex-wrap gap-2">{y.sems.map(x=>{const on=y.id===Y.id&&x.id===S.id;return <button key={x.id} onClick={()=>pickYS(y.id,x.id)} aria-pressed={on} className={cx('rounded-full px-3.5 py-2 text-sm font-bold transition active:scale-95',on?'bg-accent text-accent-ink shadow':'bg-ink/[.07] hover:bg-ink/[.12]')}>{x.name}</button>})}</div></div>)}
-    <div className="mt-1 flex gap-2 border-t border-line/40 px-1 pt-3"><button className={BTN+' flex-1'} onClick={()=>{addYear();setPill(false)}}>＋ Year</button><button className={BTN+' flex-1'} onClick={()=>{addSem();setPill(false)}}>＋ Semester</button></div></div></>}
+    <div className="mt-1 flex gap-2 border-t border-line/40 px-1 pt-3"><button className={BTN+' flex-1'} onClick={()=>{addYear();setPill(false)}}>＋ Year</button><button className={BTN+' flex-1'} onClick={()=>{addSem();setPill(false)}}>＋ Semester</button></div>
+    <button className={BTN+' mt-2 w-full'} onClick={()=>{setPill(false);setAccO(o=>({...o,ys:true}));setTab('p')}}>Reorder or delete…</button></div></>}
  </header>;
 
+
+ /* ---- years and semesters manager (Profile > Settings > Years and semesters) ---- */
+ const cntX=x=>(x.subs||[]).length+(x.gens||[]).length,plu=(n,w)=>n+' '+w+(n===1?'':'s');
+ const arrowBtn=(on,dis,l,up)=><button type="button" onClick={on} disabled={dis} aria-label={l} title={l} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-ink/[.06] text-ink transition hover:bg-ink/[.12] active:scale-90 disabled:pointer-events-none disabled:opacity-30"><svg viewBox="0 0 20 20" className={cx('h-4 w-4 transition-transform',!up&&'rotate-180')} {...IS} strokeWidth="2.2"><path d="M5 12.5l5-5 5 5"/></svg></button>;
+ const mgRow=(key,title,meta,i,len,up,dn,del,isCur,canDel,askTxt,what)=>{return <div className={cx('rounded-2xl border px-3 py-2.5 transition-colors duration-300',isCur?'border-accent/50 bg-accent/10':'border-line/60 bg-ink/[.05]')}>
+   <div className="flex items-center gap-1.5"><div className="min-w-0 flex-1"><div className="truncate text-sm font-extrabold">{title}</div><div className="truncate text-xs text-muted">{meta}{isCur?' · open now':''}</div></div>
+    {arrowBtn(up,i===0,'Move '+what+' up',true)}{arrowBtn(dn,i===len-1,'Move '+what+' down',false)}
+    <button type="button" onClick={()=>ask({title:'Delete this '+what+'?',msg:askTxt+' You can undo this with the Undo button.',yes:'Delete '+what,onYes:del})} disabled={!canDel} aria-label={'Delete '+what} title={canDel?'Delete '+what:'Cannot delete the only '+what} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-bad/30 text-bad transition hover:bg-bad/10 active:scale-90 disabled:pointer-events-none disabled:opacity-30"><svg viewBox="0 0 20 20" className="h-4 w-4" {...IS} strokeWidth="1.9"><path d="M4 6h12M8 6V4h4v2M6 6l.7 10h6.6L14 6M9 9v4M11 9v4"/></svg></button></div>
+   </div>};
+ const YearMgr=()=>{const yrs=st.years;return <div className="flex flex-col gap-3 border-t border-line/50 pt-4">
+   <div><div className="text-sm font-extrabold">Order and removal</div><p className="mt-0.5 text-xs text-muted">Use the arrows to change the order of your years and semesters. The bin removes one together with its subjects. The app always keeps at least one year, and each year keeps at least one semester.</p></div>
+   <div ref={flipEl} className="relative flex flex-col gap-3">{yrs.map((y,yi)=>{const nY=y.sems.reduce((n,x)=>n+cntX(x),0);return <div key={y.id} data-flip={'y'+y.id} className="relative flex flex-col gap-2">
+     {mgRow('y'+y.id,y.name,plu(y.sems.length,'semester')+' · '+plu(nY,'subject'),yi,yrs.length,()=>mvYear(y.id,-1),()=>mvYear(y.id,1),()=>delYear(y.id),y.id===Y.id,yrs.length>1,'Delete '+y.name+' with '+plu(y.sems.length,'semester')+' and '+plu(nY,'subject')+'?','year')}
+     <div className="ml-3 flex flex-col gap-2 border-l-2 border-line/60 pl-3">{y.sems.map((x,xi)=><div key={x.id} data-flip={'s'+x.id} className="relative">
+      {mgRow('s'+x.id,x.name,plu(cntX(x),'subject'),xi,y.sems.length,()=>mvSem(y.id,x.id,-1),()=>mvSem(y.id,x.id,1),()=>delSem(y.id,x.id),y.id===Y.id&&x.id===S.id,y.sems.length>1,'Delete '+x.name+' of '+y.name+' with '+plu(cntX(x),'subject')+'?','semester')}</div>)}</div></div>})}</div></div>};
 
  /* ---- accordion helpers (Settings, Overview target) ---- */
  const tog=k=>setAccO(o=>({...o,[k]:!o[k]}));
@@ -622,8 +782,12 @@ const ReportPage=()=>{
   return <div className="flex flex-col gap-3">
    <div className="flex flex-wrap items-center justify-between gap-3"><p className="min-w-0 flex-1 text-sm text-muted">{shortY(Y.name)} - {shortS(S.name)}<span className="hidden sm:inline"> · recorded grades only</span></p>
     <button className={BTNP+' !px-4 !py-2.5 sm:!px-5 sm:!py-3 sm:!text-base'} onClick={()=>openShare('report')}><svg viewBox="0 0 24 24" className="h-5 w-5" {...IS}><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Export as Image</button></div>
-   {rcAll.length>0&&C.id!=='pct'&&<div className={cx(CARD,'grid gap-2.5 p-3 sm:grid-cols-2 sm:gap-x-8 sm:p-4')} role="group" aria-label="Choose how each column shows grades">
-    {cols.map(([k,l])=><div key={k} className="flex min-w-0 items-center justify-between gap-3"><span className="min-w-0 truncate text-sm font-extrabold">{l}</span><Seg sm v={rcf[k]} on={v=>setRcf(k,v)} opts={[['g',gLbl],['p','Percentage']]}/></div>)}</div>}
+   {rcAll.length>0&&C.id!=='pct'&&<section className={cx(CARD,'overflow-hidden')}>
+    <button onClick={()=>tog('rf')} aria-expanded={!!accO.rf} aria-controls="rc-format" className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-ink/[.09]">
+     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-text"><svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" {...IS}><path d={IC.s}/></svg></span>
+     <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold">Grade format</span><span className="block truncate text-xs text-muted">{cols.map(([k,l])=>l+': '+(rcf[k]==='p'?'Percentage':gLbl)).join('  ·  ')}</span></span><Chev open={!!accO.rf}/></button>
+    <div id="rc-format" className={cx('acc',accO.rf&&'open')} inert={!accO.rf}><div><div role="group" aria-label="Choose how each column shows grades" className="grid gap-2.5 border-t border-line/50 p-3 sm:grid-cols-2 sm:gap-x-8 sm:p-4">
+     {cols.map(([k,l])=><div key={k} className="flex min-w-0 items-center justify-between gap-3"><span className="min-w-0 truncate text-sm font-extrabold">{l}</span><Seg sm v={rcf[k]} on={v=>setRcf(k,v)} opts={[['g',gLbl],['p','Percentage']]}/></div>)}</div></div></div></section>}
    {rcAll.length?<div className={cx(CARD,'overflow-hidden')}>
     <div className={cx(RCG,'border-b border-line/60 py-3')}><span className={LBL2}>Subject</span><span className={cx(LBL2,'truncate text-right')}>{P[0].name}</span><span className={cx(LBL2,'truncate text-right')}>{single?'Semestral':P[last0].name}</span></div>
     <ul className="divide-y divide-line/40">{rcAll.map(r=><li key={r.id} className={cx(RCG,'py-3')}><div className="min-w-0"><div className="truncate font-extrabold">{r.code}</div><div className="truncate text-xs text-muted">{r.name||'No description'}</div></div>
@@ -664,7 +828,7 @@ const ReportPage=()=>{
       {hBad&&<p className="text-xs font-semibold text-bad">That GWA is outside the {fg(hLo)} to {fg(hHi)} scale, so it is not counted.</p>}
       {!hBad&&(hs.gwa||hs.units)&&!histOk&&<p className="text-xs font-semibold text-muted">Enter both a GWA and units above zero to include it.</p>}
       <div className="grid grid-cols-2 gap-3">{tn('Tracked in app',fw(ayTrk),f2(ayTrkU)+' units')}{tn('Past record',dr?fw(hG):'—',dr?f2(hU)+' units':'Not entered')}</div>
-      {(hs.gwa||hs.units)&&<button className={BTN+' self-start'} onClick={clearHist}>Clear past record</button>}</>)}
+      {(hs.gwa||hs.units)&&<button className={BTN+' self-start'} onClick={()=>ask({title:'Clear your past record?',msg:'The overall GWA and units you entered will be removed.',yes:'Clear record',onYes:clearHist})}>Clear past record</button>}</>)}
     {NA('tg','Target GWA',tOk?'Target '+fg(tT)+' '+dirW:'Set a target to see what you need',<>
       <p className="text-sm text-muted">Enter the cumulative GWA you are aiming for. It is worked out from your current standing and everything still in progress.</p>
       <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold text-muted">Target GWA<Num v={ayt.t} on={v=>setAyt('t',v)} ph={String(C.target)} w="mt-1 w-full"/></label><label className="text-xs font-semibold text-muted">More units to take<Num v={ayt.ex} on={v=>setAyt('ex',v)} ph="0" w="mt-1 w-full"/></label></div>
@@ -699,8 +863,9 @@ const Banners=()=><>
    <button onClick={()=>setAdding(true)} className="shrink-0 rounded-xl border border-dashed border-accent/60 px-3 py-1.5 text-xs font-bold text-accent-text transition hover:bg-accent/10 sm:text-sm" aria-label="Add subject">＋</button></div></div>
   {subs.length>1&&<div className="flex shrink-0 items-center gap-1"><button className="hidden h-8 w-8 rounded-lg text-lg text-muted transition hover:bg-ink/[.09] hover:text-ink disabled:opacity-30 sm:block" onClick={()=>goTo(idx-1)} disabled={idx<=0} aria-label="Previous subject">‹</button><span className="w-9 text-center text-[11px] font-bold tabular-nums text-muted">{idx+1}/{subs.length}</span><button className="hidden h-8 w-8 rounded-lg text-lg text-muted transition hover:bg-ink/[.09] hover:text-ink disabled:opacity-30 sm:block" onClick={()=>goTo(idx+1)} disabled={idx>=subs.length-1} aria-label="Next subject">›</button></div>}</div>;
  const Shell=body=><div onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE} style={{touchAction:'pan-y'}} className="pb-3">
-  <div ref={swRef} className="min-w-0 will-change-transform"><section className={cx(CARD,'sa-'+(idx%6),'overflow-hidden')}>{CardTabs()}
-   <div key={cur.id} className={cx('flex min-w-0 flex-col gap-3.5 p-3.5 sm:gap-6 sm:p-7',dir>0?'slide-r':'slide-l')}>{body}</div></section></div>
+  <section className={cx(CARD,'sa-'+(idx%6),'overflow-hidden')}>{CardTabs()}
+   <div ref={swRef} className="min-w-0" style={{willChange:'transform,opacity',backfaceVisibility:'hidden',WebkitBackfaceVisibility:'hidden'}}>
+    <div key={cur.id} className="flex min-w-0 flex-col gap-3.5 p-3.5 sm:gap-6 sm:p-7">{body}</div></div></section>
   {subs.length>1&&<p className="mt-3 text-center text-[11px] text-muted sm:hidden">Swipe the card left or right to change subject</p>}</div>;
 
  /* ---- tracker body ---- */
@@ -722,7 +887,7 @@ const Banners=()=><>
   <div className={cx('acc',o&&'open')} inert={!o}><div><div className="grid gap-5 border-t border-line/50 p-4 sm:p-5 md:grid-cols-2 md:gap-x-8 md:gap-y-6">
    {DetailsBox(s)}{WeightsBox(s)}{BaseBox(s)}{RetBox(s)}
    {isLast&&<div className="md:col-span-2">{SemMath(s)}</div>}<div className="md:col-span-2">{Reverse(s,p)}</div>
-   <div className="flex gap-2 md:col-span-2"><button className={BTN+' flex-1'} onClick={()=>clearScores([s.id])}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>delSub(s.id)}>Delete subject</button></div></div></div></div></div>};
+   <div className="flex gap-2 md:col-span-2"><button className={BTN+' flex-1'} onClick={()=>ask({title:'Clear scores?',msg:'Every score in '+(s.code||'this subject')+' will be emptied. Blank scores count as 0.',yes:'Clear scores',onYes:()=>clearScores([s.id])})}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>ask({title:'Delete '+(s.code||'this subject')+'?',msg:'The subject, all of its activities and every score will be removed. You can undo this with the Undo button.',yes:'Delete subject',onYes:()=>delSub(s.id)})}>Delete subject</button></div></div></div></div></div>};
 
 const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=actsOf(s,p).some(a=>a.est),md=rvMode[k]||'r',B=sbaseOf(s);return <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line p-3">
   <div className="text-sm font-bold">Reverse calculator <span className="text-xs font-semibold text-muted">for {p.name}</span></div>
@@ -735,8 +900,8 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
    <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{p.name} <span className="ml-1 text-xs font-semibold text-muted">{f2(w)}%<span className="hidden sm:inline"> of semestral</span></span></h4><button className={BTN+' !py-1.5'} onClick={()=>setEdit(!edit)}>{edit?'✓ Done':'Edit activities'}</button></div>
    {!acts.length&&<p className="text-sm text-muted">No activities yet. Add one below.</p>}
    <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-4">{acts.map(a=>{const x=ap(a);return edit
-    ?<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 w-0 min-w-0 flex-1 !text-left px-3')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-14 shrink-0 !px-1 sm:w-[4.5rem]"/><span className="shrink-0 text-muted">%</span><button className={BTNX+' !h-11 !w-11 shrink-0 !p-0'} onClick={()=>delAct(s.id,p.id,a.id)} aria-label="Remove activity" title="Remove activity">✕</button></div>
-    :<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-3"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{a.name||'Activity'}</div><div className="text-xs text-muted">{f2(wgt(a))}% · {x==null?'not entered':f2(x)+'%'}</div>{a.est&&<span className="mt-0.5 inline-block rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span>}</div>
+    ?<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-2"><input value={a.name} onChange={e=>setAct(s.id,p.id,a.id,'name',e.target.value)} className={cx(INP,'h-11 w-0 min-w-0 flex-1 !text-left px-3')} placeholder="Activity name"/><Num v={a.w} on={v=>setAct(s.id,p.id,a.id,'w',v)} ph="wt" w="w-14 shrink-0 !px-1 sm:w-[4.5rem]"/><span className="shrink-0 text-muted">%</span><button className={BTNX+' !h-11 !w-11 shrink-0 !p-0'} onClick={()=>ask({title:'Delete this activity?',msg:'“'+(a.name||'Activity')+'” and its score will be removed from '+p.name+'. You can undo this with the Undo button.',yes:'Delete activity',onYes:()=>delAct(s.id,p.id,a.id)})} aria-label="Remove activity" title="Remove activity">✕</button></div>
+    :<div key={a.id} className="flex w-full min-w-0 items-center gap-1.5 sm:gap-3"><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{a.name||'Activity'}</div><div className="text-xs text-muted">{f2(wgt(a))}% · {x==null?'blank · counts as 0':f2(x)+'%'}</div>{a.est&&<span className="mt-0.5 inline-block rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-text">Possible score</span>}</div>
      <Num nav v={a.s} on={v=>setAct(s.id,p.id,a.id,'s',v)} ph="score" bad={x!=null&&x>100} w={cx('w-16 shrink-0 !px-1 sm:w-20',a.est&&'!border-accent/60 !italic')}/><span className="shrink-0 text-muted">/</span><Num v={a.m} on={v=>setAct(s.id,p.id,a.id,'m',v)} ph="100" w="w-14 shrink-0 !px-1 sm:w-16"/></div>})}</div>
    <button className={BTNP+' self-start'} onClick={()=>{addAct(s.id,p.id);setEdit(true)}}>＋ Add Extra Activity</button>
    {acts.length>0&&<p className={cx('text-xs',Math.abs(wsum-100)>.005?'text-bad':'text-muted')}>Activity weights total {f2(wsum)}%{Math.abs(wsum-100)>.005?' · the grade is scaled to 100%':''}</p>}
@@ -781,7 +946,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     {rp.map((p,i)=><div key={p.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-ink/[.06] p-3">
      <TextIn v={p.name} on={v=>setPeriod(i,{name:v})} ph="Period name" cls="min-w-[8rem] flex-1"/>
      <label className="flex items-center gap-1 text-xs font-semibold text-muted">Weight<Num v={p.w} on={v=>setPeriod(i,{w:v})} w="w-[4.5rem]"/>%</label>
-     {rp.length>1&&<button className={BTNX+' !px-2.5'} onClick={()=>delPeriod(i)} aria-label="Remove period">✕</button>}</div>)}
+     {rp.length>1&&<button className={BTNX+' !px-2.5'} onClick={()=>ask({title:'Delete this grading period?',msg:'“'+(p.name||'This period')+'” and its activities will be removed from every subject in this account. You can undo this with the Undo button.',yes:'Delete period',onYes:()=>delPeriod(i)})} aria-label="Remove period">✕</button>}</div>)}
     <div className="flex flex-wrap items-center gap-2"><button className={BTN} onClick={addPeriod} disabled={rp.length>=5}>＋ Add period</button><span className={cx('text-xs font-semibold',Math.abs(tw-100)>.005?'text-bad':'text-muted')}>Weights total {f2(tw)}%{Math.abs(tw-100)>.005?' (scaled to 100%)':''}</span></div>
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line/60 bg-ink/[.06] p-3"><span className="text-sm font-bold">Default Base</span><Num v={st.cfg&&st.cfg.base!==undefined?st.cfg.base:'0'} on={v=>setCfg({base:v},'cfgbase')} w="w-20"/></div>
     <p className="text-xs text-muted">These weights and this Base are the defaults for every subject. Any subject can change its own period weights and Base on its card. The curve is applied to the <b>semestral grade</b> (Prelims + Finals combined): (Raw ÷ 100) × (100 − Base) + Base.</p></>)}
@@ -792,13 +957,14 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
      <label className="text-sm font-semibold">Passing mark and default retention (percent)<div className="mt-1"><Num v={st.cfg&&st.cfg.pass!==undefined?st.cfg.pass:String(PRESETS[C.id].pass)} on={setPass} w="w-28"/></div></label></div>
     <p className="text-xs text-muted">{C.dir<0?`Lower is better on this scale, so a target of ${fg(C.target)} means ${fg(C.target)} or lower.`:`Higher is better on this scale, so a target of ${fg(C.target)} means ${fg(C.target)} or higher.`} You need about {f2(C.need)}% in a subject to land on the target.</p>
     {C.table&&<div className="flex flex-col gap-2"><div className="text-sm font-bold">Grade table <span className="text-xs font-semibold text-muted">(minimum percent → grade)</span></div>
-     {raw.map((r,i)=><div key={i} className="flex items-center gap-2"><Num v={String(r[0])} on={v=>setRow(i,0,v)} ph="min %" w="w-24"/><span className="text-muted">→</span><Num v={String(r[1])} on={v=>setRow(i,1,v)} ph="grade" w="w-24"/><button className={BTN+' !px-3'} onClick={()=>setCfg({table:str().filter((_,k)=>k!==i)})} aria-label="Remove row">✕</button></div>)}
+     {raw.map((r,i)=><div key={i} className="flex items-center gap-2"><Num v={String(r[0])} on={v=>setRow(i,0,v)} ph="min %" w="w-24"/><span className="text-muted">→</span><Num v={String(r[1])} on={v=>setRow(i,1,v)} ph="grade" w="w-24"/><button className={BTN+' !px-3'} onClick={()=>ask({title:'Delete this grade row?',msg:'The row will be removed from the grade table.',yes:'Delete row',onYes:()=>setCfg({table:str().filter((_,k)=>k!==i)})})} aria-label="Remove row">✕</button></div>)}
      <div className="flex gap-2"><button className={BTN} onClick={()=>setCfg({table:[...str(),['','']]})}>＋ Add row</button><button className={BTN} onClick={()=>setCfg({table:null})}>Reset to preset</button></div></div>}</>)}
-   {A('ys','Years and semesters','Rename, switch or add',<>
+   {A('ys','Years and semesters','Rename, reorder, add or delete',<>
     <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Academic year<TextIn v={Y.name} on={v=>rename('y',v)} cls="mt-1"/></label><label className="text-sm font-semibold">Semester<TextIn v={S.name} on={v=>rename('s',v)} cls="mt-1"/></label></div>
-    <div className="flex flex-wrap gap-2"><select value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select><select value={S.id} onChange={e=>set(c=>({...c,s:e.target.value}))} className={SEL}>{Y.sems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select><button className={BTN} onClick={addYear}>＋ Year</button><button className={BTN} onClick={addSem}>＋ Semester</button></div></>)}
+    <div className="flex flex-wrap gap-2"><select value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select><select value={S.id} onChange={e=>set(c=>({...c,s:e.target.value}))} className={SEL}>{Y.sems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select><button className={BTN} onClick={addYear}>＋ Year</button><button className={BTN} onClick={addSem}>＋ Semester</button></div>
+    {YearMgr()}</>)}
    {A('dt','Data','Backup, import and clearing',<>
-    <div className="flex flex-wrap gap-2"><button className={BTN} onClick={()=>clearScores()}>Clear all scores here</button>
+    <div className="flex flex-wrap gap-2"><button className={BTN} onClick={()=>ask({title:'Clear all scores here?',msg:'Every score in every subject of this semester will be emptied. Blank scores count as 0. You can undo this with the Undo button.',yes:'Clear all scores',onYes:()=>clearScores()})}>Clear all scores here</button>
      {CAN_FILE&&<><button className={BTN} onClick={exportData}>Export data</button><label className={BTN+' cursor-pointer'}>Import data<input type="file" accept="application/json,.json" onChange={importData} className="hidden"/></label></>}</div>
     <p className="text-xs text-muted">Everything saves automatically. Every change can be undone with the Undo button at the top of the screen. Export a backup now and then.</p></>)}</>};
 
@@ -807,24 +973,49 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
   const run=async(fn,ok)=>{setPm('');const r=await fn();if(r==='ok'){setPm(ok);setPf(f=>({...f,o:'',n:'',n2:'',go:'',gn:'',gn2:''}))}else setPm(r)};
   const pw=(k,ph)=><TextIn type="password" v={pf[k]} on={v=>setPf({...pf,[k]:v})} ph={ph}/>;
   const sec=CARD+' flex flex-col gap-3 p-5 sm:p-6';
+  const MembersUI=()=>{const ad=prof.admin,rows=ad.rows,nAdm=rows.filter(r=>r.admin).length;
+  const doRole=(r,on)=>ask({tone:'accent',title:on?'Make '+r.name+' an admin?':r.me?'Step down as admin?':'Remove admin access?',
+   msg:on?r.name+' will be able to change the group passcode and manage members.':r.me?'You will no longer be able to change the group passcode or manage members.':r.name+' will no longer be able to change the group passcode or manage members.',
+   yes:on?'Make admin':r.me?'Step down':'Remove admin',onYes:()=>run(()=>ad.set(r,on),on?r.name+' is now an admin.':r.me?'You are no longer an admin.':r.name+' is no longer an admin.')});
+  const doGive=r=>ask({tone:'accent',title:'Transfer adminship to '+r.name+'?',msg:r.name+' becomes an admin and you step down.',final:'You will lose access to the group passcode and to Manage members, and only an admin can give it back. Transfer anyway?',next:'Continue',yes:'Transfer adminship',onYes:()=>run(()=>ad.give(r),'Adminship moved to '+r.name+'.')});
+  const sb=BTN+' !px-3 !py-1.5 !text-xs';
+  return <><p className="text-sm text-muted">Admins can change the group passcode and manage members. A group always keeps at least one admin.</p>
+   <div className="flex flex-col gap-2">{rows.map(r=><div key={r.key} className="flex flex-col gap-2.5 rounded-2xl border border-line/60 bg-ink/[.05] p-3">
+    <div className="flex items-center gap-3"><Avatar a={{name:r.name,pic:r.pic}} s="h-10 w-10" t="text-xl"/><div className="min-w-0 flex-1"><div className="truncate text-sm font-extrabold">{r.name}{r.me&&<span className="ml-1.5 text-xs font-semibold text-muted">You</span>}</div><div className="truncate text-xs text-muted">{r.bio||(r.local?'On this device':'Member')}</div></div>{r.admin&&<span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-[11px] font-extrabold text-accent-ink">Admin</span>}</div>
+    <div className="flex flex-wrap gap-2">{r.admin?<button className={sb} disabled={nAdm<=1} onClick={()=>doRole(r,false)}>{r.me?'Step down':'Remove admin'}</button>:<button className={sb} disabled={r.ghost} onClick={()=>doRole(r,true)}>Make admin</button>}
+     {!r.me&&!r.ghost&&<button className={sb} onClick={()=>doGive(r)}>Transfer adminship</button>}</div>
+    {r.admin&&nAdm<=1&&<p className="text-xs text-muted">The only admin cannot step down. Make someone else an admin first.</p>}</div>)}
+    {!rows.length&&<p className="text-sm text-muted">No members yet.</p>}</div>
+   <button className={BTN+' self-start'} onClick={()=>ad.refresh()}>Refresh members</button></>};
   return <div className="flex flex-col gap-4">
    <section className={sec}><h2 className="text-lg font-extrabold">Profile</h2>
     {guest?<p className="text-sm text-muted">You are in guest mode. Save this session as an account from the banner to keep it.</p>:<>
-     <div className="flex items-center gap-4"><Avatar a={acct} s="h-20 w-20" t="text-4xl"/><div className="flex flex-col gap-2"><label className={BTN+' cursor-pointer'}>{acct.pic?'Change picture':'Upload picture'}<input type="file" accept="image/*" className="hidden" onChange={photo}/></label>{acct.pic&&<button className={BTN} onClick={()=>prof.rename({pic:''})}>Remove picture</button>}</div></div>
+     <div className="flex items-center gap-4"><Avatar a={acct} s="h-20 w-20" t="text-4xl"/><div className="flex flex-col gap-2"><label className={BTN+' cursor-pointer'}>{acct.pic?'Change picture':'Upload picture'}<input type="file" accept="image/*" className="hidden" onChange={photo}/></label>{acct.pic&&<button className={BTN} onClick={()=>ask({title:'Remove your picture?',msg:'Your account goes back to its initial.',yes:'Remove picture',onYes:()=>prof.rename({pic:''})})}>Remove picture</button>}</div></div>
      <label className="text-sm font-semibold">Name<TextIn v={acct.name||''} on={v=>prof.rename({name:v})} cls="mt-1"/></label>
      <label className="text-sm font-semibold">Bio<TextIn v={acct.bio||''} on={v=>prof.rename({bio:v.slice(0,80)})} ph="Program and year (optional)" cls="mt-1"/></label></>}</section>
    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
     {Settings()}
     {cloudA&&A('a','Account passcode','Change how you unlock this account',<><p className="text-sm text-muted">Signed in as <b className="text-ink">{acct.cloud.sn}</b>. After changing it, other devices must remove this account and unlock it again with the new passcode.</p>{pw('o','Current passcode')}{pw('n','New passcode (6+ characters)')}{pw('n2','Repeat new passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changePass(pf.o,pf.n,pf.n2),'Account passcode changed.')}>Change passcode</button></>)}
-    {gc&&A('g','Group passcode','Change the passcode for '+g.name,<><p className="text-sm text-muted">Group <b className="text-ink">{g.name}</b>. After changing it, members must rejoin the group with the new passcode.</p>{pw('go','Current group passcode')}{pw('gn','New group passcode (6+ characters)')}{pw('gn2','Repeat new group passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeGroupPass(pf.go,pf.gn,pf.gn2),'Group passcode changed.')}>Change group passcode</button>
+    {!guest&&g&&prof.admin.is&&A('mm','Manage members','Promote, demote or transfer adminship in '+g.name,MembersUI())}
+    {gc&&prof.admin.is&&A('g','Group passcode','Change the passcode for '+g.name,<><p className="text-sm text-muted">Group <b className="text-ink">{g.name}</b>. After changing it, members must rejoin the group with the new passcode.</p>{pw('go','Current group passcode')}{pw('gn','New group passcode (6+ characters)')}{pw('gn2','Repeat new group passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeGroupPass(pf.go,pf.gn,pf.gn2),'Group passcode changed.')}>Change group passcode</button>
      <label className="mt-2 text-sm font-semibold">Recovery email<Tip t="Members who forget a passcode can email this address from the unlock screen. It is stored with the group and visible to people who join it."/><TextIn type="email" v={g.rec||''} on={v=>prof.setRec(v)} ph="name@example.com" cls="mt-1"/></label></>)}</div>
    {pm&&<p className="rounded-2xl border border-line bg-ink/[.06] px-4 py-3 text-sm font-semibold" role="status">{pm}</p>}
-   <section className={sec}><h2 className="text-lg font-extrabold">Session</h2><p className="text-sm text-muted">Switch to another account or group.</p><button className={BTN+' self-start'} onClick={onSwitch}>Switch account</button></section></div>};
+   <section className={sec}><h2 className="text-lg font-extrabold">Session</h2><p className="text-sm text-muted">{swc&&swc.cur?<>Active group: <b className="text-ink">{swc.cur.name}</b>. {prof.admin.is?'You are an admin of this group. ':''}Switch groups or accounts without signing out.</>:'Switch to another account or group.'}</p><div className="flex flex-wrap gap-2">{swc&&<button className={BTNP+' !w-auto'} onClick={()=>setSwO(true)}>Switch group or account</button>}<button className={BTN+' self-start'} onClick={onSwitch}>{swc?'All groups and accounts':'Switch account'}</button><button className={BTN+' self-start'} onClick={prof.tour}>Replay tutorial</button></div></section></div>};
   return <div className="mx-auto w-full max-w-[1240px] overflow-x-clip px-5 pb-44 pt-[var(--tp)] sm:px-8 md:pb-40">
   <main className="flex flex-col gap-4 sm:gap-7">
    {Top()}{tab!=='o'&&<h1 className="px-1 pt-2 text-[2.1rem] font-black leading-none tracking-tight sm:text-5xl">{TITLES[tab]||'Overview'}</h1>}{Banners()}
    <div key={tab} className="anim-rise flex flex-col gap-5 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='w'?ReportPage():ProfileView()}</div></main>
   <BottomNav tab={tab} on={k=>{setPill(false);setTab(k)}}/>
+
+  <Sheet open={swO&&!!swc} onClose={()=>setSwO(false)} title="Switch group or account">{swc&&<>
+   <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.06] p-3"><Avatar a={acct} s="h-12 w-12" t="text-2xl"/><div className="min-w-0 flex-1"><div className="truncate font-extrabold">{acct.name||'Account'}</div><div className="truncate text-xs text-muted">{swc.cur?'Viewing '+swc.cur.name:''}{swc.mine.length>1?' · in '+swc.mine.length+' groups':''}</div></div></div>
+   <div><div className={LBL}>Your groups</div><div className="mt-2 flex flex-col gap-2">{swc.groups.slice().sort((x,y)=>(swc.mine.includes(y.id)?1:0)-(swc.mine.includes(x.id)?1:0)).map(g=>{const mem=swc.mine.includes(g.id),on=mem&&g.id===swc.gid;return <div key={g.id} className={cx('flex items-center gap-3 rounded-2xl border p-2.5 transition',on?'border-accent bg-accent/15':'border-line bg-ink/[.04]')}>
+    <button disabled={!mem} onClick={()=>{swc.setGroup(g.id);setSwO(false)}} aria-pressed={on} className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-default"><GroupIcon g={g} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{g.name}</span><span className="block truncate text-xs text-muted">{g.cloud?'cloud group':'this device'}{on?' · active':mem?'':' · not a member'}</span></span>{on&&<svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-accent-text" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}</button>
+    {!mem&&<button onClick={()=>{swc.join(g.id)}} className={BTN+' !px-3 !py-1.5 !text-xs'}>Add</button>}</div>})}</div>
+    {!swc.groups.length&&<p className="text-sm text-muted">No groups yet.</p>}</div>
+   {swc.cur&&swc.accts.length>1&&<div><div className={LBL}>Accounts in {swc.cur.name}</div><div className="mt-2 flex flex-col gap-2">{swc.accts.map(x=>{const on=x.id===swc.aid;return <button key={x.id} onClick={()=>{setSwO(false);if(!on)swc.pick(x.id)}} aria-pressed={on} className={cx('flex items-center gap-3 rounded-2xl border p-2.5 text-left transition',on?'border-accent bg-accent/15':'border-line bg-ink/[.04] hover:border-accent/60')}><Avatar a={x} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{x.name||'Untitled'}</span><span className="block truncate text-xs text-muted">{x.bio||(x.cloud?'Cloud account':'Local account')}</span></span>{on&&<span className="text-xs font-bold text-accent-text">Active</span>}</button>})}</div></div>}
+   <button className={BTN} onClick={()=>{setSwO(false);onSwitch()}}>All groups and accounts</button>
+   <p className="text-center text-xs text-muted">Switching never signs you out. Your session is remembered on this device.</p></>}</Sheet>
   <Sheet open={adding} onClose={()=>setAdding(false)} title="Add subject">
    <label className="text-sm font-semibold">Code<TextIn v={nf.code} on={v=>setNf({...nf,code:v})} ph="Subject code" cls="mt-1"/></label>
    <label className="text-sm font-semibold">Name (optional)<TextIn v={nf.name} on={v=>setNf({...nf,name:v})} cls="mt-1"/></label>
@@ -848,16 +1039,16 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
    8. HOME  (cloud GROUPS first, then the accounts inside a group)
    ===================================================================== */
 function Home({book,theme,setTheme,ctl,busy,at}){
- const [gv,setGv]=useState(null),[sh,setSh]=useState(null),[arm,setArm]=useState(null),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
+ const [gv,setGvS]=useState(()=>{try{const v=localStorage.getItem('gtf-hv');return book.groups.some(g=>g.id===v)?v:null}catch(e){return null}}),setGv=v=>{setGvS(v);try{v?localStorage.setItem('gtf-hv',v):localStorage.removeItem('gtf-hv')}catch(e){}},[sh,setSh]=useState(null),[arm,setArm]=useState(null),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
  const [ng,setNg]=useState({name:'',icon:'',pic:'',cloud:true,pass:'',rec:''}),[jf,setJf]=useState({name:'',pass:''}),[na,setNa]=useState({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false}),[uf,setUf]=useState({pass:''}),[sf,setSf]=useState({name:'',pass:''}),[ef,setEf]=useState({pass:''}),[gp,setGp]=useState('');
  const grp=book.groups.find(g=>g.id===gv)||null;
- const localsOf=g=>book.list.filter(a=>a.gid===g.id);
- const remotesOf=g=>{const mids=new Set(localsOf(g).map(a=>a.mid).filter(Boolean));return Object.entries(g.members||{}).filter(([mid])=>!mids.has(mid)).map(([mid,m])=>({mid,...m}))};
+ const localsOf=g=>book.list.filter(a=>gidsOf(a).includes(g.id));
+ const remotesOf=g=>{const mids=new Set(localsOf(g).flatMap(a=>[a.mid,...(a.alt||[])]).filter(Boolean));return Object.entries(g.members||{}).filter(([mid])=>!mids.has(mid)).map(([mid,m])=>({mid,...m}))};
  const countOf=g=>localsOf(g).length+remotesOf(g).length;
  const photo=(e,cb2)=>{const fl=e.target.files&&e.target.files[0];e.target.value='';if(!fl)return;resizeImg(fl).then(cb2).catch(()=>setMsg('Could not read that image.'))};
  const go=async(fn,after)=>{setCb(true);setCm('');try{const r=await fn();if(r==='ok'||String(r).startsWith('ok:')){setSh(null);if(after)after(String(r));}else setCm(r)}catch(e){setCm('Something went wrong. Try again.')}setCb(false)};
  const pickBackup=e=>{const fl=e.target.files&&e.target.files[0];e.target.value='';if(!fl||!grp)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result),d=j&&j.data?j.data:j;if(!okState(d))throw new Error('bad');ctl.imp(grp.id,j.account||'Imported account',d);setMsg('Backup added as a new local account ✓')}catch(x){setMsg('That file is not a valid backup.')}};r.onerror=()=>setMsg('Could not read that file.');r.readAsText(fl)};
- const Photo=(o,onPic,onClear,Ico)=><div className="flex items-center gap-4">{Ico?Ico:<Avatar a={o} s="h-16 w-16" t="text-4xl"/>}<div className="flex flex-col gap-2"><label className={BTN+' cursor-pointer'}>{o.pic?'Change picture':'Upload picture'}<input type="file" accept="image/*" className="hidden" onChange={e=>photo(e,onPic)}/></label>{o.pic&&<button className={BTN} onClick={onClear}>Remove picture</button>}</div></div>;
+ const Photo=(o,onPic,onClear,Ico)=><div className="flex items-center gap-4">{Ico?Ico:<Avatar a={o} s="h-16 w-16" t="text-4xl"/>}<div className="flex flex-col gap-2"><label className={BTN+' cursor-pointer'}>{o.pic?'Change picture':'Upload picture'}<input type="file" accept="image/*" className="hidden" onChange={e=>photo(e,onPic)}/></label>{o.pic&&<button className={BTN} onClick={()=>ask({title:'Remove this picture?',yes:'Remove picture',onYes:onClear})}>Remove picture</button>}</div></div>;
  const Emojis=(list,v,on)=>!list.length?null:<div className="flex flex-wrap gap-2">{list.map(e=><button key={e} onClick={()=>on(e)} className={cx('h-10 w-10 rounded-xl text-xl transition',v===e?'bg-accent/30 ring-2 ring-accent':'bg-ink/[.06] hover:bg-line/60')}>{e}</button>)}</div>;
  const Err=()=>cm?<p className="text-xs font-semibold text-bad">{cm}</p>:null;
  const ga=sh&&sh.t==='editAcct'?book.list.find(a=>a.id===sh.id):null,gg=sh&&sh.t==='editGroup'?book.groups.find(g=>g.id===sh.id):null,um=sh&&sh.t==='unlock'&&grp&&grp.members?{mid:sh.mid,...(grp.members[sh.mid]||{})}:null;
@@ -868,7 +1059,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editGroup',id:g.id});setArm(null);setCm('');setGp('')},'Edit group')}
   <GroupIcon g={g} s="h-14 w-14" t="text-3xl"/>
   <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{g.name}</div><div className="mt-0.5 truncate text-xs text-muted">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'this device'}</div></div></div>;
- const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
+ const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})},'Edit account')}
   <Avatar a={a} s="h-16 w-16" t="text-3xl"/>
   <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{a.name||'Untitled'}</div><div className="text-[11px] font-semibold text-muted" title={a.cloud?'Cloud account':'Local-only account'}>{a.cloud?'Cloud':'Local'}</div></div>
@@ -889,12 +1080,13 @@ function Home({book,theme,setTheme,ctl,busy,at}){
   {people.length>0&&<><h2 className="mb-3 mt-9 text-center text-lg font-extrabold">Profiles</h2><div className="flex flex-wrap justify-center gap-3">{people.map(AcctCard)}</div></>}
   <div className="mt-10 flex flex-col items-center gap-2.5 border-t border-line/60 pt-5 text-center"><div className={LBL}>Add a group</div>
    <div className="flex flex-wrap justify-center gap-2"><button className={BTN+' !px-3 !py-1.5 !text-xs'} onClick={NewG}>＋ Create group</button><button className={BTN+' !px-3 !py-1.5 !text-xs'} onClick={JoinG} disabled={!CLOUD}>Join a group</button></div>
+   <button className="mt-1 text-xs font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={ctl.tour}>How this app works</button>
    {!CLOUD&&<p className="max-w-sm text-xs text-muted">Cloud sync is off. Add your database URL in config.js to join groups and sync between devices.</p>}</div></>};
  
 const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a.last||0)||(a.name||'').localeCompare(b.name||'')),rs=remotesOf(grp);return <>
   <div className="anim-rise relative flex flex-col items-center gap-2 pb-5 pt-14 text-center sm:pt-14"><button className={BTN+' !px-3 absolute left-0 top-2'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-16 w-16" t="text-3xl"/><div className="min-w-0 max-w-full"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'this device only'}</div></div>
    <button className={BTN+' !px-3 absolute right-0 top-2'} onClick={()=>{setSh({t:'editGroup',id:grp.id});setArm(null);setCm('');setGp('')}} aria-label="Edit group">Edit</button></div>
-  <div className="mb-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2"><button className={BTNP} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:!CLOUD})}}>＋ New Account{CLOUD?' (cloud)':''}</button>{CLOUD&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:true})}}>or create a local-only account</button>}</div>
+  <div className="mb-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2"><button className={BTNP} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:!CLOUD})}}>＋ New Account{CLOUD?' (cloud)':''}</button>{CLOUD&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:true})}}>or create a local-only account</button>}{book.list.some(a=>!gidsOf(a).includes(grp.id))&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>setSh({t:'addEx'})}>or add an existing account</button>}</div>
   {!ls.length&&!rs.length&&<p className={cx(CARD,'p-6 text-center text-sm text-muted')}>No accounts in this group yet. Tap “New Account” to add the first one.</p>}
   <div className="flex flex-wrap justify-center gap-3">{ls.map(AcctCard)}{rs.map(LockedCard)}</div>
   <div className="mt-8 flex flex-col items-center gap-3 text-center text-xs text-muted">
@@ -924,10 +1116,10 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    {!gg.pic&&Emojis(GEMO,gg.icon,e=>ctl.editGroup(gg.id,{icon:e}))}
    <label className="text-sm font-semibold">Group name<TextIn v={gg.name} on={v=>ctl.editGroup(gg.id,{name:v})} ph="Group name" cls="mt-1"/></label>
    {CLOUD&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">Cloud</div>
-    {gg.cloud?<><p className="text-sm text-muted">Synced as <b className="text-ink">{gg.cloud.sn}</b>. Accounts you create here as cloud accounts show up on every device that joins this group.</p><label className="text-sm font-semibold">Recovery email<TextIn type="email" v={gg.rec||''} on={v=>ctl.editGroup(gg.id,{rec:v})} ph="name@example.com" cls="mt-1"/></label></>
+    {gg.cloud?<><p className="text-sm text-muted">Synced as <b className="text-ink">{gg.cloud.sn}</b>. Accounts you create here as cloud accounts show up on every device that joins this group.</p>{ctl.canAdmin(gg.id)&&<label className="text-sm font-semibold">Recovery email<TextIn type="email" v={gg.rec||''} on={v=>ctl.editGroup(gg.id,{rec:v})} ph="name@example.com" cls="mt-1"/></label>}</>
      :<><p className="text-xs text-muted">This group lives on this device only.</p><TextIn type="password" v={gp} on={setGp} ph="Group passcode (6+ characters)"/>{Err()}<button disabled={cb} className={BTN} onClick={()=>go(()=>ctl.enableGroupCloud(gg.id,gp),()=>setGp(''))}>Turn on cloud for this group</button></>}</div>}
-   <div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>{if(arm==='g'+gg.id){ctl.deleteGroup(gg.id,false);setSh(null);setArm(null);setGv(null)}else{setArm('g'+gg.id);setTimeout(()=>setArm(x=>x==='g'+gg.id?null:x),4000)}}}>{arm==='g'+gg.id?'Tap again to remove from this device':'Remove group from this device'}</button>
-    {gg.cloud&&<button className={BTNX} onClick={()=>{if(arm==='G'+gg.id){ctl.deleteGroup(gg.id,true);setSh(null);setArm(null);setGv(null)}else{setArm('G'+gg.id);setTimeout(()=>setArm(x=>x==='G'+gg.id?null:x),4000)}}}>{arm==='G'+gg.id?'Tap again to delete for everyone':'Delete group from the cloud too'}</button>}
+   <div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+gg.name+'” from this device?',msg:'The group leaves this device and its accounts move to another group. No account data is deleted.',yes:'Remove group',onYes:()=>{ctl.deleteGroup(gg.id,false);setSh(null);setGv(null)}})}>Remove group from this device</button>
+    {gg.cloud&&ctl.canAdmin(gg.id)&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+gg.name+'” for everyone?',msg:'The group is deleted from the cloud, so nobody can join it or see its member list again.',next:'Continue',final:'This cannot be undone. Every member loses the group on every device the next time they open the app. Delete it anyway?',yes:'Yes, delete for everyone',onYes:()=>{ctl.deleteGroup(gg.id,true);setSh(null);setGv(null)}})}>Delete group from the cloud too</button>}
     <p className="text-xs text-muted">Accounts in a removed group move to another group. Account data is never deleted by removing a group.</p></div></>}</Sheet>
 
   <Sheet open={!!sh&&sh.t==='newAcct'&&!!grp} onClose={()=>setSh(null)} title={sh&&sh.local?'New local-only account':'New Account (cloud)'}>
@@ -936,29 +1128,33 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    <label className="text-sm font-semibold">Name<TextIn v={na.name} on={v=>setNa({...na,name:v})} ph="Your name" cls="mt-1"/></label>
    <label className="text-sm font-semibold">Bio <span className="text-xs font-normal text-muted">(optional)</span><TextIn v={na.bio} on={v=>setNa({...na,bio:v.slice(0,80)})} ph="Program and year (optional)" cls="mt-1"/></label>
    {sh&&!sh.local&&<><TextIn type="password" v={na.pass} on={v=>setNa({...na,pass:v})} ph="Account passcode (6+ characters)"/><p className="-mt-3 text-xs text-muted">The name and passcode together sign you in on any device. Keep the passcode private.</p></>}
-   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.createAccount({...na,gid:grp.id,local:sh.local}),r=>ctl.open(r.slice(3)))}>{cb?'Working…':sh&&sh.local?'Create local account':'Create cloud account'}</button></Sheet>
+   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.createAccount({...na,gid:grp.id,local:sh.local}),r=>ctl.open(r.slice(3),grp&&grp.id))}>{cb?'Working…':sh&&sh.local?'Create local account':'Create cloud account'}</button></Sheet>
+
+  <Sheet open={!!sh&&sh.t==='addEx'&&!!grp} onClose={()=>setSh(null)} title="Add an existing account">{grp&&<>
+   <p className="text-sm text-muted">Accounts already on this device can belong to more than one group. Pick one to add it to <b className="text-ink">{grp.name}</b>.</p>
+   <div className="flex flex-col gap-2">{book.list.filter(a=>!gidsOf(a).includes(grp.id)).map(a=><button key={a.id} onClick={()=>{ctl.rename(a.id,{gids:[...gidsOf(a),grp.id]});setSh(null)}} className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.04] p-2.5 text-left transition hover:border-accent/60"><Avatar a={a} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{a.name||'Untitled'}</span><span className="block truncate text-xs text-muted">{a.bio||(a.cloud?'Cloud account':'Local account')}</span></span><span className="text-xs font-bold text-accent-text">Add</span></button>)}</div></>}</Sheet>
 
   <Sheet open={!!um} onClose={()=>setSh(null)} title="Unlock account">{um&&<>
    <div className="flex items-center gap-3"><Avatar a={{pic:um.p,emoji:um.e||''}} s="h-14 w-14" t="text-3xl"/><div className="min-w-0"><div className="truncate font-extrabold">{um.n}</div><div className="line-clamp-2 text-xs text-muted">{um.b}</div></div></div>
    <TextIn type="password" v={uf.pass} on={v=>setUf({pass:v})} ph="Account passcode"/>
-   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.unlock(grp.id,um.mid,uf.pass),r=>ctl.open(r.slice(3)))}>{cb?'Working…':'Unlock'}</button>{grp.rec?<a className="text-center text-xs font-semibold text-accent-text underline" href={'mailto:'+grp.rec+'?subject='+encodeURIComponent('Passcode help for '+(um.n||'my account'))+'&body='+encodeURIComponent('Hi, I forgot the passcode for the account "'+(um.n||'')+'" in the group "'+grp.name+'". Could you help me recover it?')}>Forgot passcode? Email the group creator</a>:<p className="text-center text-xs text-muted">Forgot the passcode? This group has no recovery email, so ask the group creator.</p>}</>}</Sheet>
+   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.unlock(grp.id,um.mid,uf.pass),r=>ctl.open(r.slice(3),grp&&grp.id))}>{cb?'Working…':'Unlock'}</button>{grp.rec?<a className="text-center text-xs font-semibold text-accent-text underline" href={'mailto:'+grp.rec+'?subject='+encodeURIComponent('Passcode help for '+(um.n||'my account'))+'&body='+encodeURIComponent('Hi, I forgot the passcode for the account "'+(um.n||'')+'" in the group "'+grp.name+'". Could you help me recover it?')}>Forgot passcode? Email the group creator</a>:<p className="text-center text-xs text-muted">Forgot the passcode? This group has no recovery email, so ask the group creator.</p>}</>}</Sheet>
 
   <Sheet open={!!sh&&sh.t==='signin'&&!!grp} onClose={()=>setSh(null)} title="Sign in to a cloud account">
    <p className="text-sm text-muted">Use the sync name and passcode of an account created on another device. It is added to this group.</p>
    <TextIn v={sf.name} on={v=>setSf({...sf,name:v})} ph="Sync name"/><TextIn type="password" v={sf.pass} on={v=>setSf({...sf,pass:v})} ph="Passcode"/>
-   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.signIn(grp.id,sf.name,sf.pass),r=>ctl.open(r.slice(3)))}>{cb?'Working…':'Sign in'}</button></Sheet>
+   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.signIn(grp.id,sf.name,sf.pass),r=>ctl.open(r.slice(3),grp&&grp.id))}>{cb?'Working…':'Sign in'}</button></Sheet>
 
   <Sheet open={!!ga} onClose={()=>{setSh(null);setArm(null)}} title="Edit account">{ga&&<>
    {Photo(ga,pic=>ctl.rename(ga.id,{pic}),()=>ctl.rename(ga.id,{pic:''}))}
    {!ga.pic&&Emojis(EMO,ga.emoji,e=>ctl.rename(ga.id,{emoji:e}))}
    <label className="text-sm font-semibold">Name<TextIn v={ga.name} on={v=>ctl.rename(ga.id,{name:v})} ph="Account name" cls="mt-1"/></label>
    <label className="text-sm font-semibold">Bio<TextIn v={ga.bio||''} on={v=>ctl.rename(ga.id,{bio:v.slice(0,80)})} ph="A short line about you" cls="mt-1"/></label>
-   <label className="text-sm font-semibold">Group<select value={ga.gid} onChange={e=>ctl.rename(ga.id,{gid:e.target.value})} className={SEL+' mt-1 block w-full !py-3'}>{book.groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></label>
+   <div className="text-sm font-semibold">Groups<div className="mt-1.5 flex flex-col gap-1.5">{book.groups.map(g=>{const cur=gidsOf(ga),on=cur.includes(g.id);return <label key={g.id} className={cx('flex items-center gap-2.5 rounded-xl border px-3 py-2 text-sm font-semibold',on?'border-accent/70 bg-accent/10':'border-line bg-ink/[.04]',on&&cur.length===1&&'opacity-80')}><input type="checkbox" checked={on} disabled={on&&cur.length===1} onChange={e=>ctl.rename(ga.id,{gids:e.target.checked?[...cur,g.id]:cur.filter(x=>x!==g.id)})} className="h-4 w-4 accent-[rgb(var(--accent))]"/><span className="min-w-0 flex-1 truncate">{g.name}</span></label>})}</div><span className="mt-1 block text-xs font-normal text-muted">One account can belong to several groups. It needs at least one.</span></div>
    {CLOUD&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">Cloud sync</div>
     {ga.cloud?<><p className="text-sm text-muted">Syncing as <b className="text-ink">{ga.cloud.sn}</b></p><button className={BTN} onClick={()=>ctl.disable(ga.id)}>Turn off sync (keeps this copy)</button></>
      :<><p className="text-xs text-muted">This account is stored on this device only.</p><TextIn type="password" v={ef.pass} on={v=>setEf({pass:v})} ph="Passcode (6+ characters)"/>{Err()}<button disabled={cb} className={BTN} onClick={()=>go(()=>ctl.enable(ga.id,ga.name,ef.pass),()=>{})}>Turn on cloud sync</button></>}</div>}
-   <div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>{if(arm===ga.id){ctl.del(ga.id,false);setSh(null);setArm(null)}else{setArm(ga.id);setTimeout(()=>setArm(x=>x===ga.id?null:x),4000)}}}>{arm===ga.id?'Tap again to remove from this device':'Remove from this device'}</button>
-    {ga.cloud&&<button className={BTNX} onClick={()=>{if(arm==='X'+ga.id){ctl.del(ga.id,true);setSh(null);setArm(null)}else{setArm('X'+ga.id);setTimeout(()=>setArm(x=>x==='X'+ga.id?null:x),4000)}}}>{arm==='X'+ga.id?'Tap again to delete from the cloud too':'Delete from the cloud too'}</button>}
+   <div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+ga.name+'” from this device?',msg:ga.cloud?'The cloud copy is kept, so you can unlock the account again from its group.':'This account is stored only on this device and cannot be recovered once it is removed.',yes:'Remove account',onYes:()=>{ctl.del(ga.id,false);setSh(null)}})}>Remove from this device</button>
+    {ga.cloud&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+ga.name+'” from the cloud too?',msg:'The account and all of its grades are erased from the cloud as well as this device.',next:'Continue',final:'This cannot be undone. The grades cannot be recovered on any device. Delete the account anyway?',yes:'Yes, delete everywhere',onYes:()=>{ctl.del(ga.id,true);setSh(null)}})}>Delete from the cloud too</button>}
     <p className="text-xs text-muted">{ga.cloud?'Removing from this device keeps the cloud copy, so you can unlock it again from its group.':'A local-only account cannot be recovered after it is removed.'}</p></div></>}</Sheet>
 
   <Sheet open={!!sh&&sh.t==='theme'} onClose={()=>setSh(null)} title="Theme"><ThemePicker theme={theme} setTheme={setTheme}/></Sheet>
@@ -970,8 +1166,14 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    ===================================================================== */
 function Root(){
  const bk=useRef(null);if(!bk.current){bk.current=loadBook();saveBook(bk.current)}
- const [cur,setCur]=useState(null),[ver,setVer]=useState(0),[,tick]=useState(0),[stat,setStat]=useState('synced'),[ext,setExt]=useState({n:0,data:null}),[busy,setBusy]=useState(false),[at,setAt]=useState(0),[theme,setTheme0]=useState(()=>{try{return localStorage.getItem('gtf-theme')||'sun'}catch(e){return'sun'}}),gd=useRef(null),curR=useRef(null),tm=useRef({}),pm=useRef({}),pg=useRef({}),bz=useRef({});
+ const [cur,setCur]=useState(()=>{const s0=readSession();if(!s0)return null;const a0=bk.current.list.find(x=>x.id===s0.aid);if(!a0){clearSession();return null}const g0=gidsOf(a0);return{id:a0.id,gid:g0.includes(s0.gid)?s0.gid:g0[0]}}),[ver,setVer]=useState(0),[,tick]=useState(0),[stat,setStat]=useState('synced'),[ext,setExt]=useState({n:0,data:null}),[busy,setBusy]=useState(false),[at,setAt]=useState(0),[theme,setTheme0]=useState(()=>{try{return localStorage.getItem('gtf-theme')||'sun'}catch(e){return'sun'}}),gd=useRef(null),curR=useRef(null),tm=useRef({}),pm=useRef({}),pg=useRef({}),bz=useRef({});
  curR.current=cur;
+ const upd=useSwUpdate();
+ // welcome tour: opens once for a brand-new install; devices that already have accounts never see it unless they replay it
+ const [tour,setTour]=useState(()=>!tourSeen()&&!bk.current.list.length);
+ useEffect(()=>{if(!tour&&!tourSeen())tourDone()},[]);
+ const closeTour=()=>{tourDone();setTour(false)};
+ useEffect(()=>{try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}},[]); // ask the browser not to evict saved data and the session
  const setTheme=t=>{setTheme0(t);try{localStorage.setItem('gtf-theme',t)}catch(e){}};
  useEffect(()=>{document.documentElement.dataset.theme=theme;const m=document.querySelector('meta[name=theme-color]'),t=THEMES.find(x=>x.id===theme);if(m&&t)m.setAttribute('content',t.bar)},[theme]);
  const save=()=>{saveBook(bk.current);tick(x=>x+1)};
@@ -1000,19 +1202,23 @@ function Root(){
   bz.current['s'+id]=0};
  const later=id=>{clearTimeout(tm.current[id]);tm.current[id]=setTimeout(()=>navigator.onLine?push(id):setStat('offline'),700)};
  /* ---- group directories (public cards only) ---- */
- const pubM=async id=>{const a=acc(id),g=a&&grp(a.gid);if(!CLOUD||!a||!a.cloud||!g||!g.cloud||!navigator.onLine)return;if(!a.mid){a.mid='m'+uid();saveBook(bk.current)}
-  try{await gwrite(g.cloud.k,'m/'+a.mid,{n:a.name,b:a.bio||'',e:a.emoji,p:a.pic||null,sn:a.cloud.sn,t:Date.now()})}catch(e){}};
+ const pubM=async(id,only)=>{const a=acc(id);if(!CLOUD||!a||!a.cloud||!navigator.onLine)return;const gs=(only?[only]:gidsOf(a)).map(x=>grp(x)).filter(g=>g&&g.cloud);if(!gs.length)return;if(!a.mid){a.mid='m'+uid();saveBook(bk.current)}
+  const card={n:a.name,b:a.bio||'',e:a.emoji,p:a.pic||null,sn:a.cloud.sn,t:Date.now()};
+  await Promise.all(gs.map(async g=>{try{await gwrite(g.cloud.k,'m/'+a.mid,card)}catch(e){}}))};
  const pubLater=id=>{clearTimeout(pm.current[id]);pm.current[id]=setTimeout(()=>pubM(id),900)};
  const pubG=async id=>{const g=grp(id);if(!g||!g.cloud||!navigator.onLine)return;try{await gwrite(g.cloud.k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,t:Date.now()});g.dirty=false;saveBook(bk.current)}catch(e){}};
  const pubGLater=id=>{clearTimeout(pg.current[id]);pg.current[id]=setTimeout(()=>pubG(id),900)};
  const refresh=async()=>{if(!CLOUD||!navigator.onLine)return;const gs=bk.current.groups.filter(g=>g.cloud);if(!gs.length){setAt(Date.now());return}setBusy(true);
-  await Promise.all(gs.map(async g=>{try{const r=await gread(g.cloud.k);if(r&&r.meta){if(!g.dirty){g.name=r.meta.n||g.name;g.icon=r.meta.i||g.icon;g.rec=r.meta.r||'';if(r.meta.p)g.pic=r.meta.p;else delete g.pic}g.members=r.m||{};delete g.missing}else if(r===null){g.missing=true}g.fetched=Date.now()}catch(e){}}));
+  await Promise.all(gs.map(async g=>{try{const r=await gread(g.cloud.k);if(r&&r.meta){if(!g.dirty){g.name=r.meta.n||g.name;g.icon=r.meta.i||g.icon;g.rec=r.meta.r||'';if(r.meta.p)g.pic=r.meta.p;else delete g.pic}g.members=r.m||{};if(r.admins&&typeof r.admins==='object')g.adm=admKeys(r.admins);delete g.missing}else if(r===null){g.missing=true}g.fetched=Date.now()}catch(e){}}));
   setBusy(false);setAt(Date.now());save()};
  useEffect(()=>{ADAPT.init()},[]);
  // on open: pull every cloud group directory and every cloud account
  useEffect(()=>{if(!CLOUD)return;const all=()=>{refresh();bk.current.list.forEach(a=>a.cloud&&sync(a.id))};all();window.addEventListener('online',all);return()=>window.removeEventListener('online',all)},[]);
  useEffect(()=>{if(!CLOUD||cur)return;const t=setInterval(()=>{if(!document.hidden)refresh()},30000),v=()=>{if(!document.hidden)refresh()};document.addEventListener('visibilitychange',v);return()=>{clearInterval(t);document.removeEventListener('visibilitychange',v)}},[cur]);
  const ca=cur&&!cur.guest?acc(cur.id):null,ck=ca&&ca.cloud?ca.cloud.k:null,cid=cur&&cur.id;
+ const gNow=ca?(gidsOf(ca).includes(cur.gid)?cur.gid:gidsOf(ca)[0]):null;
+ useEffect(()=>{if(cid&&!cur.guest&&acc(cid))writeSession(cid,gNow)},[cid,gNow]); // remember the active account and group
+ useEffect(()=>{if(cid&&!cur.guest&&gNow)claim(grp(gNow),acc(cid))},[cid,gNow,stat]); // the first account opened in a new group becomes its admin
  useEffect(()=>{if(!CLOUD||!ck)return;const id=cid;let es=null,dt=null;
   const kick=()=>{clearTimeout(dt);dt=setTimeout(()=>sync(id),250)};
   try{es=new EventSource(curl(ck));es.addEventListener('put',kick);es.addEventListener('patch',kick);es.onerror=()=>{if(!navigator.onLine)setStat('offline')}}catch(e){}
@@ -1021,21 +1227,55 @@ function Root(){
   return()=>{es&&es.close();clearInterval(poll);clearTimeout(dt);window.removeEventListener('online',on);window.removeEventListener('offline',off);document.removeEventListener('visibilitychange',vis)}},[cid,ck]);
 
  /* ---- actions used by the Home screen ---- */
- const open=id=>{const a=acc(id);if(a){a.last=Date.now();saveBook(bk.current)}setStat(navigator.onLine?'synced':'offline');setCur({id})};
- const addAcc=(o,d)=>{const id=uid();bk.current.list=[...bk.current.list,{id,name:(o.name||'').trim()||'New account',bio:o.bio||'',emoji:o.emoji||'',...(o.pic?{pic:o.pic}:{}),gid:o.gid,...(o.extra||{})}];bk.current.data[id]=d;return id};
+ /* ---- group roles ----
+    The person who creates a group is its first admin: the first account opened in a group that this device created claims adminship.
+    Groups made before roles existed are claimed the same way by the first account that opens them (never by a device that joined the group).
+    Admins live in g.adm; cloud groups mirror them at groups/<key>/admins so every device agrees. */
+ const ensureMid=a=>{if(!a.mid){a.mid='m'+uid();saveBook(bk.current)}return a.mid};
+ const midsOf=a=>[a&&a.mid,...((a&&a.alt)||[])].filter(Boolean);
+ const admMine=(g,a)=>!!(g&&a)&&midsOf(a).some(m=>admOf(g).includes(m));
+ const canAdmin=gid=>{const g=grp(gid);if(!g)return false;if(!admOf(g).length)return true;return bk.current.list.some(a=>gidsOf(a).includes(gid)&&admMine(g,a))};
+ const claimRef=useRef({});
+ const claim=async(g,a)=>{if(!g||!a||admOf(g).length||g.joined||g.first===false)return;const key=g.id+a.id;if(claimRef.current[key])return;claimRef.current[key]=1;
+  try{if(g.cloud){if(!CLOUD||!navigator.onLine){claimRef.current[key]=0;return}
+    const have=admKeys(await gget(g.cloud.k,'admins'));if(have.length){g.adm=have;save();claimRef.current[key]=0;return}
+    const mid=ensureMid(a);await gwrite(g.cloud.k,'admins/'+mid,true);g.adm=[mid];g.first=false;save();pubM(a.id,g.id)}
+   else{g.adm=[ensureMid(a)];g.first=false;save()}}catch(e){}
+  claimRef.current[key]=0};
+ const memRows=g=>{const adm=admOf(g),rows=[],seen=new Set(),me=cur&&cur.id;
+  bk.current.list.filter(a=>gidsOf(a).includes(g.id)).forEach(a=>{const ids=midsOf(a);ids.forEach(i=>seen.add(i));rows.push({key:a.id,aid:a.id,mid:a.mid||null,name:a.name||'Account',bio:a.bio,pic:a.pic,me:a.id===me,admin:ids.some(i=>adm.includes(i)),local:true})});
+  Object.entries(g.members||{}).forEach(([mid,m])=>{if(seen.has(mid))return;seen.add(mid);rows.push({key:mid,mid,name:m.n||'Account',bio:m.b,pic:m.p,admin:adm.includes(mid)})});
+  adm.forEach(mid=>{if(!seen.has(mid)){seen.add(mid);rows.push({key:mid,mid,name:'Group admin',bio:'Not in the member list',admin:true,ghost:true})}});
+  return rows.sort((x,y)=>(y.admin?1:0)-(x.admin?1:0)||(x.name||'').localeCompare(y.name||''))};
+ const roleIds=r=>{if(r.aid){const a=acc(r.aid);if(a){ensureMid(a);return midsOf(a)}}return[r.mid].filter(Boolean)};
+ // read the newest admin list from the cloud before any change, so two admins never overwrite each other
+ const freshAdm=async g=>{if(g.cloud){if(!navigator.onLine)throw new Error('offline');const l=admKeys(await gget(g.cloud.k,'admins'));if(l.length)g.adm=l}return admOf(g)};
+ const writeAdm=async(g,patch)=>{if(g.cloud)await gpatch(g.cloud.k,'admins',patch);const l=new Set(admOf(g));Object.entries(patch).forEach(([k,v])=>v?l.add(k):l.delete(k));g.adm=[...l];save()};
+ const roleStart=async gid=>{const g=grp(gid),me=cur&&acc(cur.id);if(!g||!me)return{e:'Group not found.'};let list;try{list=await freshAdm(g)}catch(e){return{e:navigator.onLine?BADNET:NEEDNET}}
+  if(!admMine(g,me)){save();return{e:'Only a group admin can do that.'}}return{g,me,list}};
+ const setRole=async(gid,r,on)=>{const t=await roleStart(gid);if(t.e)return t.e;const{g,list}=t,ids=roleIds(r);if(!ids.length)return'That member cannot be changed yet.';
+  try{if(on){if(ids.some(i=>list.includes(i)))return'ok';await writeAdm(g,{[ids[0]]:true});return'ok'}
+   const rem=ids.filter(i=>list.includes(i));if(!rem.length)return'ok';if(!list.some(i=>!rem.includes(i)))return'A group needs at least one admin. Make someone else an admin first.';
+   await writeAdm(g,Object.fromEntries(rem.map(i=>[i,null])));return'ok'}catch(e){return BADNET}};
+ const giveAdmin=async(gid,r)=>{const t=await roleStart(gid);if(t.e)return t.e;const{g,me,list}=t,ids=roleIds(r);if(!ids.length)return'That member cannot be changed yet.';
+  const patch={};if(!ids.some(i=>list.includes(i)))patch[ids[0]]=true;midsOf(me).filter(i=>list.includes(i)).forEach(i=>{patch[i]=null});
+  try{if(Object.keys(patch).length)await writeAdm(g,patch);return'ok'}catch(e){return BADNET}};
+ const open=(id,gid)=>{const a=acc(id);if(a){a.last=Date.now();saveBook(bk.current)}const gs=gidsOf(a);setStat(navigator.onLine?'synced':'offline');setCur({id,gid:gs.includes(gid)?gid:gs[0]})};
+ const addAcc=(o,d)=>{const id=uid();bk.current.list=[...bk.current.list,{id,name:(o.name||'').trim()||'New account',bio:o.bio||'',emoji:o.emoji||'',...(o.pic?{pic:o.pic}:{}),gid:o.gid,gids:[o.gid],...(o.extra||{})}];bk.current.data[id]=d;return id};
  const NOCLOUD='Cloud is not set up yet. Add your database URL in config.js.',NEEDNET='You need an internet connection for that.',BADNET='Could not reach the cloud database. Check config.js, your database rules and your internet.';
- const createGroup=async n=>{if(!(n.name||'').trim())return'Give the group a name.';const g={id:'g'+uid(),name:n.name.trim(),icon:n.icon||'',rec:(n.rec||'').trim()};if(n.pic)g.pic=n.pic;if(g.rec&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g.rec))return'Enter a valid recovery email or leave it blank.';
+ const createGroup=async n=>{if(!(n.name||'').trim())return'Give the group a name.';const g={id:'g'+uid(),name:n.name.trim(),icon:n.icon||'',rec:(n.rec||'').trim(),adm:[],first:true};if(n.pic)g.pic=n.pic;if(g.rec&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g.rec))return'Enter a valid recovery email or leave it blank.';
   if(n.pass){if(!CLOUD)return NOCLOUD;if(n.pass.length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
    try{const k=await gkey(n.name,n.pass),ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Use “Join an existing group”.';await gwrite(k,'meta',{n:g.name,i:g.icon,p:g.pic||null,r:g.rec||null,t:Date.now()});g.cloud={k,sn:n.name.trim()};g.members={}}catch(e){return BADNET}}
   bk.current.groups=[...bk.current.groups,g];save();return'ok:'+g.id};
  const joinGroup=async(name,pw)=>{if(!CLOUD)return NOCLOUD;if(!(name||'').trim()||(pw||'').length<6)return'Enter the group name and its passcode (6+ characters).';if(!navigator.onLine)return NEEDNET;
   try{const k=await gkey(name,pw),r=await gread(k);if(!r||!r.meta)return'No group found with that name and passcode.';const ex=bk.current.groups.find(g=>g.cloud&&g.cloud.k===k);if(ex)return'ok:'+ex.id;
-   const g={id:'g'+uid(),name:r.meta.n||name.trim(),icon:r.meta.i||'',rec:r.meta.r||'',cloud:{k,sn:name.trim()},members:r.m||{},fetched:Date.now()};if(r.meta.p)g.pic=r.meta.p;bk.current.groups=[...bk.current.groups,g];save();return'ok:'+g.id}catch(e){return BADNET}};
+   const g={id:'g'+uid(),name:r.meta.n||name.trim(),icon:r.meta.i||'',rec:r.meta.r||'',cloud:{k,sn:name.trim()},members:r.m||{},adm:admKeys(r.admins),joined:true,fetched:Date.now()};if(r.meta.p)g.pic=r.meta.p;bk.current.groups=[...bk.current.groups,g];save();return'ok:'+g.id}catch(e){return BADNET}};
  const editGroup=(id,p)=>{const g=grp(id);if(!g)return;Object.assign(g,p);if(p.pic==='')delete g.pic;if(g.cloud){g.dirty=true;pubGLater(id)}save()};
  const enableGroupCloud=async(id,pw)=>{const g=grp(id);if(!g)return'Group not found.';if(!CLOUD)return NOCLOUD;if((pw||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
-  try{const k=await gkey(g.name,pw),ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose a different passcode.';await gwrite(k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,t:Date.now()});g.cloud={k,sn:g.name.trim()};g.members={};save();bk.current.list.filter(a=>a.gid===id&&a.cloud).forEach(a=>pubM(a.id));return'ok'}catch(e){return BADNET}};
+  try{const k=await gkey(g.name,pw),ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose a different passcode.';await gwrite(k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,t:Date.now()});g.cloud={k,sn:g.name.trim()};g.members={};save();bk.current.list.filter(a=>gidsOf(a).includes(id)&&a.cloud).forEach(a=>pubM(a.id,id));return'ok'}catch(e){return BADNET}};
  const deleteGroup=async(id,everywhere)=>{const g=grp(id);if(!g)return;if(everywhere&&g.cloud){try{await gremove(g.cloud.k)}catch(e){}}
-  let gs=bk.current.groups.filter(x=>x.id!==id);if(!gs.length&&bk.current.list.some(a=>a.gid===id))gs=[defGroup()];bk.current.groups=gs;bk.current.list.forEach(a=>{if(a.gid===id)a.gid=gs[0].id});save()};
+  let gs=bk.current.groups.filter(x=>x.id!==id);if(!gs.length&&bk.current.list.some(a=>gidsOf(a).includes(id)))gs=[defGroup()];bk.current.groups=gs;
+  bk.current.list.forEach(a=>{const all=gidsOf(a),rest=all.filter(x=>x!==id);if(rest.length!==all.length){a.gids=rest.length?rest:[gs[0].id];a.gid=a.gids[0]}});save()};
  const createAccount=async n=>{const name=(n.name||'').trim();if(!name)return'Enter a name.';const d=blank(n.pre),o={name,bio:n.bio,emoji:n.emoji,pic:n.pic,gid:n.gid};
   if(n.local){const id=addAcc(o,d);save();return'ok:'+id}
   if(!CLOUD)return NOCLOUD;if((n.pass||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET+' You can create a local-only account instead.';
@@ -1043,44 +1283,48 @@ function Root(){
    const id=addAcc({...o,extra:{mid:'m'+uid(),cloud:{k,sn:name},sy:{t,base:t,dirty:false,at:t}}},d);await cput(k,docOf(acc(id),id,t));save();pubM(id);return'ok:'+id}catch(e){return BADNET}};
  const unlock=async(gid,mid,pw)=>{const g=grp(gid),m=g&&g.members&&g.members[mid];if(!m)return'That account is no longer in the group.';if((pw||'').length<6)return'Enter the account passcode (6+ characters).';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(m.sn,pw),r=await cget(k);if(!validDoc(r))return'Wrong passcode.';let d;try{d=mig(JSON.parse(r.d))}catch(e){d=null}if(!okState(d))return'That account has unreadable data.';
-   const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex){ex.mid=mid;ex.gid=gid;save();return'ok:'+ex.id}
+   const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex){if(!ex.mid)ex.mid=mid;else if(ex.mid!==mid)ex.alt=[...new Set([...(ex.alt||[]),mid])];if(!gidsOf(ex).includes(gid)){ex.gids=[...gidsOf(ex),gid];ex.gid=ex.gids[0]}save();return'ok:'+ex.id}
    const id=addAcc({name:r.n||m.n,bio:r.b!==undefined?r.b:m.b,emoji:r.e||m.e,pic:r.p||m.p,gid,extra:{mid,cloud:{k,sn:m.sn},sy:{t:r.t,base:r.t,dirty:false,at:Date.now()}}},d);save();return'ok:'+id}catch(e){return BADNET}};
  const signIn=async(gid,sn,pw)=>{if(!CLOUD)return NOCLOUD;if(!(sn||'').trim()||(pw||'').length<6)return'Enter the sync name and passcode (6+ characters).';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(sn,pw),r=await cget(k);if(!validDoc(r))return'No account found with that name and passcode.';let d;try{d=mig(JSON.parse(r.d))}catch(e){d=null}if(!okState(d))return'That account has unreadable data.';
-   const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex)return'ok:'+ex.id;
+   const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex){if(!gidsOf(ex).includes(gid)){ex.gids=[...gidsOf(ex),gid];ex.gid=ex.gids[0];save();pubM(ex.id,gid)}return'ok:'+ex.id}
    const id=addAcc({name:r.n||sn,bio:r.b||'',emoji:r.e||'',pic:r.p,gid,extra:{cloud:{k,sn:sn.trim()},sy:{t:r.t,base:r.t,dirty:false,at:Date.now()}}},d);save();pubLater(id);return'ok:'+id}catch(e){return BADNET}};
- const rename=(id,p)=>{const a=acc(id);if(!a)return;const oldG=grp(a.gid);Object.assign(a,p);if(p.pic==='')delete a.pic;
-  if(p.gid&&oldG&&oldG.id!==p.gid&&a.mid&&oldG.cloud){gremove(oldG.cloud.k,'m/'+a.mid).catch(()=>{});delete a.mid}
+ const rename=(id,p)=>{const a=acc(id);if(!a)return;const before=gidsOf(a);Object.assign(a,p);if(p.pic==='')delete a.pic;
+  if(p.gids){const nx=[...new Set(p.gids.filter(x=>grp(x)))];if(!nx.length)nx.push(before[0]);a.gids=nx;a.gid=nx[0];delete a.group;
+   before.filter(x=>!nx.includes(x)).forEach(x=>{const g=grp(x);if(a.mid&&g&&admOf(g).includes(a.mid)&&admOf(g).length>1){g.adm=admOf(g).filter(m=>m!==a.mid);if(g.cloud)gpatch(g.cloud.k,'admins',{[a.mid]:null}).catch(()=>{})}if(a.mid&&g&&g.cloud)gremove(g.cloud.k,'m/'+a.mid).catch(()=>{})});
+   if(a.cloud)nx.filter(x=>!before.includes(x)).forEach(x=>pubM(id,x))}
   if(a.cloud){a.sy={...(a.sy||{}),t:Date.now(),dirty:true};later(id);pubLater(id)}save()};
  const enable=async(id,sn,pw)=>{const a=acc(id);if(!a)return'Account not found.';if(!CLOUD)return NOCLOUD;if(!(sn||'').trim()||(pw||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(sn,pw),ex=await cget(k);if(validDoc(ex))return'A cloud account with that name and passcode already exists. Choose a different passcode.';const t=Date.now();await cput(k,docOf(a,id,t));a.cloud={k,sn:sn.trim()};a.sy={t,base:t,dirty:false,at:Date.now()};save();pubLater(id);return'ok'}catch(e){return BADNET}};
  const disable=id=>{const a=acc(id);if(a){delete a.cloud;delete a.sy;delete a.loser;save()}};
- const del=async(id,everywhere)=>{const a=acc(id);if(!a)return;if(everywhere&&a.cloud){try{await premove(a.cloud.k)}catch(e){}const g=grp(a.gid);if(a.mid&&g&&g.cloud){try{await gremove(g.cloud.k,'m/'+a.mid)}catch(e){}}}
+ const del=async(id,everywhere)=>{const a=acc(id);if(!a)return;if(everywhere&&a.cloud){try{await premove(a.cloud.k)}catch(e){}for(const gx of gidsOf(a)){const g=grp(gx);if(a.mid&&g&&g.cloud){try{await gremove(g.cloud.k,'m/'+a.mid)}catch(e){}}}}
   bk.current.list=bk.current.list.filter(x=>x.id!==id);delete bk.current.data[id];save()};
  const imp=(gid,name,d)=>{addAcc({name,emoji:'',gid},mig(d));save()};
- const guest=()=>{gd.current=blank(false);setCur({guest:true})};
- const keep=name=>{const g0=bk.current.groups[0];if(!g0)return;const id=addAcc({name,emoji:'',gid:g0.id},gd.current);save();open(id)};
- const leave=()=>{const id=cur&&cur.id,a=id&&acc(id);if(a&&a.cloud){clearTimeout(tm.current[id]);if(a.sy&&a.sy.dirty&&navigator.onLine)push(id)}setCur(null);refresh()};
+ const guest=()=>{gd.current=blank(false);clearSession();setCur({guest:true})};
+ const switchAcct=(id,gid)=>{const o=cur&&cur.id,oa=o&&acc(o);if(oa&&oa.cloud){clearTimeout(tm.current[o]);if(oa.sy&&oa.sy.dirty&&navigator.onLine)push(o)}open(id,gid)};
+ const keep=name=>{const g0=bk.current.groups.find(x=>x.id===(cur&&cur.gid))||bk.current.groups[0];if(!g0)return;const id=addAcc({name,emoji:'',gid:g0.id},gd.current);save();open(id)};
+ const leave=()=>{const id=cur&&cur.id,a=id&&acc(id);if(a&&a.cloud){clearTimeout(tm.current[id]);if(a.sy&&a.sy.dirty&&navigator.onLine)push(id)}clearSession();setCur(null);refresh()};
   const chk=(n,n2)=>(n||'').length<6?'Use a new passcode of at least 6 characters.':n!==n2?'The new passcodes do not match.':!navigator.onLine?NEEDNET:'';
  const changePass=async(id,o,n,n2)=>{const a=acc(id);if(!a||!a.cloud)return'This is not a cloud account.';const e=chk(n,n2);if(e)return e;
   try{if(await ckey(a.cloud.sn,o)!==a.cloud.k)return'The current passcode is wrong.';const k=await ckey(a.cloud.sn,n);if(k===a.cloud.k)return'Choose a different passcode.';if(validDoc(await cget(k)))return'That name and passcode combination is taken. Choose another passcode.';
    const t=Date.now(),old=a.cloud.k;await cput(k,docOf(a,id,t));a.cloud={...a.cloud,k};a.sy={t,base:t,dirty:false,at:Date.now()};save();try{await premove(old)}catch(x){}pubLater(id);return'ok'}catch(x){return BADNET}};
- const changeGroupPass=async(gid,o,n,n2)=>{const g=grp(gid);if(!g||!g.cloud)return'This group is not synced.';const e=chk(n,n2);if(e)return e;
+ const changeGroupPass=async(gid,o,n,n2)=>{const g=grp(gid);if(!g||!g.cloud)return'This group is not synced.';if(!admMine(g,cur&&acc(cur.id)))return'Only a group admin can change the group passcode.';const e=chk(n,n2);if(e)return e;
   try{if(await gkey(g.cloud.sn,o)!==g.cloud.k)return'The current group passcode is wrong.';const k=await gkey(g.cloud.sn,n);if(k===g.cloud.k)return'Choose a different passcode.';const ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose another passcode.';
    const c0=await gread(g.cloud.k);if(!c0||!c0.meta)return'Group not found in the cloud.';const old=g.cloud.k;await gwrite(k,undefined,{...c0,meta:{...c0.meta,t:Date.now()}});g.cloud={...g.cloud,k};save();try{await gremove(old)}catch(x){}return'ok'}catch(x){return BADNET}};
  
-const ctl={open,guest,createGroup,joinGroup,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,disable,del,imp,refresh};
+const ctl={open,guest,createGroup,joinGroup,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,disable,del,imp,refresh,canAdmin,tour:()=>setTour(true)};
 
  let view;
  if(!cur)view=<Home key="home" book={bk.current} theme={theme} setTheme={setTheme} ctl={ctl} busy={busy} at={at}/>;
  else{
   const a=cur.guest?{name:'Guest',emoji:''}:acc(cur.id);
-  if(!a){setTimeout(()=>setCur(null),0);return null}
+  if(!a){clearSession();setTimeout(()=>setCur(null),0);return null}
   const lbl=stat==='synced'?'Synced':stat==='syncing'?'Syncing…':stat==='offline'?'Offline · saved here':'Sync error · tap to retry';
   const cl=a.cloud?{on:true,state:stat,label:lbl,sync:()=>sync(cur.id),at:a.sy&&a.sy.at,pending:!!(a.sy&&a.sy.dirty)}:{on:false,state:'local',label:cur.guest?'Not saved':'This device only',sync:()=>{}};
   const onSave=n=>{if(cur.guest){gd.current=n;return}const x=acc(cur.id);bk.current.data[cur.id]=n;if(x&&x.cloud){x.sy={...(x.sy||{}),t:Date.now(),dirty:true};setStat(navigator.onLine?'syncing':'offline');later(cur.id)}saveBook(bk.current)};
-  view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(a.gid),changeGroupPass:(o,n,n2)=>changeGroupPass(a.gid,o,n,n2),setRec:e=>editGroup(a.gid,{rec:e})}}/>;
+  const gO=cur.guest?null:grp(gNow),admin={is:!!(gO&&admMine(gO,a)),rows:gO?memRows(gO):[],set:(r,on)=>setRole(gNow,r,on),give:r=>giveAdmin(gNow,r),refresh};
+  view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(gNow),changeGroupPass:(o,n,n2)=>changeGroupPass(gNow,o,n,n2),setRec:e=>{if(admin.is)editGroup(gNow,{rec:e})},tour:()=>setTour(true),admin}} swc={cur.guest?null:{cur:grp(gNow),gid:gNow,mine:gidsOf(a),groups:bk.current.groups,accts:bk.current.list.filter(x=>gidsOf(x).includes(gNow)),aid:cur.id,setGroup:g=>setCur(c=>({...c,gid:g})),pick:id=>switchAcct(id,gNow),join:g=>rename(cur.id,{gids:[...gidsOf(a),g]})}}/>;
  }
- return <div key={cur?'app':'home'} className="anim-rise">{view}</div>;
+ return <><div key={cur?'app':'home'} className="anim-rise">{view}</div><UpdateBanner u={upd}/><ConfirmHost/><Onboarding open={tour} onClose={closeTour}/></>;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
