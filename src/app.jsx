@@ -158,7 +158,7 @@ const loadRaw=()=>{let b=null;try{b=normBook(JSON.parse(localStorage.getItem(BK)
  return b};
 const loadBook=()=>{const b=loadRaw();Object.keys(b.data).forEach(k=>{b.data[k]=mig(b.data[k])});return b};
 const saveBook=b=>{try{localStorage.setItem(BK,JSON.stringify(b))}catch(e){}};
-const THEMES=[{"id":"sun","name":"Yellow Light","bar":"#FFFFFF","sw":["#FFFFFF","#FACC15","#1C1B18"]},{"id":"dark","name":"Yellow Dark","bar":"#0E0E11","sw":["#1C1C21","#FBBF24","#F6F6F8"]},{"id":"blue","name":"Blue Light","bar":"#F4F8FF","sw":["#FFFFFF","#2563EB","#0F1D36"]},{"id":"bluedk","name":"Blue Dark","bar":"#080D18","sw":["#111A2C","#60A5FA","#EEF4FF"]},{"id":"red","name":"Red Light","bar":"#FFF7F7","sw":["#FFFFFF","#DC2626","#2E1014"]},{"id":"reddk","name":"Red Dark","bar":"#140909","sw":["#221114","#F87171","#FFF0F1"]},{"id":"green","name":"Green Light","bar":"#F5FCF7","sw":["#FFFFFF","#16A34A","#0E281A"]},{"id":"greendk","name":"Green Dark","bar":"#08120D","sw":["#101F17","#4ADE80","#ECFCF1"]},{"id":"mono","name":"Monochrome","bar":"#FAFAFA","sw":["#FFFFFF","#111111","#737373"]},{"id":"lav","name":"Lavender","bar":"#F7F5FF","sw":["#FFFFFF","#7C3AED","#1E1B3A"]}];
+const THEMES=[{"id":"sun","name":"Yellow Light","bar":"#F6F6F3","sw":["#FFFFFF","#FACC15","#1C1B18"]},{"id":"dark","name":"Yellow Dark","bar":"#0E0E11","sw":["#1C1C21","#FBBF24","#F6F6F8"]},{"id":"blue","name":"Blue Light","bar":"#F4F8FF","sw":["#FFFFFF","#2563EB","#0F1D36"]},{"id":"bluedk","name":"Blue Dark","bar":"#080D18","sw":["#111A2C","#60A5FA","#EEF4FF"]},{"id":"red","name":"Red Light","bar":"#FFF7F7","sw":["#FFFFFF","#DC2626","#2E1014"]},{"id":"reddk","name":"Red Dark","bar":"#140909","sw":["#221114","#F87171","#FFF0F1"]},{"id":"green","name":"Green Light","bar":"#F5FCF7","sw":["#FFFFFF","#16A34A","#0E281A"]},{"id":"greendk","name":"Green Dark","bar":"#08120D","sw":["#101F17","#4ADE80","#ECFCF1"]},{"id":"mono","name":"Monochrome","bar":"#FAFAFA","sw":["#FFFFFF","#111111","#737373"]},{"id":"lav","name":"Lavender","bar":"#F7F5FF","sw":["#FFFFFF","#7C3AED","#1E1B3A"]}];
 const resizeImg=(file,size=192)=>new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d'),m=Math.min(im.width,im.height);x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,size,size);res(c.toDataURL('image/jpeg',.82))};im.src=r.result};r.readAsDataURL(file)});
 
 /* ---- cloud helpers (Firebase Realtime Database over REST, no SDK) ---- */
@@ -258,7 +258,7 @@ const needShort=o=>o==null?'—':o.done?(o.ok?'Secured ✓':'Locked below'):o.x<
    ===================================================================== */
 const CARD='gc rounded-[1.75rem]';
 const BTN='inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-ink/[.06] px-3.5 py-2 text-sm font-semibold text-ink hover:bg-ink/[.09] hover:border-ink/20 active:scale-[.97] transition disabled:opacity-40 disabled:pointer-events-none';
-const BTNP='inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-bold text-accent-ink shadow-sm hover:brightness-105 active:scale-[.97] transition disabled:opacity-50 disabled:pointer-events-none';
+const BTNP='inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-bold text-accent-ink hover:brightness-105 active:scale-[.97] transition disabled:opacity-50 disabled:pointer-events-none';
 const BTNX='inline-flex items-center justify-center gap-1.5 rounded-xl border border-bad/30 px-3.5 py-2 text-sm font-semibold text-bad hover:bg-bad/10 active:scale-[.97] transition';
 const INP='rounded-2xl border border-line/60 bg-ink/[.06] text-center text-base font-semibold text-ink transition placeholder:font-normal placeholder:text-muted/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40';
 const SEL='rounded-xl border border-line bg-ink/[.06] px-3 py-2 text-base font-semibold text-ink max-w-full focus:outline-none focus:ring-2 focus:ring-accent/40';
@@ -272,7 +272,7 @@ const Seg=({v,on,opts,cls=''})=><div className={cx('inline-grid grid-flow-col au
 const Chev=({open})=><svg viewBox="0 0 20 20" className={cx('h-5 w-5 shrink-0 text-muted transition-transform duration-300',open&&'rotate-180')} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5"/></svg>;
 const Tile=({l,v,sub,bad,vc})=><div className="rounded-2xl border border-line/60 bg-ink/[.06] p-3"><div className="text-xs font-semibold text-muted">{l}</div><div className={cx('text-xl font-extrabold tabular-nums',vc||(bad?'text-bad':'text-ink'))}>{v}</div>{sub&&<div className="mt-0.5 text-xs text-muted">{sub}</div>}</div>;
 const Switch=({on,onChange,label,sub})=><button role="switch" aria-checked={on} onClick={onChange} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line/60 bg-ink/[.06] p-3 text-left transition hover:bg-ink/[.09]"><span className="min-w-0"><span className="block text-sm font-bold">{label}</span>{sub&&<span className="block text-xs text-muted">{sub}</span>}</span><span className={cx('relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300',on?'bg-accent':'bg-line')}><span className={cx('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300',on?'left-[1.4rem]':'left-0.5')}/></span></button>;
-const AccentBox=({l,v,rl,r,foot})=><div className="flex items-center justify-between rounded-2xl bg-accent p-4 text-accent-ink shadow-md shadow-accent/20"><div><div className="text-xs font-semibold opacity-70">{l}</div><div className="tot inline-block text-3xl font-black tabular-nums">{v}</div></div><div className="text-right"><div className="text-xs font-semibold opacity-70">{rl}</div><div className="text-2xl font-black tabular-nums">{r}</div><div className="text-xs font-bold">{foot}</div></div></div>;
+const AccentBox=({l,v,rl,r,foot})=><div className="flex items-center justify-between rounded-2xl bg-accent p-4 text-accent-ink shadow-sm"><div><div className="text-xs font-semibold opacity-70">{l}</div><div className="tot inline-block text-3xl font-black tabular-nums">{v}</div></div><div className="text-right"><div className="text-xs font-semibold opacity-70">{rl}</div><div className="text-2xl font-black tabular-nums">{r}</div><div className="text-xs font-bold">{foot}</div></div></div>;
 const Avatar=({a,s='h-14 w-14',t='text-3xl'})=>a&&a.pic?<img src={a.pic} alt="" className={cx(s,'shrink-0 rounded-2xl object-cover ring-1 ring-line')}/>:<div className={cx(s,t,'grid shrink-0 place-items-center rounded-2xl bg-accent/20 ring-1 ring-accent/30')}>{((a&&a.name)||'?').trim().charAt(0).toUpperCase()}</div>;
 
 // Accordion card: click the header to expand; content animates open
@@ -285,7 +285,7 @@ function Sheet({open,onClose,title,children,wide}){
  useEffect(()=>{if(!open)return;const k=e=>e.key==='Escape'&&onClose();window.addEventListener('keydown',k);const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{window.removeEventListener('keydown',k);document.body.style.overflow=o}},[open]);
  if(!open)return null;
  return <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-  <div onClick={onClose} className="anim-fade absolute inset-0 bg-ink/40 backdrop-blur-sm"/>
+  <div onClick={onClose} className="anim-fade absolute inset-0 bg-black/40"/>
   <div className={cx('anim-sheet relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain gcs rounded-t-[2rem] sm:rounded-[2rem]',wide?'sm:max-w-2xl':'sm:max-w-lg')} style={{paddingBottom:'env(safe-area-inset-bottom,0px)'}}>
    <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line/40 px-6 py-4"><h2 className="text-lg font-extrabold">{title}</h2><button onClick={onClose} aria-label="Close" className={BTN+' !px-3'}>✕</button></div>
    <div className="flex flex-col gap-7 p-6">{children}</div></div></div>;
@@ -301,10 +301,10 @@ const Tip=({t})=>{const [o,setO]=useState(false),[ps,setPs]=useState(null),b=use
  return <><button ref={b} type="button" onClick={e=>{e.preventDefault();e.stopPropagation();setO(v=>!v)}} aria-label="More info" aria-expanded={o} className="ml-1.5 inline-grid h-5 w-5 place-items-center rounded-full border border-muted/60 align-middle text-[11px] font-bold leading-none text-muted transition hover:border-accent hover:text-accent-text">i</button>
   {o&&createPortal(<div ref={p} role="tooltip" style={ps?{left:ps.left,top:ps.top,width:ps.w}:{left:0,top:0,width:Math.min(280,window.innerWidth-32),visibility:'hidden'}} className="anim-fade fixed z-[90] gcs rounded-2xl p-4 text-left text-sm font-medium normal-case leading-relaxed tracking-normal text-ink shadow-2xl">{t}</div>,document.body)}</>};
 const IC={o:'M4 11l8-6.5 8 6.5M6 9.5V19h4v-5h4v5h4V9.5',t:'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',f:'M3 20h18M6 20v-8M11 20V5M16 20v-5M21 20v-9',p:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20c.7-3.5 3.5-5.5 7-5.5s6.3 2 7 5.5',s:'M4 7h9M17 7h3M4 17h3M11 17h9M15 4v6M9 14v6',w:'M2 9l10-5 10 5-10 5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5M22 9v5',g:'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19c.5-3 3-4.5 6-4.5s5.5 1.5 6 4.5M17 11a2.6 2.6 0 1 0 0-5.2M17.5 14.6c2 .4 3.3 1.8 3.7 4.4'};
-const NAV=[['o','Overview'],['t','Tracker'],['f','Forecast'],['w','GWA'],['p','Profile'],['s','Settings']];
+const NAV=[['o','Overview'],['t','Tracker'],['f','Forecast'],['w','GWA'],['p','Profile']];
 const BottomNav=({tab,on})=>{const i=NAV.findIndex(x=>x[0]===tab),N=NAV.length;return <nav aria-label="Main" className="fixed inset-x-0 z-40 flex justify-center px-2 sm:px-3" style={{bottom:'calc(env(safe-area-inset-bottom,0px) + .75rem)'}}>
- <div className="glass relative grid w-full max-w-lg grid-cols-6 rounded-[1.75rem] p-1.5 md:max-w-2xl">
-  {i>=0&&<span aria-hidden="true" className="absolute bottom-1.5 top-1.5 rounded-[1.3rem] bg-accent shadow-md shadow-accent/30 transition-all duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{left:'calc(.375rem + '+i+' * (100% - .75rem) / '+N+')',width:'calc((100% - .75rem) / '+N+')'}}/>}
+ <div className="glass relative grid w-full max-w-lg grid-cols-5 rounded-[1.75rem] p-1.5 md:max-w-2xl">
+  {i>=0&&<span aria-hidden="true" className="absolute bottom-1.5 top-1.5 rounded-[1.3rem] bg-accent shadow-sm transition-all duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{left:'calc(.375rem + '+i+' * (100% - .75rem) / '+N+')',width:'calc((100% - .75rem) / '+N+')'}}/>}
   {NAV.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-current={tab===k?'page':undefined} className={cx('relative z-10 flex min-w-0 flex-col items-center gap-0.5 rounded-[1.3rem] py-2 text-[9px] font-bold tracking-tight transition-colors duration-300 sm:text-[10px] md:text-xs',tab===k?'text-accent-ink':'text-muted hover:text-ink')}>
    <svg viewBox="0 0 24 24" className="h-[21px] w-[21px] md:h-[22px] md:w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={IC[k]}/></svg><span className="max-w-full truncate">{l}</span></button>)}</div></nav>};
 const ThemePicker=({theme,setTheme})=><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{THEMES.map(t=><button key={t.id} onClick={()=>setTheme(t.id)} className={cx('rounded-2xl border p-3 text-left transition-all duration-300 hover:-translate-y-0.5',theme===t.id?'border-accent ring-2 ring-accent/40 bg-ink/[.08]':'border-line bg-ink/[.06] hover:bg-ink/[.09]')}>
@@ -347,26 +347,10 @@ function TigerLogo({className='h-10 w-10',title='Grades Tracker: tiger paw and o
 const GroupIcon=({g,s='h-14 w-14',t='text-3xl'})=>g&&g.pic?<img src={g.pic} alt="" className={cx(s,'shrink-0 rounded-2xl object-cover ring-1 ring-line')}/>:<div className={cx(s,t,'grid shrink-0 place-items-center rounded-2xl bg-accent/20 ring-1 ring-accent/30')}>{((g&&g.name)||'G').trim().charAt(0).toUpperCase()}</div>;
 
 /* =====================================================================
-   AMBIENT BACKGROUND  (faint, blurred tiger stripes and paws behind every screen; colours follow the theme)
-   ===================================================================== */
-const stripeD=(y,L,t)=>`M-4 ${y}C${(L*.4).toFixed(1)} ${y+1} ${(L*.75).toFixed(1)} ${(y+L*.12).toFixed(1)} ${L} ${(y+L*.26).toFixed(1)}C${(L*.66).toFixed(1)} ${(y+L*.14+t*.3).toFixed(1)} ${(L*.3).toFixed(1)} ${(y+t*.95).toFixed(1)} -4 ${y+t}Z`;
-// many small stripes of varied length, packed closely down each edge (deterministic, so the pattern never jumps)
-const STRIPES=(()=>{const a=[];let y=10,i=0;while(y<2600){a.push([y+(i%2?3:-2),30+((i*37)%58),4+((i*13)%6)]);y+=26+((i*11)%14);i++}return a})();
-const PAW='M256 292c-58 0-104 40-104 90 0 32 24 52 56 52 20 0 32-9 48-9s28 9 48 9c32 0 56-20 56-52 0-50-46-90-104-90z';
-const Toes=<><ellipse cx="120" cy="250" rx="36" ry="50" transform="rotate(-26 120 250)"/><ellipse cx="206" cy="168" rx="40" ry="56" transform="rotate(-8 206 168)"/><ellipse cx="306" cy="168" rx="40" ry="56" transform="rotate(8 306 168)"/><ellipse cx="392" cy="250" rx="36" ry="50" transform="rotate(26 392 250)"/><path d={PAW}/></>;
-const Ambient=React.memo(()=><div aria-hidden="true" className="amb">
- <i className="amb-b amb-b1"/><i className="amb-b amb-b2"/><i className="amb-b amb-b3"/>
- <svg className="amb-paws" width="100%" height="100%"><defs><symbol id="gtfpaw" viewBox="0 0 512 512">{Toes}</symbol>
-  <pattern id="gtfpp" width="124" height="124" patternUnits="userSpaceOnUse"><use href="#gtfpaw" className="amb-s" x="10" y="12" width="20" height="20" transform="rotate(-24 20 22)"/><use href="#gtfpaw" className="amb-s" x="72" y="74" width="16" height="16" transform="rotate(22 80 82)"/></pattern></defs>
-  <rect width="100%" height="100%" fill="url(#gtfpp)"/></svg>
- {['l','r'].map(k=><svg key={k} className={'amb-edge amb-'+k} viewBox="0 0 110 2600" preserveAspectRatio="xMinYMin slice"><g className="amb-s">{STRIPES.map(([y,L,t],i)=><path key={i} d={stripeD(y,L,t)}/>)}</g></svg>)}
-</div>);
-
-/* =====================================================================
    7. APP  (one profile: Tracker, Forecaster, Settings)
    ===================================================================== */
 function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,theme,setTheme,prof}){
- const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('o'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0),[pill,setPill]=useState(false);
+ const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState('o'),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0),[pill,setPill]=useState(false),[accO,setAccO]=useState({a:false,g:false});
  const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false});
  const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState('');
  const togFx=k=>{const v=!fxs[k];FX.set(k,v);setFxs({...fxs,[k]:v})};
@@ -400,6 +384,8 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   setRvMsg({k,msg:`Filled ${plan.miss.length} possible score${plan.miss.length>1?'s':''} at about ${f2(plan.x)}% each. ${p.name} grade is now ${f2(pcalc(ns,p).grade)}.`,bad:false});FX.done()};
  const rvClear=(s,p)=>{updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(a=>a.est?{...a,s:'',est:false}:a)}}));setRvMsg(null)};
  const setTg=(k,v)=>set(c=>({...c,tg:{...(c.tg||{}),[k]:v}}),'tg'+k);
+ const setHist=(k,v)=>set(c=>({...c,hist:{...(c.hist||{}),[k]:v}}),'hist'+k);
+ const clearHist=()=>set(c=>{const n={...c};delete n.hist;return n});
  const setCfg=(p,key)=>set(c=>({...c,cfg:{...(c.cfg||{}),...p}}),key||'cfg'+Object.keys(p).join());
  const pickScale=id=>set(c=>({...c,tg:{},cfg:{...(c.cfg||{}),scale:id,target:PRESETS[id].target,pass:String(PRESETS[id].pass),table:null}}));
  const setPass=v=>set(c=>({...c,tg:{},cfg:{...(c.cfg||{}),pass:v}}),'cfgpass');
@@ -442,6 +428,11 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const aPre=gwa([...preSubs.map(s=>[preEq(s),s.units]),...genPre]),aPreM=gwa(preSubs.filter(isMaj).map(s=>[preEq(s),s.units]));
  const aFin=gwa([...finSubs.map(s=>[finEq(s),s.units]),...(single?genPre:[])]),aFinM=gwa(finSubs.filter(isMaj).map(s=>[finEq(s),s.units]));
  const aRows=subs.map(s=>({code:s.code,pe:preEq(s),fe:finEq(s)}));
+ // All-Year GWA: every completed semestral grade in every year of this account, plus the optional manual past record (overall GWA + total units)
+ const hs=st.hist||{},hG=hs.gwa!==undefined&&hs.gwa!==''?+hs.gwa:null,hU=hs.units!==undefined&&hs.units!==''?+hs.units:null,histOk=hG!=null&&Number.isFinite(hG)&&hU!=null&&Number.isFinite(hU)&&hU>0;
+ const hLo=Math.min(C.hi,C.fail),hHi=Math.max(C.hi,C.fail),hBad=hG!=null&&Number.isFinite(hG)&&(hG<hLo||hG>hHi);
+ const ayRows=[];st.years.forEach(y=>y.sems.forEach(x=>{(x.subs||[]).forEach(q=>{const e=finEq(q);if(e!=null)ayRows.push([e,q.units])});if(single)(x.gens||[]).forEach(g=>{if(g.pre!==''&&g.pre!=null)ayRows.push([eqv(+g.pre),g.units])})}));
+ const ayTrk=gwa(ayRows),ayTrkU=ayRows.reduce((a,r)=>a+(+r[1]>0?+r[1]:0),0),ayAll=gwa([...ayRows,...(histOk&&!hBad?[[hG,hU]]:[])]),ayU=ayTrkU+(histOk&&!hBad?hU:0);
 
  /* ---- retention levels ---- */
  // 0 fine, 1 retention is tight (needs 85%+ on what is left), 2 projected below retention or out of reach
@@ -472,9 +463,9 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
   const W=1080,H=1920,ff='"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif',cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
   const rr=(a,b,w,h,r)=>{x.beginPath();x.roundRect?x.roundRect(a,b,w,h,r):x.rect(a,b,w,h)};
   const tx=(s,a,b,sz,wt,c,al)=>{x.font=wt+' '+sz+'px '+ff;x.fillStyle=c;x.textAlign=al||'left';x.fillText(s,a,b)};
-  const g0=x.createLinearGradient(0,0,W,H);g0.addColorStop(0,col('--bg'));g0.addColorStop(1,col('--surface2'));x.fillStyle=g0;x.fillRect(0,0,W,H);
-  [[180,300,820,.5],[940,760,760,.38],[220,1500,900,.46],[900,1780,620,.3]].forEach(([a,b,r,o])=>{const g=x.createRadialGradient(a,b,0,a,b,r);g.addColorStop(0,col('--accent',o));g.addColorStop(1,col('--accent',0));x.fillStyle=g;x.fillRect(0,0,W,H)});
-  const glass=(a,b,w,h)=>{x.save();x.shadowColor='rgba(0,0,0,.16)';x.shadowBlur=70;x.shadowOffsetY=26;rr(a,b,w,h,72);x.fillStyle=col('--surface',.5);x.fill();x.restore();rr(a,b,w,h,72);const g=x.createLinearGradient(a,b,a+w,b+h);g.addColorStop(0,'rgba(255,255,255,.34)');g.addColorStop(1,'rgba(255,255,255,.06)');x.fillStyle=g;x.fill();x.lineWidth=2.5;x.strokeStyle='rgba(255,255,255,.55)';x.stroke()};
+  
+  x.fillStyle=col('--bg');x.fillRect(0,0,W,H);
+  const glass=(a,b,w,h)=>{x.save();x.shadowColor='rgba(0,0,0,.10)';x.shadowBlur=36;x.shadowOffsetY=10;rr(a,b,w,h,56);x.fillStyle=col('--surface');x.fill();x.restore();rr(a,b,w,h,56);x.lineWidth=2;x.strokeStyle=col('--line',.9);x.stroke()};
   const M=84,CW=W-M*2,ok=finalG!=null&&C.meets(finalG),okM=mG!=null&&C.meets(mG),dirW=C.dir<0?'or lower':'or higher';
   tx(acct.name||'My grades',M,170,60,800,col('--ink'));tx(Y.name+' · '+S.name,M,226,30,500,col('--muted'));
   if(mode==='actual'){
@@ -514,16 +505,19 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
     {k==='error'&&<path d="M12 8.5v4M12 15.4h.01" strokeWidth="2.1"/>}
     {(k==='offline'||k==='local')&&<path d="M4.5 4.5l15 15" strokeWidth="2"/>}</svg></button>};
  const HB='grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink/[.07] text-ink transition active:scale-95 disabled:pointer-events-none disabled:opacity-35 sm:h-10 sm:w-10';
- const TITLES={o:'Overview',t:'Tracker',f:'Forecast',w:'GWA',p:'Profile',s:'Settings'};
+ const TITLES={o:'Overview',t:'Tracker',f:'Forecast',w:'GWA',p:'Profile & Settings'};
  const IS={fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':'true'};
  const pickYS=(yid,sid)=>{set(c=>({...c,y:yid,s:sid}));setPill(false)};
- // glass header: undo/redo on the left, the compact year-and-semester pill in the middle, cloud sync and the account/group switcher on the right
- const Top=()=><header className="sticky z-30" style={{top:'calc(env(safe-area-inset-top,0px) + .5rem)'}}>
+ // header shows e.g. "2nd Year - 1st Sem"; the full academic-year text only appears inside the dropdown
+ const shortY=n=>{n=String(n||'');const m=n.match(/\d+(?:st|nd|rd|th)\s+year/i);if(m)return m[0];return n.replace(/\s*[\(\[].*$/,'').replace(/\s*[,·|–—-]\s*(?:AY|A\.Y\.|S\.Y\.|SY)?\s*\d{4}.*$/i,'').trim()||n};
+ const shortS=n=>{n=String(n||'');return n.replace(/\s*[\(\[].*$/,'').replace(/\bsemester\b/ig,'Sem').trim()||n};
+ // flat header: undo/redo on the left, the compact year-and-semester pill in the middle, cloud sync and the account/group switcher on the right
+ const Top=()=><header className="sticky z-30" style={{top:'var(--tp)'}}>
   <div className="gc grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-full p-1.5">
    <div className="flex items-center gap-1 justify-self-start">
     <button onClick={undo} disabled={!past.current.length} aria-label="Undo" title="Undo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button onClick={redo} disabled={!fut.current.length} aria-label="Redo" title="Redo" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button></div>
-   <button onClick={()=>setPill(v=>!v)} aria-haspopup="dialog" aria-expanded={pill} aria-label={'Year and semester: '+Y.name+', '+S.name} className="flex h-9 max-w-[44vw] items-center gap-1 rounded-full bg-ink/[.07] pl-3.5 pr-2.5 text-[13px] font-extrabold leading-none transition active:scale-95 sm:h-10 sm:max-w-sm sm:text-sm"><span className="truncate">{Y.name} · {S.name}</span><svg viewBox="0 0 20 20" className={cx('h-4 w-4 shrink-0 text-muted transition-transform duration-300',pill&&'rotate-180')} {...IS} strokeWidth="2"><path d="M5 7.5l5 5 5-5"/></svg></button>
+   <button onClick={()=>setPill(v=>!v)} aria-haspopup="dialog" aria-expanded={pill} aria-label={'Year and semester: '+Y.name+', '+S.name} className="flex h-9 max-w-[44vw] items-center gap-1 rounded-full bg-ink/[.07] pl-3.5 pr-2.5 text-[13px] font-extrabold leading-none transition active:scale-95 sm:h-10 sm:max-w-sm sm:text-sm"><span className="truncate">{shortY(Y.name)} - {shortS(S.name)}</span><svg viewBox="0 0 20 20" className={cx('h-4 w-4 shrink-0 text-muted transition-transform duration-300',pill&&'rotate-180')} {...IS} strokeWidth="2"><path d="M5 7.5l5 5 5-5"/></svg></button>
    <div className="flex items-center gap-1 justify-self-end">{SyncBtn()}
     <button onClick={onSwitch} aria-label="Switch account or group" title="Switch account or group" className={HB}><svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" {...IS}><path d={IC.g}/></svg></button></div></div>
   {pill&&<><div className="fixed inset-0 z-40" onClick={()=>setPill(false)}/>
@@ -547,6 +541,16 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
    <div className="flex flex-wrap items-center justify-between gap-3"><p className="min-w-0 flex-1 text-sm text-muted">Actual, recorded grades only. Nothing on this page is forecast or projected.</p>{share}</div>
    {!single&&Sec(P[0].name+' GWA','Recorded '+P[0].name+' grades only',aPre,aPreM,preSub,preMSub)}
    {Sec(single?'Semestral GWA':P[last0].name+' GWA',single?'Recorded grades only':'Cumulative · '+P.map(p=>p.name).join(' + '),aFin,aFinM,finSub,finMSub)}
+   <section className="flex flex-col gap-4"><div><h2 className="text-2xl font-black tracking-tight sm:text-3xl">All-Year GWA</h2><p className="mt-0.5 text-sm text-muted">{histOk&&!hBad?'Every year tracked in this app, combined with your past record':'Every year tracked in this app'}</p></div>
+    <div className="grid gap-4 sm:grid-cols-2">
+     {Wd('All-Year GWA',fg(ayAll),ayAll==null?'No completed semesters yet':f2(ayU)+' unit'+(ayU===1?'':'s')+' counted'+(histOk&&!hBad?' · '+f2(hU)+' from your past record':'')+(C.meets(ayAll)?' · meets target':''),'Weighted by units: every completed semestral grade across all years in the app, plus the past overall GWA and units you enter on the right.',true)}
+     <div className={cx(CARD,'flex flex-col gap-4 p-6 sm:p-7')}>
+      <div><div className="text-sm font-bold">Past record<Tip t="Use this if earlier semesters are not in the app. Enter your overall GWA and the total units you have taken so far. It is blended with the grades tracked here, weighted by units."/></div><p className="mt-1 text-xs text-muted">Missing historical data? Enter both values to include them.</p></div>
+      <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold text-muted">Past overall GWA<Num v={hs.gwa} on={v=>setHist('gwa',v)} ph={C.dir<0?'e.g. 1.75':'e.g. 3.50'} w="mt-1 w-full" bad={hBad}/></label><label className="text-xs font-semibold text-muted">Total units taken<Num v={hs.units} on={v=>setHist('units',v)} ph="e.g. 60" w="mt-1 w-full"/></label></div>
+      {hBad&&<p className="text-xs font-semibold text-bad">That GWA is outside the {fg(hLo)} to {fg(hHi)} scale, so it is not counted.</p>}
+      {!hBad&&(hs.gwa||hs.units)&&!histOk&&<p className="text-xs font-semibold text-muted">Enter both a GWA and units above zero to include it.</p>}
+      <div className="grid grid-cols-2 gap-3"><Tile l="Tracked in app" v={fg(ayTrk)} sub={f2(ayTrkU)+' units'}/><Tile l="Past record" v={histOk&&!hBad?fg(hG):'—'} sub={histOk&&!hBad?f2(hU)+' units':'Not entered'}/></div>
+      {(hs.gwa||hs.units)&&<button className={BTN+' self-start'} onClick={clearHist}>Clear past record</button>}</div></div></section>
    <section className="flex flex-col gap-4"><div><h2 className="text-2xl font-black tracking-tight sm:text-3xl">Report card</h2><p className="mt-0.5 text-sm text-muted">{Y.name} · {S.name} · recorded grades only</p></div>
     {rc.length?<div className={cx(CARD,'overflow-hidden')}>
      <div className={cx(RCG,'border-b border-line/40 py-3')}><span className={LBL2}>Subject</span><span className={cx(LBL2,'truncate text-right')}>{P[0].name}</span><span className={cx(LBL2,'truncate text-right')}>{single?'Semestral':P[last0].name}</span></div>
@@ -555,7 +559,12 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
     :<div className={cx(CARD,'p-6 text-center text-sm text-muted')}>No grades recorded yet. Subjects appear here once a period is complete.</div>}</section>
   </>};
  const Ov=()=>{
+  const nm=(acct.name||'').trim()||'there';
   return <>
+   <section className={cx(CARD,'flex items-center gap-4 p-5 sm:gap-6 sm:p-7')}>
+    {acct.pic?<img src={acct.pic} alt="" className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-accent sm:h-24 sm:w-24"/>:<div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-accent text-3xl font-black text-accent-ink sm:h-24 sm:w-24 sm:text-4xl">{nm.charAt(0).toUpperCase()}</div>}
+    <div className="min-w-0 flex-1"><h1 className="text-2xl font-black leading-tight tracking-tight sm:text-4xl">Hi {nm}! Hope you’re doing great.</h1>
+     {acct.bio?<p className="mt-1.5 line-clamp-2 text-sm text-muted sm:text-base">{acct.bio}</p>:guest?<p className="mt-1.5 text-sm text-muted">Guest mode · save this session as an account to keep it.</p>:<button onClick={()=>setTab('p')} className="mt-1.5 text-left text-sm font-semibold text-accent-text underline underline-offset-4">Add a short bio</button>}</div></section>
    <section><h2 className="mb-4 text-2xl font-black tracking-tight sm:text-3xl">Subjects<Tip t="For subjects with no known breakdown, simply add the subject and enter the released Prelim Grade directly in Options, under Reverse calculator."/></h2>
     {subs.length?<div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{subs.map(s=>{const pe=preEq(s),fe=finEq(s);return <button key={s.id} onClick={()=>{setSid(s.id);setTab('t')}} className={cx(CARD,'lift flex flex-col gap-6 p-5 text-left hover:!border-accent/60')}>
       <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span><div className="min-w-0 flex-1"><div className="truncate font-extrabold">{s.code||'Subject'}</div><div className="truncate text-xs text-muted">{s.name||'No name'}</div></div><span className={cx('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold',s.kind==='gen'?'bg-ink/[.06] text-muted':'bg-accent/15 text-accent-text')}>{s.kind==='gen'?'Gen Ed':'Major'}</span></div>
@@ -626,17 +635,17 @@ const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=a
     <div><div className="text-[10px] font-bold uppercase tracking-wider text-muted">Activities</div><div className="text-base font-black tabular-nums sm:text-lg">{c.n}/{c.total}</div></div></div>
    </div>};
   const TrackerBody=()=>{const s=cur,sem=semActual(s,P),sp=semProjC(s,P),eq=sem==null?null:eqv(sem),isLast=P.length<2||pcur.id===P[last0].id;
-  const Bg=(l,v,sub,hi)=><div key={l} className={cx('rounded-3xl border p-4 sm:p-5',hi?'border-accent/40 bg-accent/15':'border-line/60 bg-ink/[.06]')}><div className="text-xs font-bold text-muted">{l}</div><div className="mt-1 text-4xl font-black tabular-nums tracking-tight sm:text-5xl">{v}</div>{sub&&<div className="mt-1 text-xs font-semibold text-muted">{sub}</div>}</div>;
+  const Bg=(l,v,sub,hi,cls,big)=><div key={l} className={cx('rounded-3xl border p-4 sm:p-5',hi?'border-accent/40 bg-accent/15':'border-line/60 bg-ink/[.06]',cls)}><div className="text-xs font-bold text-muted">{l}</div><div className={cx('mt-1 font-black tabular-nums tracking-tight',big?(P.length===2?'text-6xl sm:text-5xl':'text-6xl'):'text-4xl sm:text-5xl')}>{v}</div>{sub&&<div className="mt-1 text-xs font-semibold text-muted">{sub}</div>}</div>;
+  const two=P.length===2,semV=sem!=null?f2(sem):sp.grade!=null?f2(sp.grade):'—',semSub=sem!=null?'Grade '+fg(eq)+' · '+(sem>=retOf(s).pct-1e-9?'Meets retention':'Below retention ('+fg(retOf(s).g)+')'):sp.grade!=null?'Projected · grade '+fg(eqv(sp.grade)):'Complete every period';
   return <>
    <div className="flex items-center gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 6s3-1 8 1c5-2 8-1 8-1v12s-3-1-8 1c-5-2-8-1-8-1zM12 7v12"/></svg></span>
     <div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-black tracking-tight">{s.code||'Subject'}</h2><p className="truncate text-sm text-muted">{s.name||'No name'} · {f2(+s.units||0)} unit{(+s.units||0)===1?'':'s'}</p></div></div>
    <div className="flex flex-wrap items-center gap-2"><Seg v={s.kind==='gen'?'gen':'major'} on={v=>setF(s.id,'kind',v)} opts={[['major','Major'],['gen','Gen Ed']]}/><Tip t="Tag a subject as Major or Gen Ed. The Majors GWA on the GWA tab only counts subjects tagged Major."/></div>
-   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+   <div className={cx('grid grid-cols-2 gap-3',two&&'sm:grid-cols-3')}>
     {P.map(p=>{const c=pcalc(s,p),v=c.grade!=null?c.grade:c.gradeSoFar;return Bg(p.name+' grade',v==null?'—':f2(v),c.grade!=null?'Raw · complete':v!=null?'Raw · so far':'No scores yet',p.id===pcur.id)})}
-    {isLast&&P.length>1&&Bg('Semestral grade',sem!=null?f2(sem):sp.grade!=null?f2(sp.grade):'—',eq!=null?'Grade '+fg(eq):sp.grade!=null?'Projected · grade '+fg(eqv(sp.grade)):'Complete every period',true)}</div>
+    {P.length>1&&Bg('Semestral grade',semV,semSub,true,cx('col-span-2 !border-accent/60 !bg-accent/20',two&&'sm:col-span-1'),true)}</div>
    <Seg v={pcur.id} on={x=>{setPid(x);setEdit(false)}} opts={P.map(p=>[p.id,p.name])} cls="w-full"/>
    {PeriodBlock(s,pcur)}
-   {isLast&&<AccentBox l="Semestral grade" v={sem==null?'—':f2(sem)} rl="Grade" r={fg(eq)} foot={sem==null?'Complete every period':sem>=retOf(s).pct-1e-9?'Meets retention':'Below retention ('+fg(retOf(s).g)+')'}/>}
    <div className="mx-auto w-full max-w-3xl">{Options(s,pcur,isLast)}</div></>};
  
 const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><button className={BTNP} onClick={()=>setAdding(true)}>＋ Add your first subject</button></div>;
@@ -715,23 +724,26 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
   const run=async(fn,ok)=>{setPm('');const r=await fn();if(r==='ok'){setPm(ok);setPf(f=>({...f,o:'',n:'',n2:'',go:'',gn:'',gn2:''}))}else setPm(r)};
   const pw=(k,ph)=><TextIn type="password" v={pf[k]} on={v=>setPf({...pf,[k]:v})} ph={ph}/>;
   const sec=CARD+' flex flex-col gap-3 p-5 sm:p-6';
+  const tog=k=>setAccO({...accO,[k]:!accO[k]});
+  const AH=(t,sub)=><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">{t}</span><span className="block text-xs text-muted">{sub}</span></span>;
   return <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
    <section className={sec}><h2 className="text-lg font-extrabold">Profile</h2>
     {guest?<p className="text-sm text-muted">You are in guest mode. Save this session as an account from the banner to keep it.</p>:<>
      <div className="flex items-center gap-4"><Avatar a={acct} s="h-20 w-20" t="text-4xl"/><div className="flex flex-col gap-2"><label className={BTN+' cursor-pointer'}>{acct.pic?'Change picture':'Upload picture'}<input type="file" accept="image/*" className="hidden" onChange={photo}/></label>{acct.pic&&<button className={BTN} onClick={()=>prof.rename({pic:''})}>Remove picture</button>}</div></div>
      <label className="text-sm font-semibold">Name<TextIn v={acct.name||''} on={v=>prof.rename({name:v})} cls="mt-1"/></label>
      <label className="text-sm font-semibold">Bio<TextIn v={acct.bio||''} on={v=>prof.rename({bio:v.slice(0,80)})} ph="Program and year (optional)" cls="mt-1"/></label></>}</section>
-   {cloudA&&<section className={sec}><h2 className="text-lg font-extrabold">Account passcode</h2><p className="text-sm text-muted">Signed in as <b className="text-ink">{acct.cloud.sn}</b>. After changing it, other devices must remove this account and unlock it again with the new passcode.</p>{pw('o','Current passcode')}{pw('n','New passcode (6+ characters)')}{pw('n2','Repeat new passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changePass(pf.o,pf.n,pf.n2),'Account passcode changed.')}>Change passcode</button></section>}
-   {gc&&<section className={sec}><h2 className="text-lg font-extrabold">Group passcode</h2><p className="text-sm text-muted">Group <b className="text-ink">{g.name}</b>. After changing it, members must rejoin the group with the new passcode.</p>{pw('go','Current group passcode')}{pw('gn','New group passcode (6+ characters)')}{pw('gn2','Repeat new group passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeGroupPass(pf.go,pf.gn,pf.gn2),'Group passcode changed.')}>Change group passcode</button>
-    <label className="mt-2 text-sm font-semibold">Recovery email<Tip t="Members who forget a passcode can email this address from the unlock screen. It is stored with the group and visible to people who join it."/><TextIn type="email" v={g.rec||''} on={v=>prof.setRec(v)} ph="name@example.com" cls="mt-1"/></label></section>}
+   {(cloudA||gc)&&<div className="flex flex-col gap-5">
+    {cloudA&&<Acc open={accO.a} onToggle={()=>tog('a')} head={AH('Account passcode','Change how you unlock this account')}><p className="text-sm text-muted">Signed in as <b className="text-ink">{acct.cloud.sn}</b>. After changing it, other devices must remove this account and unlock it again with the new passcode.</p>{pw('o','Current passcode')}{pw('n','New passcode (6+ characters)')}{pw('n2','Repeat new passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changePass(pf.o,pf.n,pf.n2),'Account passcode changed.')}>Change passcode</button></Acc>}
+    {gc&&<Acc open={accO.g} onToggle={()=>tog('g')} head={AH('Group passcode','Change the passcode for '+g.name)}><p className="text-sm text-muted">Group <b className="text-ink">{g.name}</b>. After changing it, members must rejoin the group with the new passcode.</p>{pw('go','Current group passcode')}{pw('gn','New group passcode (6+ characters)')}{pw('gn2','Repeat new group passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeGroupPass(pf.go,pf.gn,pf.gn2),'Group passcode changed.')}>Change group passcode</button>
+     <label className="mt-2 text-sm font-semibold">Recovery email<Tip t="Members who forget a passcode can email this address from the unlock screen. It is stored with the group and visible to people who join it."/><TextIn type="email" v={g.rec||''} on={v=>prof.setRec(v)} ph="name@example.com" cls="mt-1"/></label></Acc>}</div>}
    <section className={sec}><h2 className="text-lg font-extrabold">Session</h2><p className="text-sm text-muted">Switch to another account or group.</p><button className={BTN+' self-start'} onClick={onSwitch}>Switch account</button></section>
-   {pm&&<p className="rounded-2xl border border-line bg-ink/[.06] px-4 py-3 text-sm font-semibold lg:col-span-2" role="status">{pm}</p>}</div>};
- const SettingsView=()=><div className={cx(CARD,'p-5 sm:p-8')}><div className="grid gap-x-10 gap-y-8 lg:grid-cols-2">{Settings()}</div></div>;
-
-  return <div className="mx-auto w-full max-w-[1240px] overflow-x-clip px-5 pb-44 pt-2 sm:px-8 md:pb-40">
+   {pm&&<p className="rounded-2xl border border-line bg-ink/[.06] px-4 py-3 text-sm font-semibold lg:col-span-2" role="status">{pm}</p>}
+   <div className="mt-3 flex flex-col gap-4 lg:col-span-2"><h2 className="px-1 text-2xl font-black tracking-tight sm:text-3xl">Settings</h2>
+    <div className={cx(CARD,'p-5 sm:p-8')}><div className="grid gap-x-10 gap-y-8 lg:grid-cols-2">{Settings()}</div></div></div></div>};
+  return <div className="mx-auto w-full max-w-[1240px] overflow-x-clip px-5 pb-44 pt-[var(--tp)] sm:px-8 md:pb-40">
   <main className="flex flex-col gap-6 sm:gap-7">
-   {Top()}<h1 className="px-1 pt-2 text-[2.1rem] font-black leading-none tracking-tight sm:text-5xl">{TITLES[tab]||'Overview'}</h1>{Banners()}
-   <div key={tab} className="anim-rise flex flex-col gap-8 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='f'?ForecastView():tab==='w'?GwaPage():tab==='p'?ProfileView():SettingsView()}</div></main>
+   {Top()}{tab!=='o'&&<h1 className="px-1 pt-2 text-[2.1rem] font-black leading-none tracking-tight sm:text-5xl">{TITLES[tab]||'Overview'}</h1>}{Banners()}
+   <div key={tab} className="anim-rise flex flex-col gap-8 sm:gap-10">{tab==='o'?Ov():tab==='t'?TrackerView():tab==='f'?ForecastView():tab==='w'?GwaPage():ProfileView()}</div></main>
   <BottomNav tab={tab} on={k=>{setPill(false);setTab(k)}}/>
   <Sheet open={adding} onClose={()=>setAdding(false)} title="Add subject">
    <label className="text-sm font-semibold">Code<TextIn v={nf.code} on={v=>setNf({...nf,code:v})} ph="Subject code" cls="mt-1"/></label>
@@ -767,10 +779,10 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const ga=sh&&sh.t==='editAcct'?book.list.find(a=>a.id===sh.id):null,gg=sh&&sh.t==='editGroup'?book.groups.find(g=>g.id===sh.id):null,um=sh&&sh.t==='unlock'&&grp&&grp.members?{mid:sh.mid,...(grp.members[sh.mid]||{})}:null;
 
  /* ---- cards ---- */
- const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex cursor-pointer flex-col gap-2.5 p-3 hover:border-accent/60 hover:shadow-xl hover:shadow-accent/10 sm:p-4')}>
+ const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex cursor-pointer flex-col gap-2.5 p-3 hover:border-accent/60 hover:shadow-md sm:p-4')}>
   <div className="flex items-start justify-between"><GroupIcon g={g} s="h-12 w-12 sm:h-14 sm:w-14" t="text-2xl sm:text-3xl"/><button onClick={e=>{e.stopPropagation();setSh({t:'editGroup',id:g.id});setArm(null);setCm('');setGp('')}} className="-mr-1 -mt-1 rounded-lg p-1.5 text-sm text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label="Edit group">Edit</button></div>
   <div className="min-w-0"><div className="truncate text-sm font-extrabold sm:text-base">{g.name}</div><div className="mt-0.5 truncate text-[11px] text-muted sm:text-xs">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'this device'}</div></div></div>;
- const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise flex cursor-pointer items-center gap-3 p-3 hover:border-accent/60 hover:shadow-xl hover:shadow-accent/10')}>
+ const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise flex cursor-pointer items-center gap-3 p-3 hover:border-accent/60 hover:shadow-md')}>
   <Avatar a={a} s="h-14 w-14" t="text-3xl"/>
   <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><span className="truncate font-extrabold">{a.name||'Untitled'}</span><span className="shrink-0 text-xs" title={a.cloud?'Cloud account':'Local-only account'}>{a.cloud?'Cloud':'Local'}</span></div><div className="line-clamp-2 text-xs leading-snug text-muted">{a.bio||'No bio yet'}</div></div>
   <button onClick={e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})}} className="-mr-1 self-start rounded-lg p-1.5 text-sm text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label="Edit account">Edit</button></div>;
@@ -783,14 +795,14 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const JoinG=()=>{setJf({name:'',pass:''});setCm('');setSh({t:'joinGroup'})};
  const Top=<div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2.5"><TigerLogo className="h-10 w-10"/><span className="text-sm font-extrabold">Grades Tracker</span></div>
   <div className="flex items-center gap-2"><span className="hidden text-[11px] text-muted sm:inline">{busy?'Updating from cloud…':at?'Updated '+rel(at):''}</span>{CLOUD&&<button className={BTN+' !px-3'} onClick={ctl.refresh} aria-label="Refresh from cloud"><span className={busy?'inline-block animate-spin':''}>↻</span></button>}<button className={BTN} onClick={()=>setSh({t:'theme'})}>Theme</button></div></div>;
- const Action=(title,sub,onClick,primary,disabled,d)=><button onClick={onClick} disabled={disabled} className={cx('lift relative flex flex-col items-start gap-10 overflow-hidden rounded-[2rem] p-6 text-left disabled:pointer-events-none disabled:opacity-50 sm:p-8',primary?'bg-accent text-accent-ink shadow-xl shadow-accent/25':'glass')}>
-  <span className={cx('grid h-12 w-12 place-items-center rounded-2xl',primary?'bg-accent-ink/10':'bg-accent/15 text-accent-text')}><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg></span>
-  <span><span className="block text-2xl font-black">{title}</span><span className={cx('mt-1 block max-w-xs text-sm',primary?'opacity-75':'text-muted')}>{sub}</span></span></button>;
- const GroupsScreen=()=><>
-  <div className="anim-rise relative pb-8 pt-10 sm:pb-12 sm:pt-16"><div aria-hidden="true" className="orb -right-20 -top-10 h-72 w-72"/><h1 className="relative max-w-3xl text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">Know where you stand before grades are final.</h1><p className="relative mt-4 max-w-xl text-base text-muted sm:text-lg">Track every score, forecast your finals and plan your GWA. Your data stays private to your group and follows you across devices.</p></div>
-  <div className="stagger grid gap-4 md:grid-cols-2">{Action('Create a group','Pick a name and passcode, then add your account.',NewG,true,false,'M12 5v14M5 12h14')}{Action('Join a group','Enter a group name and passcode to open its accounts.',JoinG,false,!CLOUD,'M10 17l5-5-5-5M15 12H3M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4')}</div>
-  {!CLOUD&&<p className="mt-3 text-xs text-muted">Cloud sync is off. Add your database URL in config.js to join groups and sync between devices.</p>}
-  {book.groups.length>0&&<><h2 className="mb-3 mt-10 text-lg font-extrabold">Your groups</h2><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{book.groups.map(GroupCard)}</div></>}</>;
+ const GroupsScreen=()=>{const recent=book.list.slice().sort((a,b)=>(b.last||0)-(a.last||0)).slice(0,3);return <>
+  <div className="anim-rise pb-4 pt-6 sm:pt-8"><h1 className="text-3xl font-black tracking-tight sm:text-5xl">Your groups</h1><p className="mt-1 text-sm text-muted">Open a group, then pick your account.</p></div>
+  {book.groups.length?<div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{book.groups.map(GroupCard)}</div>
+   :<div className={cx(CARD,'p-6 text-center')}><p className="font-bold">No groups yet</p><p className="mt-1 text-sm text-muted">Create a group, or join one with its passcode, using the buttons below.</p></div>}
+  {recent.length>0&&<><h2 className="mb-3 mt-8 text-lg font-extrabold">Recent accounts</h2><div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{recent.map(AcctCard)}</div></>}
+  <div className="mt-10 flex flex-col gap-2.5 border-t border-line/60 pt-5"><div className={LBL}>Add a group</div>
+   <div className="flex flex-wrap gap-2"><button className={BTN} onClick={NewG}>＋ Create group</button><button className={BTN} onClick={JoinG} disabled={!CLOUD}>Join a group</button></div>
+   {!CLOUD&&<p className="text-xs text-muted">Cloud sync is off. Add your database URL in config.js to join groups and sync between devices.</p>}</div></>};
  
 const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a.last||0)||(a.name||'').localeCompare(b.name||'')),rs=remotesOf(grp);return <>
   <div className="anim-rise flex items-center gap-3 pb-5 pt-6 sm:pt-10"><button className={BTN+' !px-3'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-12 w-12" t="text-2xl"/><div className="min-w-0 flex-1"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'this device only'}</div></div>
@@ -803,7 +815,7 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    {CAN_FILE&&<label className="cursor-pointer font-semibold underline decoration-dotted underline-offset-4 hover:text-ink">Import a backup into this group<input type="file" accept="application/json,.json" onChange={pickBackup} className="hidden"/></label>}
    {msg&&<p className="font-semibold text-ink">{msg}</p>}</div></>};
 
- return <div className="mx-auto max-w-6xl px-4 pb-20 pt-5 sm:px-8 sm:pt-8">
+ return <div className="mx-auto max-w-6xl px-4 pb-20 pt-[var(--tp)] sm:px-8">
   {Top}
   <div key={gv||'groups'}>{grp?GroupScreen():GroupsScreen()}</div>
 
@@ -982,6 +994,6 @@ const ctl={open,guest,createGroup,joinGroup,editGroup,enableGroupCloud,deleteGro
   const onSave=n=>{if(cur.guest){gd.current=n;return}const x=acc(cur.id);bk.current.data[cur.id]=n;if(x&&x.cloud){x.sy={...(x.sy||{}),t:Date.now(),dirty:true};setStat(navigator.onLine?'syncing':'offline');later(cur.id)}saveBook(bk.current)};
   view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(a.gid),changeGroupPass:(o,n,n2)=>changeGroupPass(a.gid,o,n,n2),setRec:e=>editGroup(a.gid,{rec:e})}}/>;
  }
- return <><Ambient/><div key={cur?'app':'home'} className="anim-rise">{view}</div></>;
+ return <div key={cur?'app':'home'} className="anim-rise">{view}</div>;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
