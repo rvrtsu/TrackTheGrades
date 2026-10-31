@@ -308,6 +308,10 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v27',notes:[
+ 'Home: Create Group, Join Group and Individual Account are now equal rectangle buttons in one row',
+ 'Individual accounts get a Join a Group button in Profile, keeping all grades',
+ 'Meet the Creators now shows their photos, and can be reopened from the bottom of Home']},
  {v:'v26',notes:[
  'The app is now called Gradely',
  'Report Card: new Hide Prelim Grades switch shows only subjects and the semestral grade, on screen and in the exported image',
@@ -321,7 +325,7 @@ const RELEASE_NOTES=[
  {v:'v24',notes:[
  'Home button on every tab now returns to the accounts and groups page',
  'Year and semester labels no longer get squished in the header',
- 'Personal accounts: create an account without joining a group',
+ 'Individual accounts: create an account without joining a group',
  'Change your username, group name and (admins) group passcode in Profile',
  'Add to Home Screen guide with iPhone and Android steps',
  'Your role (Admin or Member) shows in Profile']},
@@ -334,7 +338,7 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v26';
+const APP_VER='v27';
 /* ---- one-time contextual tab tutorials ---- */
 const tipSeen=k=>{try{return localStorage.getItem('gtf-tip-'+k)==='1'}catch(e){return false}};
 const tipDone=k=>{try{localStorage.setItem('gtf-tip-'+k,'1')}catch(e){}};
@@ -495,11 +499,17 @@ const tourSeen=()=>{try{return localStorage.getItem(TOUR_KEY)==='1'}catch(e){ret
 const tourDone=()=>{try{localStorage.setItem(TOUR_KEY,'1')}catch(e){}};
 const TSL=[
  {t:'Welcome to Gradely',d:'Track every score, see where each subject is heading and plan the finals you need to reach your target GWA.',logo:true},
- {t:'Start with a group, or on your own',d:'You can skip groups with a personal account. A group keeps classmates’ accounts together. Create one, or join an existing group with its name and passcode. Whoever creates a group is its admin and manages its members and passcode.',ic:IC.g,hint:'Home › Create group, or Join a group'},
+ {t:'Start with a group, or on your own',d:'You can skip groups with an individual account. A group keeps classmates’ accounts together. Create one, or join an existing group with its name and passcode. Whoever creates a group is its admin and manages its members and passcode.',ic:IC.g,hint:'Home › Create group, or Join a group'},
  {t:'Add your account',d:'Open a group and add your account. A passcode syncs it across your devices, or keep it on this device only. Your grades stay behind that passcode.',ic:IC.p,hint:'Open a group › New Account'},
  {t:'Add subjects and activities',d:'Add each subject in the Tracker, then list its quizzes and exams with their weights. A blank score counts as 0 until you enter it.',ic:IC.t,hint:'Tracker › Add subject'},
  {t:'Track and forecast',d:'Enter scores as they come in. The Overview shows your GWA, and every subject shows the score you still need to hit your target.',ic:IC.f,hint:'Overview, Tracker and Report'},
  {t:'Meet the Creators',creators:true,d:'Built with love (and a lot of caffeine) to help you survive and thrive this semester. Let’s get that GWA!'}];
+const CREATORS=[{n:'Joshua Carli Ipo',src:'icons/creator-joshua.jpg'},{n:'Jhon Roever Robea',src:'icons/creator-jhon.jpg'}];
+const CREATORS_MSG='Built with love (and a lot of caffeine) to help you survive and thrive this semester. Let’s get that GWA!';
+function CreatorsBody({d}){return <div className="flex w-full flex-col items-center">
+ <div className="grid w-full max-w-xs grid-cols-2 gap-3">{CREATORS.map(c=><figure key={c.n} className="m-0 flex min-w-0 flex-col items-center gap-2"><img src={c.src} alt={c.n} width="480" height="600" draggable="false" className="aspect-[4/5] w-full rounded-2xl object-cover shadow-md ring-1 ring-line"/><figcaption className="text-sm font-extrabold leading-tight">{c.n}</figcaption></figure>)}</div>
+ <span className="mt-3 rounded-full bg-accent/20 px-3.5 py-1.5 text-xs font-bold text-accent-text">UST-AMV Students</span>
+ <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-muted">{d||CREATORS_MSG}</p></div>}
 function Onboarding({open,onClose}){
  const [i,setI]=useState(0),[dir,setDir]=useState(1),t0=useRef(null),n=TSL.length;
  useLock(open);
@@ -515,11 +525,7 @@ function Onboarding({open,onClose}){
    onTouchEnd={e=>{const a=t0.current,t=e.changedTouches[0];t0.current=null;if(!a)return;const dx=t.clientX-a.x,dy=t.clientY-a.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.3)go(dx<0?1:-1)}}>
    <div className="flex h-14 items-center justify-between px-5"><span className="text-xs font-bold text-muted">{i+1} of {n}</span>{!last&&<button onClick={onClose} className="rounded-full px-3 py-1.5 text-sm font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink">Skip</button>}</div>
    <div key={i} className={cx('flex min-h-[19.5rem] flex-col items-center px-8 pb-3 text-center',dir>0?'slide-r':'slide-l')}>
-    {s.creators?<><div className="grid h-16 w-16 place-items-center rounded-[1.4rem] bg-accent/20 text-accent-text ring-1 ring-accent/30" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-8 w-8" fill="currentColor"><path d="M12 20.5C5 15.6 2.5 12 2.5 8.6 2.5 6 4.4 4.2 6.8 4.2c1.9 0 3.9 1 5.2 3 1.3-2 3.3-3 5.2-3 2.4 0 4.3 1.8 4.3 4.4 0 3.4-2.5 7-9.5 11.9z"/></svg></div>
-     <h2 className="mt-4 text-2xl font-black tracking-tight">{s.t}</h2>
-     <div className="mt-4 grid w-full max-w-xs grid-cols-2 gap-3">{['Joshua Carli Ipo','Jhon Roever Robea'].map(nm=><div key={nm} className="flex min-w-0 flex-col items-center gap-2 rounded-2xl border border-line/60 bg-ink/[.05] px-2 py-3.5"><div className="grid h-12 w-12 place-items-center rounded-full bg-accent text-lg font-black text-accent-ink">{nm.charAt(0)}</div><div className="text-sm font-extrabold leading-tight">{nm}</div></div>)}</div>
-     <span className="mt-3 rounded-full bg-accent/20 px-3.5 py-1.5 text-xs font-bold text-accent-text">UST-AMV Students</span>
-     <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-muted">{s.d}</p></>
+    {s.creators?<><h2 className="text-2xl font-black tracking-tight">{s.t}</h2><div className="mt-4 w-full"><CreatorsBody d={s.d}/></div></>
     :<>{s.logo?<TigerLogo className="h-28 w-28 drop-shadow-lg"/>
      :<div className="grid h-28 w-28 place-items-center rounded-[2rem] bg-accent/20 text-accent-text ring-1 ring-accent/30"><svg viewBox="0 0 24 24" className="h-14 w-14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={s.ic}/></svg></div>}
     <h2 className="mt-6 text-2xl font-black tracking-tight">{s.t}</h2>
@@ -533,7 +539,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState(()=>{try{const t=localStorage.getItem('gtf-tab');return['o','t','w','p'].includes(t)?t:'o'}catch(e){return'o'}}),[swO,setSwO]=useState(false),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0),[pill,setPill]=useState(false),[accO,setAccO]=useState({a:false,g:false}),[rcf,setRcfS]=useState(()=>{try{const j=JSON.parse(localStorage.getItem('gtf-rcf')||'{}');return{a:j.a==='p'?'p':'g',b:j.b==='p'?'p':'g',hp:!!j.hp}}catch(e){return{a:'g',b:'g',hp:false}}}),[exT,setExT]=useState(()=>{try{const t=localStorage.getItem('gtf-ext');return RTHEMES.some(x=>x.id===t)?t:'light'}catch(e){return'light'}});
  useEffect(()=>{try{localStorage.setItem('gtf-tab',tab)}catch(e){}},[tab]);
  const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false}),nav=useRef({busy:false,target:-1,enter:0}),flip=useRef({}),flipEl=useRef(null),genTok=useRef(0);
- const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({un:'',up:'',gnm:'',gnp:'',o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState(''),[ydel,setYdel]=useState(null);
+ const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({un:'',up:'',gnm:'',gnp:'',o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState(''),[ydel,setYdel]=useState(null),[jgO,setJgO]=useState(false),[jf,setJf]=useState({name:'',pass:''}),[jm,setJm]=useState(''),[jb,setJb]=useState(false);
  const setRcf=(k,v)=>{const n={...rcf,[k]:v};setRcfS(n);try{localStorage.setItem('gtf-rcf',JSON.stringify(n))}catch(e){}};
  const togFx=k=>{const v=!fxs[k];FX.set(k,v);setFxs({...fxs,[k]:v})};
  const commit=n=>{ref.current=n;setSt(n);onSave(n)};
@@ -1059,7 +1065,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     {guest?<p className="text-sm text-muted">You are in guest mode. Save this session as an account from the banner to keep it.</p>:<>
      <div className="flex items-center gap-4"><Avatar a={acct} s="h-20 w-20" t="text-4xl"/><div className="flex flex-col gap-2"><label className={BTN+' cursor-pointer'}>{acct.pic?'Change picture':'Upload picture'}<input type="file" accept="image/*" className="hidden" onChange={photo}/></label>{acct.pic&&<button className={BTN} onClick={()=>ask({title:'Remove your picture?',msg:'Your account goes back to its initial.',yes:'Remove picture',onYes:()=>prof.rename({pic:''})})}>Remove picture</button>}</div></div>
      <label className="text-sm font-semibold">Name<TextIn v={acct.name||''} on={v=>prof.rename({name:v})} cls="mt-1"/></label>
-     <label className="text-sm font-semibold">Bio<TextIn v={acct.bio||''} on={v=>prof.rename({bio:v.slice(0,80)})} ph="Program and year (optional)" cls="mt-1"/></label>{g?<p className="text-xs font-semibold text-muted">Role in {g.name}: <span className="text-ink">{prof.admin.is?'Admin':'Member'}</span>{prof.admin.is?'':' · only admins manage members and the group passcode or name'}</p>:<p className="text-xs font-semibold text-muted">Personal account (not in a group)</p>}</>}</section>
+     <label className="text-sm font-semibold">Bio<TextIn v={acct.bio||''} on={v=>prof.rename({bio:v.slice(0,80)})} ph="Program and year (optional)" cls="mt-1"/></label>{g?<p className="text-xs font-semibold text-muted">Role in {g.name}: <span className="text-ink">{prof.admin.is?'Admin':'Member'}</span>{prof.admin.is?'':' · only admins manage members and the group passcode or name'}</p>:<div className="flex flex-col gap-2 rounded-2xl border border-accent/40 bg-accent/10 p-3"><p className="text-xs font-semibold text-muted">Individual account (not in a group)</p><button className={BTNP} onClick={()=>{setJf({name:'',pass:''});setJm('');setJgO(true)}}>Join a Group</button><p className="text-xs text-muted">Your grades and account stay exactly as they are. Joining only adds you to the group.</p></div>}</>}</section>
    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
     {Settings()}
     {!guest&&A('un','Username & login','Change your sign-in username',cloudA?<><p className="text-sm text-muted">Your sign-in username is <b className="text-ink">{acct.cloud.sn}</b>. It works together with your passcode. After changing it, other devices must remove this account and unlock it again.</p><TextIn v={pf.un} on={v=>setPf({...pf,un:v})} ph="New username"/>{pw('up','Current passcode')}<button className={BTNP} onClick={()=>run(()=>prof.changeUsername(pf.un,pf.up),'Username changed.')}>Change username</button></>:<p className="text-sm text-muted">This is a local-only account, so it has no sign-in username or passcode. Change the display name above, or turn on cloud sync from Home › Edit account to get a login.</p>)}
@@ -1076,6 +1082,13 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
    <ErrorBoundary key={tab}><div className="anim-rise flex flex-col gap-5 sm:gap-10"><TabBody f={tab==='o'?Ov:tab==='t'?TrackerView:tab==='w'?ReportPage:ProfileView}/></div></ErrorBoundary></main>
   <BottomNav tab={tab} on={k=>{setPill(false);setTab(k)}}/>
 
+  <Sheet open={jgO&&!!swc&&!guest} onClose={()=>setJgO(false)} title="Join a Group">
+   <p className="text-sm text-muted">Enter the group’s name and passcode. Your account moves into the group and keeps all of its grades.</p>
+   {CLOUD?<><TextIn v={jf.name} on={v=>setJf({...jf,name:v})} ph="Group name"/><TextIn type="password" v={jf.pass} on={v=>setJf({...jf,pass:v})} ph="Group passcode"/>
+    {jm&&<p className="text-xs font-semibold text-bad">{jm}</p>}
+    <button disabled={jb} className={BTNP} onClick={async()=>{setJb(true);setJm('');try{const r=await prof.joinGroup(jf.name,jf.pass);if(String(r).startsWith('ok')){setJgO(false);setPm('You joined the group.')}else setJm(r)}catch(e){setJm('Something went wrong. Try again.')}setJb(false)}}>{jb?'Working…':'Join group'}</button></>
+    :<p className="text-sm text-muted">Cloud sync is off, so groups can only be joined from this device. Add your database URL in config.js to join a group with a passcode.</p>}
+   {swc&&swc.groups.length>0&&<div><div className={LBL}>Groups already on this device</div><div className="mt-2 flex flex-col gap-2">{swc.groups.map(g=><button key={g.id} onClick={()=>{swc.join(g.id);setJgO(false);setPm('You joined '+g.name+'.')}} className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.04] p-2.5 text-left transition hover:border-accent/60"><GroupIcon g={g} s="h-10 w-10" t="text-xl"/><span className="min-w-0 flex-1 truncate text-sm font-extrabold">{g.name}</span><span className="text-xs font-bold text-accent-text">Add</span></button>)}</div></div>}</Sheet>
   {tip&&<TabTutorial id={tip} onClose={closeTip}/>}
   <Sheet open={swO&&!!swc} onClose={()=>setSwO(false)} title="Switch group or account">{swc&&<>
    <div className="flex items-center gap-3 rounded-2xl border border-line bg-ink/[.06] p-3"><Avatar a={acct} s="h-12 w-12" t="text-2xl"/><div className="min-w-0 flex-1"><div className="truncate font-extrabold">{acct.name||'Account'}</div><div className="truncate text-xs text-muted">{swc.cur?'Viewing '+swc.cur.name:''}{swc.mine.length>1?' · in '+swc.mine.length+' groups':''}</div></div></div>
@@ -1133,7 +1146,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})},'Edit account')}
   <Avatar a={a} s="h-16 w-16" t="text-3xl"/>
-  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{a.name||'Untitled'}</div><div className="text-[11px] font-semibold text-muted" title={a.cloud?'Cloud account':'Local-only account'}>{a.cloud?'Cloud':'Local'}{gidsOf(a).length?'':' · Personal'}</div></div>
+  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{a.name||'Untitled'}</div><div className="text-[11px] font-semibold text-muted" title={a.cloud?'Cloud account':'Local-only account'}>{a.cloud?'Cloud':'Local'}{gidsOf(a).length?'':' · Individual'}</div></div>
   <div className="line-clamp-2 text-xs leading-snug text-muted">{a.bio||'No bio yet'}</div></div>;
  const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 border-dashed p-4 pt-5 text-center hover:border-accent/60 sm:w-48')} style={{animationDelay:i*40+'ms'}}>
   <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-16 w-16" t="text-3xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
@@ -1150,7 +1163,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
    :<div className={cx(CARD,'mx-auto max-w-md p-6 text-center')}><p className="font-bold">No groups yet</p><p className="mt-1 text-sm text-muted">Create a group, or join one with its passcode, using the buttons below.</p></div>}
   {people.length>0&&<><h2 className="mb-3 mt-9 text-center text-lg font-extrabold">Profiles</h2><div className="flex flex-wrap justify-center gap-3">{people.map(AcctCard)}</div></>}
   <div className="mt-10 flex flex-col items-center gap-2.5 border-t border-line/60 pt-5 text-center"><div className={LBL}>Add a group or account</div>
-   <div className="flex flex-wrap justify-center gap-2"><button className={BTN+' !px-3 !py-1.5 !text-xs'} onClick={NewG}>＋ Create group</button><button className={BTN+' !px-3 !py-1.5 !text-xs'} onClick={JoinG} disabled={!CLOUD}>Join a group</button><button className={BTN+' !px-3 !py-1.5 !text-xs'} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:!CLOUD})}}>＋ Personal account</button></div>
+   <div className="flex w-full max-w-md flex-row gap-2"><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={NewG}>Create Group</button><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={JoinG} disabled={!CLOUD}>Join Group</button><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct',local:!CLOUD})}}>Individual Account</button></div>
    <button className="mt-1 text-xs font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={ctl.tour}>How this app works</button>
    {!CLOUD&&<p className="max-w-sm text-xs text-muted">Cloud sync is off. Add your database URL in config.js to join groups and sync between devices.</p>}</div></>};
  
@@ -1168,6 +1181,7 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
  return <div className="mx-auto max-w-6xl px-4 pb-20 pt-[var(--tp)] sm:px-8">
   {Top}
   <div key={gv||'groups'}>{grp?GroupScreen():GroupsScreen()}</div>
+  <div className="mt-10 text-center"><button onClick={()=>setSh({t:'creators'})} className="text-[11px] font-semibold text-muted/80 underline decoration-dotted underline-offset-4 transition hover:text-ink">Meet the Creators</button></div>
 
   <Sheet open={!!sh&&sh.t==='newGroup'} onClose={()=>setSh(null)} title="Create New Group">
    {Photo(ng,pic=>setNg({...ng,pic}),()=>setNg({...ng,pic:''}),<GroupIcon g={ng} s="h-16 w-16" t="text-4xl"/>)}
@@ -1193,8 +1207,8 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
     {gg.cloud&&ctl.canAdmin(gg.id)&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+gg.name+'” for everyone?',msg:'The group is deleted from the cloud, so nobody can join it or see its member list again.',next:'Continue',final:'This cannot be undone. Every member loses the group on every device the next time they open the app. Delete it anyway?',yes:'Yes, delete for everyone',onYes:()=>{ctl.deleteGroup(gg.id,true);setSh(null);setGv(null)}})}>Delete group from the cloud too</button>}
     <p className="text-xs text-muted">Accounts in a removed group move to another group. Account data is never deleted by removing a group.</p></div></>}</Sheet>
 
-  <Sheet open={!!sh&&sh.t==='newAcct'} onClose={()=>setSh(null)} title={(grp?'':'Personal account · ')+(sh&&sh.local?'New local-only account':'New Account (cloud)')}>
-   {!grp&&<p className="text-sm text-muted">A personal account is not in any group. You can add it to a group later from Edit.</p>}
+  <Sheet open={!!sh&&sh.t==='newAcct'} onClose={()=>setSh(null)} title={(grp?'':'Individual account · ')+(sh&&sh.local?'New local-only account':'New Account (cloud)')}>
+   {!grp&&<p className="text-sm text-muted">An individual account is not in any group. You can add it to a group later from Edit.</p>}
    {CLOUD&&<button className="self-start text-xs font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>setSh({...sh,local:!sh.local})}>{sh&&sh.local?'Use a cloud account instead (syncs between devices)':'Use a local-only account instead'}</button>}
    {Photo(na,pic=>setNa({...na,pic}),()=>setNa({...na,pic:''}))}
    {!na.pic&&Emojis(EMO,na.emoji,e=>setNa({...na,emoji:e}))}
@@ -1230,6 +1244,7 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
     {ga.cloud&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+ga.name+'” from the cloud too?',msg:'The account and all of its grades are erased from the cloud as well as this device.',next:'Continue',final:'This cannot be undone. The grades cannot be recovered on any device. Delete the account anyway?',yes:'Yes, delete everywhere',onYes:()=>{ctl.del(ga.id,true);setSh(null)}})}>Delete from the cloud too</button>}
     <p className="text-xs text-muted">{ga.cloud?'Removing from this device keeps the cloud copy, so you can unlock it again from its group.':'A local-only account cannot be recovered after it is removed.'}</p></div></>}</Sheet>
 
+  <Sheet open={!!sh&&sh.t==='creators'} onClose={()=>setSh(null)} title="Meet the Creators"><CreatorsBody/></Sheet>
   <Sheet open={!!sh&&sh.t==='theme'} onClose={()=>setSh(null)} title="Theme"><ThemePicker theme={theme} setTheme={setTheme}/></Sheet>
  </div>;
 }
@@ -1405,7 +1420,7 @@ const ctl={open,guest,createGroup,joinGroup,editGroup,enableGroupCloud,deleteGro
   const cl=a.cloud?{on:true,state:stat,label:lbl,sync:()=>sync(cur.id),at:a.sy&&a.sy.at,pending:!!(a.sy&&a.sy.dirty)}:{on:false,state:'local',label:cur.guest?'Not saved':'This device only',sync:()=>{}};
   const onSave=n=>{if(cur.guest){gd.current=n;return}const x=acc(cur.id);bk.current.data[cur.id]=n;if(x&&x.cloud){x.sy={...(x.sy||{}),t:Date.now(),dirty:true};setStat(navigator.onLine?'syncing':'offline');later(cur.id)}saveBook(bk.current)};
   const gO=cur.guest?null:grp(gNow),admin={is:!!(gO&&admMine(gO,a)),rows:gO?memRows(gO):[],set:(r,on)=>setRole(gNow,r,on),give:r=>giveAdmin(gNow,r),refresh};
-  view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(gNow),changeGroupPass:(o,n,n2)=>changeGroupPass(gNow,o,n,n2),changeUsername:(nn,pw)=>changeUsername(cur.id,nn,pw),changeGroupName:(nn,pw)=>changeGroupName(gNow,nn,pw),setRec:e=>{if(admin.is)editGroup(gNow,{rec:e})},tour:()=>setTour(true),admin}} swc={cur.guest?null:{cur:grp(gNow),gid:gNow,mine:gidsOf(a),groups:bk.current.groups,accts:bk.current.list.filter(x=>gidsOf(x).includes(gNow)),aid:cur.id,setGroup:g=>setCur(c=>({...c,gid:g})),pick:id=>switchAcct(id,gNow),join:g=>rename(cur.id,{gids:[...gidsOf(a),g]})}}/>;
+  view=<App key={(cur.id||'guest')+'-'+ver} init={cur.guest?gd.current:bk.current.data[cur.id]} acct={a} guest={!!cur.guest} onSave={onSave} onSwitch={leave} onKeep={keep} cloud={cl} ext={ext} loser={a.loser} onLoser={()=>{delete a.loser;save()}} theme={theme} setTheme={setTheme} prof={{rename:p=>rename(cur.id,p),changePass:(o,n,n2)=>changePass(cur.id,o,n,n2),group:grp(gNow),changeGroupPass:(o,n,n2)=>changeGroupPass(gNow,o,n,n2),changeUsername:(nn,pw)=>changeUsername(cur.id,nn,pw),joinGroup:async(nm,pw)=>{const r=await joinGroup(nm,pw);if(String(r).startsWith('ok:')){const gid=r.slice(3),x=acc(cur.id);if(x&&!gidsOf(x).includes(gid))rename(cur.id,{gids:[...gidsOf(x),gid]});setCur(c=>({...c,gid}));return'ok'}return r},changeGroupName:(nn,pw)=>changeGroupName(gNow,nn,pw),setRec:e=>{if(admin.is)editGroup(gNow,{rec:e})},tour:()=>setTour(true),admin}} swc={cur.guest?null:{cur:grp(gNow),gid:gNow,mine:gidsOf(a),groups:bk.current.groups,accts:bk.current.list.filter(x=>gidsOf(x).includes(gNow)),aid:cur.id,setGroup:g=>setCur(c=>({...c,gid:g})),pick:id=>switchAcct(id,gNow),join:g=>rename(cur.id,{gids:[...gidsOf(a),g]})}}/>;
  }
  return <><ErrorBoundary title="Something went wrong"><div key={cur?'app':'home'} className="anim-rise">{view}</div></ErrorBoundary><UpdateBanner u={upd}/><ConfirmHost/><Onboarding open={tour&&!a2} onClose={closeTour}/><A2HS open={a2} onClose={closeA2}/></>;
 }
