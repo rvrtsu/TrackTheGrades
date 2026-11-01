@@ -363,8 +363,8 @@ function useSwUpdate(){
 const RELEASE_NOTES=[
  {v:'v36',notes:[
  'New interactive Tracker tutorial with sample subjects: switch subjects, add scores, open Options and try the Reverse Calculator. It opens the first time you visit the Tracker',
- 'Replay it any time from the Tutorial button on Home, Profile › Settings › Tutorial, or Replay Tutorial inside the Tracker',
- 'Home header redesigned: a curved card with a large centered Gradely title, a short intro and a collapsible Quick actions menu (How it works, Join with code, Report a problem)',
+ 'Replay it any time from Profile › Settings › Tutorial or the Replay Tutorial button inside the Tracker. Home › How it works opens the original welcome tour',
+ 'Home redesigned to be compact: a slim title card, a separate scrollable Quick actions row (How it works, Join with code, Report a problem, Sync now), two cards per row, and Meet the Creators as a pop-up',
  'Profiles and Your groups are centered with more breathing room; their descriptions fold behind View more once you are signed in',
  'Profiles now sit at the top of Home, above Your groups, each in its own panel with Sign In, Create Account, Join Group and Create Group right in the heading',
  'Sign in from Home and every group your account belongs to is added automatically']},
@@ -684,7 +684,7 @@ function TrackerTutorial({open,onClose}){
    <div className="mt-3 text-xs font-bold text-muted">I am aiming for a semestral grade of</div>
    <div className="mt-1.5 flex flex-wrap gap-1.5">{tgts.map((g,k)=><button key={g} onClick={()=>setTg(k)} aria-pressed={k===tg} className={cx('rounded-xl border px-3 py-1.5 text-sm font-extrabold tabular-nums transition',k===tg?'border-accent bg-accent text-accent-ink':'border-line bg-ink/[.05]')}>{g.toFixed(2)}</button>)}</div>
    <div className="mt-3 rounded-2xl bg-accent/15 p-3 text-center" role="status">{need>100?<><div className="text-sm font-black">Out of reach this time</div><div className="text-xs text-muted">Even a perfect Finals will not get {tgts[tg].toFixed(2)}. Try a higher grade.</div></>:need<=0?<><div className="text-sm font-black">Already secured</div><div className="text-xs text-muted">Your Prelim alone gets you {tgts[tg].toFixed(2)}.</div></>:<><div className="text-xs font-bold text-muted">You need about</div><div className="text-3xl font-black tabular-nums text-accent-text">{f2(need)}%</div><div className="text-xs text-muted">on your Finals</div></>}</div></div></div>;
-  return <ul className="flex w-full max-w-sm flex-col gap-2 text-left">{['Tracker tab › Replay Tutorial','Profile › Settings › Tutorial','Home header › Tutorial'].map(x=><li key={x} className="flex items-center gap-3 rounded-2xl border border-line/60 bg-ink/[.04] px-4 py-3 text-sm font-bold"><svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-accent-text" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{x}</li>)}</ul>};
+  return <ul className="flex w-full max-w-sm flex-col gap-2 text-left">{['Tracker tab › Replay Tutorial','Profile › Settings › Tutorial'].map(x=><li key={x} className="flex items-center gap-3 rounded-2xl border border-line/60 bg-ink/[.04] px-4 py-3 text-sm font-bold"><svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-accent-text" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{x}</li>)}</ul>};
  return createPortal(<div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Tracker tutorial">
   <div className="anim-fade absolute inset-0 bg-black/45 backdrop-blur-md"/>
   <div className="anim-sheet gcs relative flex max-h-[100dvh] w-full max-w-md select-none flex-col overflow-hidden rounded-t-[2rem] sm:rounded-[2rem]" style={{paddingBottom:'env(safe-area-inset-bottom,0px)',touchAction:'pan-y'}}
@@ -1283,17 +1283,28 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
 }
 
 
-// Home screen: a large, collapsible "Meet the Creators" card
+// Home screen: a slim "Meet the Creators" card that opens a centered pop-up dialog
 function CreatorsCard(){
- const [o,setO]=useState(false);
- return <section className={cx(CARD,'hero mx-auto w-full max-w-2xl overflow-hidden')}>
-  <button onClick={()=>setO(v=>!v)} aria-expanded={o} aria-controls="creators-panel" className="flex w-full flex-col items-center gap-3.5 px-5 py-7 text-center transition hover:bg-ink/[.05] sm:px-7 sm:py-8">
-   <span className="flex shrink-0 -space-x-4">{CREATORS.map(c=><img key={c.n} src={c.src} alt="" width="64" height="80" draggable="false" className="h-14 w-14 rounded-full object-cover shadow-md ring-[3px] ring-surface sm:h-16 sm:w-16"/>)}</span>
-   <span className="min-w-0"><span className="block text-xl font-black tracking-tight sm:text-2xl">Meet the Creators</span><span className="mt-0.5 block text-sm text-muted">{o?'Tap to close':'The students behind Gradely · tap to meet them'}</span></span><Chev open={o}/></button>
-  <div id="creators-panel" className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col items-center gap-5 border-t border-line/50 px-5 pb-7 pt-6 sm:px-8">
-   <div className="grid w-full max-w-md grid-cols-2 gap-4 sm:gap-6">{CREATORS.map(c=><figure key={c.n} className="m-0 flex min-w-0 flex-col items-center gap-3"><img src={c.src} alt={c.n} width="480" height="600" draggable="false" className="aspect-[4/5] w-full rounded-3xl object-cover shadow-lg ring-1 ring-line"/><figcaption className="text-base font-extrabold leading-tight sm:text-lg">{c.n}</figcaption></figure>)}</div>
-   <span className="rounded-full bg-accent/20 px-4 py-1.5 text-sm font-bold text-accent-text">UST-AMV Students</span>
-   <p className="max-w-md text-center text-base leading-relaxed text-muted">{CREATORS_MSG}</p></div></div></div></section>}
+ const [m,setM]=useState(false),[v,setV]=useState(false),tm=useRef(null);
+ const openIt=()=>{clearTimeout(tm.current);setM(true);requestAnimationFrame(()=>requestAnimationFrame(()=>setV(true)))};
+ const closeIt=()=>{setV(false);clearTimeout(tm.current);tm.current=setTimeout(()=>setM(false),300)};
+ useEffect(()=>()=>clearTimeout(tm.current),[]);
+ useLock(m);
+ useEffect(()=>{if(!m)return;const k=e=>e.key==='Escape'&&closeIt();window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k)},[m]);
+ return <>
+  <button onClick={openIt} aria-haspopup="dialog" className={cx(CARD,'hero lift mx-auto flex w-full max-w-md items-center gap-3 !rounded-2xl px-3.5 py-2.5 text-left')}>
+   <span className="flex shrink-0 -space-x-3">{CREATORS.map(c=><img key={c.n} src={c.src} alt="" width="40" height="40" draggable="false" className="h-9 w-9 rounded-full object-cover shadow ring-2 ring-surface"/>)}</span>
+   <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold leading-tight">Meet the Creators</span><span className="block truncate text-[11px] text-muted">The students behind Gradely</span></span>
+   <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7.5 5l5 5-5 5"/></svg></button>
+  {m&&createPortal(<div className="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Meet the Creators">
+   <div onClick={closeIt} className="absolute inset-0 bg-black/45 backdrop-blur-sm" style={{transition:'all .3s ease-in-out',opacity:v?1:0}}/>
+   <div className="gcs relative max-h-[90dvh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-3xl p-5 text-center" style={{transition:'all .3s ease-in-out',opacity:v?1:0,transform:v?'translateY(0) scale(1)':'translateY(14px) scale(.95)'}}>
+    <button onClick={closeIt} aria-label="Close" className={BTN+' !absolute right-3 top-3 !h-8 !w-8 !rounded-full !p-0 text-xs'}>✕</button>
+    <h2 className="text-xl font-black tracking-tight">Meet the Creators</h2>
+    <div className="mx-auto mt-4 grid w-full max-w-xs grid-cols-2 gap-3">{CREATORS.map(c=><figure key={c.n} className="m-0 flex min-w-0 flex-col items-center gap-2"><img src={c.src} alt={c.n} width="480" height="600" draggable="false" className="aspect-[4/5] w-full rounded-2xl object-cover shadow-md ring-1 ring-line"/><figcaption className="text-sm font-extrabold leading-tight">{c.n}</figcaption></figure>)}</div>
+    <span className="mt-4 inline-block rounded-full bg-accent/20 px-3 py-1 text-xs font-bold text-accent-text">UST-AMV Students</span>
+    <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted">{CREATORS_MSG}</p>
+    <button onClick={closeIt} className={BTNP+' mt-4 w-full'}>Close</button></div></div>,document.body)}</>}
 
 /* =====================================================================
    8b. DEVELOPER DASHBOARD  (only shown after signing in with the developer account)
@@ -1436,42 +1447,35 @@ function DevDashboard({onExit}){
 const HIc=({d,cls='h-[18px] w-[18px]'})=><svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>;
 const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_TUT='M4 5.5A1.5 1.5 0 0 1 5.5 4H11v15H5.5A1.5 1.5 0 0 0 4 20.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v15h5.5a1.5 1.5 0 0 1 1.5 1.5z',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',HI_USER='M19 21v-1.5a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4V21M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',HI_GROUP='M17 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h4a3.5 3.5 0 0 1 3.5 3.5V20M8.5 11a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5zM15.5 4.8a3.25 3.25 0 0 1 0 6.3',HI_DOWN='M12 5v14M6 13l6 6 6-6';
 const HOME_INTRO='Track, forecast, and ace your grades effortlessly. Welcome to your new academic hub! Gradely is designed to help you monitor your progress, predict your final scores, and stay fully organized throughout the semester.';
-function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onTutorial,onJoin,onReport,onA2hs,showA2hs}){
- const [open,setOpen]=useState(false);
+function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2hs,showA2hs}){
  const status=!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
- const CH='inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-line/70 bg-ink/[.05] px-4 text-sm font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40',IC='h-4 w-4';
- // a standalone, curved card (not a flush bar): big centered title, the intro, then a collapsible Quick actions menu
- return <header className="gc hdr anim-rise mx-auto w-full overflow-hidden rounded-[1.75rem]" style={{marginTop:'var(--tp)'}}>
-  <div className="flex flex-col items-center px-6 pb-6 pt-10 text-center sm:px-12 sm:pb-8 sm:pt-14">
-   <h1 className="text-[3.5rem] font-black leading-none tracking-tight sm:text-[5.5rem]">Gradely</h1>
-   <p className="mx-auto mt-6 max-w-xl text-[15px] font-medium leading-relaxed text-muted sm:mt-8 sm:text-[17px]">{HOME_INTRO}</p>
-   <div className="mt-6 flex max-w-full flex-wrap items-center justify-center gap-2.5"><div className="inline-flex max-w-full items-center gap-2 rounded-full border border-line/70 bg-surface/60 px-3.5 py-1.5 text-xs font-semibold text-muted" role="status"><span className={cx('h-2 w-2 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></div>
-    <button onClick={onTutorial} className="inline-flex items-center gap-1.5 rounded-full border border-transparent bg-accent px-4 py-1.5 text-xs font-extrabold text-accent-ink transition hover:brightness-105 active:scale-[.97]" aria-label="Open the Tracker tutorial"><HIc d={HI_TUT} cls="h-3.5 w-3.5"/>Tutorial</button></div>
-  </div>
-  <div className="border-t border-line/60">
-   <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} aria-controls="home-quick" className="flex w-full items-center justify-center gap-2 px-5 py-4 text-sm font-extrabold transition hover:bg-ink/[.05]">Quick actions<Chev open={open}/></button>
-   <div id="home-quick" className={cx('acc',open&&'open')} inert={!open}><div>
-    <div className="mx-auto flex max-w-xl flex-wrap justify-center gap-2.5 px-5 pb-7 pt-1 sm:px-8" role="toolbar" aria-label="Quick actions">
-     <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls={IC}/>How it works</button>
-     <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls={IC}/>Join with code</button>
-     <button className={CH} onClick={onReport}><HIc d={HI_BUG} cls={IC}/>Report a problem</button>
-     {cloud&&<button className={CH} onClick={onRefresh}><span className={busy?'animate-spin':''}><HIc d={HI_SYNC} cls={IC}/></span>Sync now</button>}
-     <button className={CH} onClick={onTheme}><HIc d={HI_THEME} cls={IC}/>Themes</button>
-     {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls={IC}/>Install app</button>}
-    </div>
-   </div></div>
-  </div>
- </header>;
+ const CH='inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-line/70 bg-ink/[.05] px-3 text-xs font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40',IC='h-3.5 w-3.5';
+ // two stacked pieces: a compact title card, then a separate, very slim Quick actions card (one horizontally scrollable row)
+ return <><header className="gc hdr anim-rise mx-auto w-full overflow-hidden !rounded-2xl" style={{marginTop:'var(--tp)'}}>
+  <div className="flex flex-col items-center px-4 pb-3 pt-4 text-center sm:px-8 sm:pb-4 sm:pt-5">
+   <h1 className="text-3xl font-black leading-none tracking-tight sm:text-5xl">Gradely</h1>
+   <p className="mx-auto mt-2 max-w-md text-xs font-medium leading-snug text-muted sm:text-sm">{HOME_INTRO}</p>
+   <div className="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-line/70 bg-surface/60 px-2.5 py-1 text-[11px] font-semibold text-muted" role="status"><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></div>
+  </div></header>
+  <nav aria-label="Quick actions" className="gc anim-rise mx-auto mt-2 w-full !rounded-2xl px-2 py-1.5" style={{animationDelay:'40ms'}}>
+   <div className="no-scrollbar flex flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-[5px]" role="toolbar" aria-label="Quick actions" style={{overflowX:'auto',whiteSpace:'nowrap',paddingBottom:5,scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+    <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls={IC}/>How it works</button>
+    <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls={IC}/>Join with code</button>
+    <button className={CH} onClick={onReport}><HIc d={HI_BUG} cls={IC}/>Report a problem</button>
+    {cloud&&<button className={CH} onClick={onRefresh}><span className={busy?'animate-spin':''}><HIc d={HI_SYNC} cls={IC}/></span>Sync now</button>}
+    <button className={CH} onClick={onTheme}><HIc d={HI_THEME} cls={IC}/>Themes</button>
+    {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls={IC}/>Install app</button>}
+   </div></nav></>;
 }
 
 // Section description for Profiles / Your groups: shown in full when signed out, collapsed behind "View more" once signed in
 function SecDesc({text,loggedIn}){
  const [open,setOpen]=useState(!loggedIn);
  useEffect(()=>{setOpen(!loggedIn)},[loggedIn]);
- if(!loggedIn)return <p className="mx-auto mt-3 max-w-md text-[15px] font-medium leading-relaxed text-ink/80 sm:text-base">{text}</p>;
- return <div className="mt-1.5 flex flex-col items-center">
-  <div className={cx('acc',open&&'open')} inert={!open}><div><p className="mx-auto max-w-md pb-1 pt-1.5 text-sm leading-relaxed text-muted">{text}</p></div></div>
-  <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="mt-1 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-300',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3.5 w-3.5"/></span></button></div>;
+ if(!loggedIn)return <p className="mx-auto mt-1 max-w-md text-xs font-medium leading-snug text-muted sm:text-[13px]">{text}</p>;
+ return <div className="mt-0.5 flex flex-col items-center">
+  <div className={cx('acc',open&&'open')} inert={!open}><div><p className="mx-auto max-w-md pb-0.5 pt-1 text-xs leading-snug text-muted">{text}</p></div></div>
+  <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="mt-0.5 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-300 ease-in-out',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3 w-3"/></span></button></div>;
 }
 
 function Home({book,theme,setTheme,ctl,busy,at}){
@@ -1490,70 +1494,70 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const ga=sh&&sh.t==='editAcct'?book.list.find(a=>a.id===sh.id):null,gg=sh&&sh.t==='editGroup'?book.groups.find(g=>g.id===sh.id):null,um=sh&&sh.t==='unlock'&&grp&&grp.members?{mid:sh.mid,...(grp.members[sh.mid]||{})}:null;
 
  /* ---- cards ---- */
- const EditBtn=(fn,label)=><button onClick={fn} className="absolute right-2 top-2 rounded-lg px-1.5 py-1 text-xs text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label={label}>Edit</button>;
- const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[calc(50%_-_.375rem)] cursor-pointer flex-col items-center gap-2.5 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
+ const EditBtn=(fn,label)=><button onClick={fn} className="absolute right-1 top-1 rounded-md px-1.5 py-0.5 text-[10px] text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label={label}>Edit</button>;
+ const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-full min-w-0 cursor-pointer flex-col items-center gap-1.5 !rounded-2xl p-2.5 pt-3.5 text-center hover:border-accent/60 hover:shadow-md')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editGroup',id:g.id});setArm(null);setCm('');setGp('')},'Edit group')}
-  <GroupIcon g={g} s="h-14 w-14" t="text-3xl"/>
-  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{g.name}</div><div className="mt-0.5 truncate text-xs text-muted">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'not in the cloud'}</div></div></div>;
- const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[calc(50%_-_.375rem)] cursor-pointer flex-col items-center gap-2 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
+  <GroupIcon g={g} s="h-11 w-11" t="text-2xl"/>
+  <div className="min-w-0 max-w-full"><div className="truncate text-sm font-extrabold">{g.name}</div><div className="truncate text-[11px] text-muted">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'not in the cloud'}</div></div></div>;
+ const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-full min-w-0 cursor-pointer flex-col items-center gap-1 !rounded-2xl p-2.5 pt-3.5 text-center hover:border-accent/60 hover:shadow-md')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})},'Edit account')}
-  <Avatar a={a} s="h-16 w-16" t="text-3xl"/>
-  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{a.name||'Untitled'}</div><div className="text-[11px] font-semibold text-muted" title={a.cloud?'Cloud account':'Not in the cloud yet'}>{a.cloud?'Cloud':'Not in the cloud'}{gidsOf(a).length?'':' · Individual'}</div></div>
-  <div className="line-clamp-2 text-xs leading-snug text-muted">{a.bio||'No bio yet'}</div></div>;
- const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-[calc(50%_-_.375rem)] cursor-pointer flex-col items-center gap-2 border-dashed p-4 pt-5 text-center hover:border-accent/60 sm:w-48')} style={{animationDelay:i*40+'ms'}}>
-  <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-16 w-16" t="text-3xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
-  <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{m.n||'Account'}</div></div><div className="line-clamp-2 text-xs leading-snug text-muted">{m.b||'Tap to unlock with its passcode'}</div></div>;
+  <Avatar a={a} s="h-12 w-12" t="text-2xl"/>
+  <div className="min-w-0 max-w-full"><div className="truncate text-sm font-extrabold">{a.name||'Untitled'}</div><div className="text-[10px] font-semibold text-muted" title={a.cloud?'Cloud account':'Not in the cloud yet'}>{a.cloud?'Cloud':'Not in the cloud'}{gidsOf(a).length?'':' · Individual'}</div></div>
+  <div className="line-clamp-2 text-[11px] leading-snug text-muted">{a.bio||'No bio yet'}</div></div>;
+ const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-full min-w-0 cursor-pointer flex-col items-center gap-1 !rounded-2xl border-dashed p-2.5 pt-3.5 text-center hover:border-accent/60')} style={{animationDelay:i*40+'ms'}}>
+  <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-12 w-12" t="text-2xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
+  <div className="min-w-0 max-w-full"><div className="truncate text-sm font-extrabold">{m.n||'Account'}</div></div><div className="line-clamp-2 text-[11px] leading-snug text-muted">{m.b||'Tap to unlock with its passcode'}</div></div>;
 
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
- const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onTutorial={ctl.trkTour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
+ const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
  const loggedIn=book.list.length>0;
- const SecHd=(ic,title,sub,actions,alt)=><div className={cx('panel-hd flex flex-col items-center gap-6 border-b border-line/70 px-5 py-8 text-center sm:px-8 sm:py-10',alt&&'alt')}>
-  <div className="flex min-w-0 flex-col items-center"><span className="mb-4 grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-6 w-6"/></span><h2 className="text-2xl font-black leading-tight tracking-tight sm:text-3xl">{title}</h2><SecDesc text={sub} loggedIn={loggedIn}/></div>
-  <div className="grid w-full max-w-xs grid-cols-2 gap-3 sm:flex sm:w-auto sm:max-w-none sm:justify-center">{actions}</div></div>;
- const SB=BTN+' w-full sm:w-auto',PB=BTNP+' w-full sm:w-auto';
- const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <div className="mt-6 sm:mt-8">
-  {!CLOUD&&<p className="mb-4 rounded-2xl border border-bad/30 bg-bad/10 px-4 py-3 text-center text-xs font-semibold text-bad">Gradely stores everything in the cloud. Add your database URL in config.js to sign in, create or join a group.</p>}
-  <section className="panel anim-rise" aria-label="Profiles">
+ const SecHd=(ic,title,sub,actions,alt)=><div className={cx('panel-hd flex flex-col items-center gap-2.5 border-b border-line/70 px-3.5 py-3.5 text-center sm:px-6',alt&&'alt')}>
+  <div className="flex min-w-0 flex-col items-center"><span className="mb-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-4 w-4"/></span><h2 className="text-base font-black leading-tight tracking-tight sm:text-lg">{title}</h2><SecDesc text={sub} loggedIn={loggedIn}/></div>
+  <div className="grid w-full max-w-xs grid-cols-2 gap-2 sm:flex sm:w-auto sm:max-w-none sm:justify-center">{actions}</div></div>;
+ const SB=BTN+' w-full !py-1.5 !text-xs sm:w-auto',PB=BTNP+' w-full !py-1.5 !text-xs sm:w-auto';
+ const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <div className="mt-3 sm:mt-4">
+  {!CLOUD&&<p className="mb-3 rounded-xl border border-bad/30 bg-bad/10 px-3 py-2 text-center text-xs font-semibold text-bad">Gradely stores everything in the cloud. Add your database URL in config.js to sign in, create or join a group.</p>}
+  <section className="panel anim-rise !rounded-2xl" aria-label="Profiles">
    {SecHd(HI_USER,'Profiles','Accounts on this device. Sign in and every group you have joined is added automatically.',<>
     <button className={SB} disabled={!CLOUD} onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign In</button>
     <button className={PB} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>Create Account</button></>)}
-   <div className="p-5 sm:p-8">
-    {msg&&<p role="status" className="mx-auto mb-5 max-w-md rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-center text-sm font-semibold">{msg}</p>}
-    {people.length?<div className="flex flex-wrap justify-center gap-3.5">{people.map(AcctCard)}</div>
-     :<div className="rounded-2xl border border-dashed border-line px-4 py-7 text-center"><p className="font-bold">No profiles yet</p><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Tap Sign In to use an account from another device, or Create Account to start a new one.</p></div>}
+   <div className="p-3 sm:p-4">
+    {msg&&<p role="status" className="mx-auto mb-3 max-w-md rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-center text-xs font-semibold">{msg}</p>}
+    {people.length?<div className="g2">{people.map(AcctCard)}</div>
+     :<div className="rounded-xl border border-dashed border-line px-3 py-4 text-center"><p className="text-sm font-bold">No profiles yet</p><p className="mx-auto mt-0.5 max-w-sm text-xs text-muted">Tap Sign In to use an account from another device, or Create Account to start a new one.</p></div>}
    </div>
   </section>
-  <div className="my-7 flex items-center gap-3 sm:my-9" aria-hidden="true"><span className="h-px flex-1 bg-line/70"/><span className="grid h-8 w-8 place-items-center rounded-full border border-line bg-surface/80 text-muted"><HIc d={HI_DOWN} cls="h-4 w-4"/></span><span className="h-px flex-1 bg-line/70"/></div>
-  <section className="panel anim-rise" style={{animationDelay:'80ms'}} aria-label="Your groups">
+  <div className="my-3.5 flex items-center gap-3 sm:my-4" aria-hidden="true"><span className="h-px flex-1 bg-line/70"/><span className="grid h-6 w-6 place-items-center rounded-full border border-line bg-surface/80 text-muted"><HIc d={HI_DOWN} cls="h-3 w-3"/></span><span className="h-px flex-1 bg-line/70"/></div>
+  <section className="panel anim-rise !rounded-2xl" style={{animationDelay:'80ms'}} aria-label="Your groups">
    {SecHd(HI_GROUP,'Your groups','Groups you created or joined. Open one, then pick your account.',<>
     <button className={SB} disabled={!CLOUD} onClick={JoinG}>Join Group</button>
     <button className={PB} disabled={!CLOUD} onClick={NewG}>Create Group</button></>,true)}
-   <div className="p-5 sm:p-8">
-    {book.groups.length?<div className="flex flex-wrap justify-center gap-3.5">{book.groups.map(GroupCard)}</div>
-     :<div className="rounded-2xl border border-dashed border-line px-4 py-7 text-center"><p className="font-bold">No groups yet</p><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Join one with its code, create your own, or sign in to a profile and its groups appear here.</p></div>}
+   <div className="p-3 sm:p-4">
+    {book.groups.length?<div className="g2">{book.groups.map(GroupCard)}</div>
+     :<div className="rounded-xl border border-dashed border-line px-3 py-4 text-center"><p className="text-sm font-bold">No groups yet</p><p className="mx-auto mt-0.5 max-w-sm text-xs text-muted">Join one with its code, create your own, or sign in to a profile and its groups appear here.</p></div>}
    </div>
   </section></div>};
  
 const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a.last||0)||(a.name||'').localeCompare(b.name||'')),rs=remotesOf(grp);return <>
-  <div className="anim-rise relative flex flex-col items-center gap-2 pb-5 pt-14 text-center sm:pt-14"><button className={BTN+' !px-3 absolute left-0 top-2'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-16 w-16" t="text-3xl"/><div className="min-w-0 max-w-full"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'not in the cloud yet'}</div></div>
+  <div className="anim-rise relative flex flex-col items-center gap-1.5 pb-3 pt-12 text-center sm:pt-12"><button className={BTN+' !px-3 absolute left-0 top-2'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-12 w-12" t="text-2xl"/><div className="min-w-0 max-w-full"><h1 className="truncate text-xl font-black tracking-tight sm:text-3xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'not in the cloud yet'}</div></div>
    <button className={BTN+' !px-3 absolute right-0 top-2'} onClick={()=>{setSh({t:'editGroup',id:grp.id});setArm(null);setCm('');setGp('')}} aria-label="Edit group">Edit</button></div>
-  {grp.cloud&&<div className={cx(CARD,'mx-auto mb-5 flex max-w-md flex-col items-center gap-2 p-4 text-center')}><div className={LBL}>Join code</div>
-   {grp.code?<><div className="select-all text-3xl font-black tabular-nums tracking-[.18em]">{fmtCode(grp.code)}</div><div className="flex flex-wrap justify-center gap-2"><button className={BTN} onClick={()=>copy(grp.code,'Code')}>Copy code</button><button className={BTN} onClick={()=>copy(jlink(grp.code),'Invite link')}>Copy invite link</button></div><p className="text-xs text-muted">Classmates tap Join Group and enter this code.</p></>
+  {grp.cloud&&<div className={cx(CARD,'mx-auto mb-3 flex max-w-md flex-col items-center gap-1.5 !rounded-2xl p-3 text-center')}><div className={LBL}>Join code</div>
+   {grp.code?<><div className="select-all text-2xl font-black tabular-nums tracking-[.18em]">{fmtCode(grp.code)}</div><div className="flex flex-wrap justify-center gap-2"><button className={BTN} onClick={()=>copy(grp.code,'Code')}>Copy code</button><button className={BTN} onClick={()=>copy(jlink(grp.code),'Invite link')}>Copy invite link</button></div><p className="text-xs text-muted">Classmates tap Join Group and enter this code.</p></>
     :ctl.canAdmin(grp.id)?<><p className="text-xs text-muted">This group has no join code yet.</p>{Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.newCode(grp.id),()=>{})}>Generate join code</button></>:<p className="text-xs text-muted">No join code yet. Ask the group admin to make one.</p>}
    {cp&&<p className="text-xs font-semibold text-good">{cp}</p>}</div>}
-  <div className="mb-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2"><button className={BTNP} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>＋ New Account</button>{book.list.some(a=>!gidsOf(a).includes(grp.id))&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>setSh({t:'addEx'})}>or add an existing account</button>}</div>
-  {!ls.length&&!rs.length&&<p className={cx(CARD,'p-6 text-center text-sm text-muted')}>No accounts in this group yet. Tap “New Account” to add the first one.</p>}
-  <div className="flex flex-wrap justify-center gap-3">{ls.map(AcctCard)}{rs.map(LockedCard)}</div>
-  <div className="mt-8 flex flex-col items-center gap-3 text-center text-xs text-muted">
+  <div className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5"><button className={BTNP} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>＋ New Account</button>{book.list.some(a=>!gidsOf(a).includes(grp.id))&&<button className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>setSh({t:'addEx'})}>or add an existing account</button>}</div>
+  {!ls.length&&!rs.length&&<p className={cx(CARD,'!rounded-2xl p-4 text-center text-xs text-muted mb-3')}>No accounts in this group yet. Tap “New Account” to add the first one.</p>}
+  <div className="g2">{ls.map(AcctCard)}{rs.map(LockedCard)}</div>
+  <div className="mt-5 flex flex-col items-center gap-2 text-center text-xs text-muted">
    {CLOUD&&<button className="font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign in with a sync name and passcode</button>}
    {msg&&<p className="font-semibold text-ink">{msg}</p>}</div></>};
 
- return <div className="mx-auto max-w-6xl px-4 pb-20 pt-0 sm:px-8">
+ return <div className="mx-auto max-w-6xl px-3 pb-16 pt-0 sm:px-8">
   {Top}
   <div key={gv||'groups'}>{grp?GroupScreen():GroupsScreen()}</div>
-  <div className="mt-12 flex flex-col items-center gap-5"><CreatorsCard/>
+  <div className="mt-5 flex flex-col items-center gap-3"><CreatorsCard/>
    <button onClick={()=>{setDv({u:'',p:''});setCm('');setSh({t:'dev'})}} className="text-[11px] font-semibold text-muted/70 underline decoration-dotted underline-offset-4 transition hover:text-ink">Developer sign-in</button></div>
 
   <Sheet open={!!sh&&sh.t==='newGroup'} onClose={()=>setSh(null)} title="Create New Group">

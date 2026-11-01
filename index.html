@@ -87,6 +87,9 @@ input[type=range]{accent-color:rgb(var(--accent));height:1.75rem}
 select{color-scheme:inherit}select option{background:rgb(var(--surface));color:rgb(var(--ink))}
 .tot{border-bottom:4px double currentColor}
 input{font-variant-numeric:tabular-nums}
+/* profile and group cards: exactly two per row, tight gap */
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:42rem;margin-inline:auto}
+.g2>*{min-width:0}
 /* hide the scrollbar on the header's quick-action row */
 .no-scrollbar{scrollbar-width:none;-ms-overflow-style:none}.no-scrollbar::-webkit-scrollbar{display:none}
 /* ---------- motion ---------- */
@@ -106,7 +109,7 @@ input{font-variant-numeric:tabular-nums}
 .lift:active{transform:translateY(-1px) scale(.99)}
 .stagger>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) backwards}
 .stagger>*:nth-child(2){animation-delay:.05s}.stagger>*:nth-child(3){animation-delay:.1s}.stagger>*:nth-child(4){animation-delay:.15s}.stagger>*:nth-child(5){animation-delay:.2s}.stagger>*:nth-child(6){animation-delay:.25s}.stagger>*:nth-child(n+7){animation-delay:.3s}
-.acc{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .4s cubic-bezier(.2,.8,.2,1),opacity .3s ease}
+.acc{display:grid;grid-template-rows:0fr;opacity:0;transition:all .3s ease-in-out}
 .acc.open{grid-template-rows:1fr;opacity:1}
 .acc>div{overflow:hidden;min-height:0}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
