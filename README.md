@@ -2,7 +2,17 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v36 final: compact Home and tutorial fix)
+## What's new in this version (v37, step 1: themes, Quick actions, tiger watermark)
+- **Color and Mode are separate.** The theme picker (Home > Themes, and Profile > Settings > Appearance) now has a **Color** row (Yellow, Maroon, Pink, Lavender, Mint and the new **Brown**) and a **Light / Dark** switch. Every color has a light and a dark version, so changing one never changes the other. The saved value is still a single theme id (`gtf-theme`), so existing installs keep their look. Devices that had the older Blue, Green or Classic themes keep them until a new color is picked.
+- **Off-white Light mode.** No light theme uses pure white for the page or the cards any more. Each one is a very faint tint of its own accent (warm for Yellow and Brown, cool for Lavender and Mint, rosy for Pink and Maroon). All tokens live at the top of `index.html`.
+- **Quick actions carousel.** Order: Dark/Light toggle, How it works, Join with code, Themes, Sync now, Reset Site Data, Report a problem (Install app is added last when the app is not installed). It no longer scrolls natively: the chips are measured, grouped into pages that fit, and the **left / right arrows** (or a swipe) fade and slide between pages. If everything fits, the arrows disappear. The arrows are flush with the card edges and the card clips its content, so hover states follow its curve. Styles are the `.qa-*` classes in `index.html`; the logic is `QuickCarousel` in `src/app.jsx`.
+- **Reset Site Data.** Asks twice, then clears this site's saved data on the device (local storage, session, offline cache, service worker and IndexedDB) and reloads. Cloud accounts are not touched and can be signed in to again; anything saved only on the device is lost.
+- **Tiger watermark.** A cartoon tiger head, drawn as a white translucent outline, peeks from the top-right corner of the Gradely title card (`TigerWatermark`, `.tiger-wm`). It sits behind the text and the title row is sized so it never meets the intro text, from 320px wide up.
+- **Meet the creators** at the bottom of Home is now a quiet text link (no photos). It opens the same pop-up.
+- Service worker cache is `gradely-v37-step1`. Open the app twice on each device so the update loads. The Tracker and sign-in logic are unchanged in this step.
+
+## Previous version
+### Earlier (v36 final: compact Home and tutorial fix)
 - **Tutorial buttons.** **How it works** on Home opens the original welcome tour (the carousel that ends with Meet the Creators). The Home header no longer has a Tracker tutorial button. The Tracker tutorial opens only from inside the **Tracker** tab (**Replay Tutorial**), from **Profile > Settings > Tutorial**, and by itself the first time you visit the Tracker.
 - **Meet the Creators pop-up.** On Home it is now a slim card. Tapping it opens a centered pop-up dialog with a fade and scale animation (close with the X, the Close button, a tap outside, or Escape).
 - **Compact Home.** Smaller paddings, margins and type on every Home card, panel and heading, with no dead space.

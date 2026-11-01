@@ -42,7 +42,7 @@ const FX=(()=>{
 })();
 // theme-aware extras (traffic lights, insight banners, confetti), injected so this file stays self-contained
 (function(){try{if(document.getElementById('gtf-x'))return;const el=document.createElement('style');el.id='gtf-x';el.textContent=[
- ':root,[data-theme=sun],[data-theme=lav],[data-theme=pink],[data-theme=maroon]{--warn:202 138 4}[data-theme=dark],[data-theme=bluedk],[data-theme=maroondk],[data-theme=greendk],[data-theme=pinkdk],[data-theme=lavdk],[data-theme=mintdk]{--warn:250 204 21}[data-theme=mono]{--warn:85 85 85}',
+ ':root,[data-theme=sun],[data-theme=lav],[data-theme=pink],[data-theme=maroon],[data-theme=brown]{--warn:202 138 4}[data-theme=dark],[data-theme=bluedk],[data-theme=maroondk],[data-theme=greendk],[data-theme=pinkdk],[data-theme=lavdk],[data-theme=mintdk],[data-theme=browndk]{--warn:250 204 21}[data-theme=mono]{--warn:85 85 85}',
  '.tl-g{color:rgb(var(--good))}.tl-y{color:rgb(var(--warn))}.tl-r{color:rgb(var(--bad))}',
  '.tlb-g{background:rgb(var(--good)/.15);color:rgb(var(--good))}.tlb-y{background:rgb(var(--warn)/.16);color:rgb(var(--warn))}.tlb-r{background:rgb(var(--bad)/.15);color:rgb(var(--bad))}',
  '.ins-good{border-color:rgb(var(--good)/.45);background:rgb(var(--good)/.1)}.ins-warn{border-color:rgb(var(--warn)/.5);background:rgb(var(--warn)/.12)}.ins-bad{border-color:rgb(var(--bad)/.5);background:rgb(var(--bad)/.1)}.ins-idle{border-color:rgb(var(--line));background:rgb(var(--surface2)/.7)}',
@@ -143,23 +143,29 @@ const writeSession=(aid,gid)=>{try{localStorage.setItem(SK,JSON.stringify({v:1,a
 const clearSession=()=>{try{[SK,'gtf-auth','gtf-active-account','gtf-active-group'].forEach(k=>localStorage.removeItem(k))}catch(e){}};
 const THEMES=[
  {id:'dark',fam:'Yellow',mode:'Dark',name:'Yellow Dark',bar:'#0E0E11',sw:['#1C1C21','#FBBF24','#F6F6F8']},
- {id:'sun',fam:'Yellow',mode:'Light',name:'Yellow Light',bar:'#F6F6F3',sw:['#FFFFFF','#FACC15','#1C1B18']},
- {id:'blue',fam:'Blue',mode:'Light',name:'Blue Light',bar:'#F4F8FF',sw:['#FFFFFF','#2563EB','#0F1D36']},
+ {id:'sun',fam:'Yellow',mode:'Light',name:'Yellow Light',bar:'#FAF6E8',sw:['#FFFFFF','#FACC15','#1C1B18']},
+ {id:'blue',fam:'Blue',mode:'Light',name:'Blue Light',bar:'#EFF4FD',sw:['#FFFFFF','#2563EB','#0F1D36']},
  {id:'bluedk',fam:'Blue',mode:'Dark',name:'Blue Dark',bar:'#080D18',sw:['#111A2C','#60A5FA','#EEF4FF']},
- {id:'maroon',fam:'Maroon',mode:'Light',name:'Maroon Light',bar:'#FCF5F6',sw:['#FFFFFF','#800020','#2B0A14']},
+ {id:'maroon',fam:'Maroon',mode:'Light',name:'Maroon Light',bar:'#F9F1F2',sw:['#FFFFFF','#800020','#2B0A14']},
  {id:'maroondk',fam:'Maroon',mode:'Dark',name:'Maroon Dark',bar:'#12080B',sw:['#211015','#A82642','#FFEEF1']},
- {id:'green',fam:'Green',mode:'Light',name:'Green Light',bar:'#F5FCF7',sw:['#FFFFFF','#16A34A','#0E281A']},
+ {id:'green',fam:'Green',mode:'Light',name:'Green Light',bar:'#EFF8F2',sw:['#FFFFFF','#16A34A','#0E281A']},
  {id:'greendk',fam:'Green',mode:'Dark',name:'Green Dark',bar:'#08120D',sw:['#101F17','#4ADE80','#ECFCF1']},
- {id:'pink',fam:'Pink',mode:'Light',name:'Pink Light',bar:'#FFF5FA',sw:['#FFFFFF','#EC4899','#380E24']},
+ {id:'pink',fam:'Pink',mode:'Light',name:'Pink Light',bar:'#FCF1F7',sw:['#FFFFFF','#EC4899','#380E24']},
  {id:'pinkdk',fam:'Pink',mode:'Dark',name:'Pink Dark',bar:'#160910',sw:['#26111C','#F472B6','#FFEEF7']},
- {id:'lav',fam:'Lavender',mode:'Light',name:'Lavender Light',bar:'#F9F7FF',sw:['#FFFFFF','#A78BFA','#241C42']},
+ {id:'lav',fam:'Lavender',mode:'Light',name:'Lavender Light',bar:'#F5F1FC',sw:['#FFFFFF','#A78BFA','#241C42']},
  {id:'lavdk',fam:'Lavender',mode:'Dark',name:'Lavender Dark',bar:'#0F0C1A',sw:['#1B162D','#C4B5FD','#F3F0FF']},
- {id:'mint',fam:'Mint',mode:'Light',name:'Mint Light',bar:'#F3FCF9',sw:['#FFFFFF','#2DD4AA','#0A2A22']},
+ {id:'mint',fam:'Mint',mode:'Light',name:'Mint Light',bar:'#EDF7F3',sw:['#FFFFFF','#2DD4AA','#0A2A22']},
  {id:'mintdk',fam:'Mint',mode:'Dark',name:'Mint Dark',bar:'#071311',sw:['#0E211D','#6EE7C3','#E8FDF6']},
- {id:'mono',fam:'Monochrome',mode:'Light',name:'Monochrome',bar:'#FAFAFA',sw:['#FFFFFF','#111111','#737373']}];
+ {id:'brown',fam:'Brown',mode:'Light',name:'Brown Light',bar:'#F6F0E8',sw:['#FDF9F3','#8B5A35','#2C1D14']},
+ {id:'browndk',fam:'Brown',mode:'Dark',name:'Brown Dark',bar:'#140F0C',sw:['#231C17','#C9905C','#FAF3EB']},
+ {id:'mono',fam:'Monochrome',mode:'Light',name:'Monochrome',bar:'#F6F6F4',sw:['#FFFFFF','#111111','#737373']}];
 const THEME_DEFAULT='dark',THEME_ALIAS={red:'maroon',reddk:'maroondk'};
 const THEME_FAMS=[...new Set(THEMES.map(t=>t.fam))];
 const themeOk=t=>{t=THEME_ALIAS[t]||t;return THEMES.some(x=>x.id===t)?t:THEME_DEFAULT};
+// Color and mode are separate choices. Every color has a light id and a dark id; the saved value is still one theme id, so older installs keep working.
+const COLORS=[{fam:'Yellow',l:'sun',d:'dark'},{fam:'Maroon',l:'maroon',d:'maroondk'},{fam:'Pink',l:'pink',d:'pinkdk'},{fam:'Lavender',l:'lav',d:'lavdk'},{fam:'Mint',l:'mint',d:'mintdk'},{fam:'Brown',l:'brown',d:'browndk'}];
+const themeInfo=id=>{id=themeOk(id);const t=THEMES.find(x=>x.id===id);return{id,fam:t.fam,dark:t.mode==='Dark'}};
+const flipMode=id=>{const i=themeInfo(id),c=COLORS.find(x=>x.fam===i.fam);if(c)return i.dark?c.l:c.d;const alt=i.dark?i.id.replace(/dk$/,''):i.id+'dk';return THEMES.some(x=>x.id===alt)?alt:(i.dark?'sun':'dark')};
 // Report card export looks (the canvas is drawn in buildStory)
 const RTHEMES=[
  {id:'light',name:'Minimalist Light',sub:'White, hairline rules',sw:['#FFFFFF','#111113','#E5E5EA','#111113']},
@@ -361,6 +367,11 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v37',notes:[
+ 'Theme picker split in two: choose a Color (Yellow, Maroon, Pink, Lavender, Mint or the new Brown) and switch Light or Dark mode on its own',
+ 'Light mode now uses a soft off-white tinted by your color instead of pure white',
+ 'Quick actions are now a paged carousel with arrow buttons, and gain a Dark/Light toggle and Reset Site Data',
+ 'The Gradely title card has a tiger watermark, and Meet the creators is now a quiet text link at the bottom of Home']},
  {v:'v36',notes:[
  'New interactive Tracker tutorial with sample subjects: switch subjects, add scores, open Options and try the Reverse Calculator. It opens the first time you visit the Tracker',
  'Replay it any time from Profile › Settings › Tutorial or the Replay Tutorial button inside the Tracker. Home › How it works opens the original welcome tour',
@@ -410,7 +421,7 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v36';
+const APP_VER='v37';
 /* Release notes are filtered before anyone sees them: a note (or a whole version) that mentions developer sign-in, accounts, keys or other
    internal wording is dropped, so future entries can never leak developer details into the update dialog. */
 const DEV_TRACE=/@gradely|\bdev_[a-z0-9_]+|developer|\bapi[\s_-]?key|firebase\s*auth|\bcredentials?\b|\bsecret\b|\bid[\s_-]?token\b|tombstone|admin(?:istrator)?\s*(?:sign|log)[\s-]?in|(?:sign|log)[\s-]?in\s+(?:as\s+)?(?:an?\s+)?admin|admin\s+(?:panel|console|password|email)/i;
@@ -497,10 +508,16 @@ const BottomNav=({tab,on})=>{const i=NAV.findIndex(x=>x[0]===tab),N=NAV.length;r
   {i>=0&&<span aria-hidden="true" className="absolute bottom-1.5 top-1.5 rounded-[1.3rem] bg-accent shadow-sm transition-all duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{left:'calc(.375rem + '+i+' * (100% - .75rem) / '+N+')',width:'calc((100% - .75rem) / '+N+')'}}/>}
   {NAV.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-current={tab===k?'page':undefined} className={cx('relative z-10 flex min-w-0 flex-col items-center gap-0.5 rounded-[1.3rem] py-2 text-[9px] font-bold tracking-tight transition-colors duration-300 sm:text-[10px] md:text-xs',tab===k?'text-accent-ink':'text-muted hover:text-ink')}>
    <svg viewBox="0 0 24 24" className="h-[21px] w-[21px] md:h-[22px] md:w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={IC[k]}/></svg><span className="max-w-full truncate">{l}</span></button>)}</div></nav>};
-const ThemePicker=({theme,setTheme})=><div className="flex flex-col gap-4">{THEME_FAMS.map(f=>{const L=THEMES.filter(t=>t.fam===f);return <div key={f}><div className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-[.14em] text-muted">{f}</div>
- <div className="grid grid-cols-2 gap-2.5">{L.map(t=><button key={t.id} onClick={()=>setTheme(t.id)} aria-pressed={theme===t.id} className={cx('rounded-2xl border p-3 text-left transition-all duration-300 hover:-translate-y-0.5',theme===t.id?'border-accent ring-2 ring-accent/40 bg-ink/[.08]':'border-line bg-ink/[.06] hover:bg-ink/[.09]')}>
-  <div className="mb-2 flex gap-1.5">{t.sw.map((c,i)=><span key={i} className="h-6 w-6 rounded-full border border-black/10" style={{background:c}}/>)}</div>
-  <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold">{f==='Monochrome'?'Classic':t.mode}</span>{theme===t.id&&<span className="text-[11px] font-bold text-accent-text">Selected</span>}</div></button>)}</div></div>})}</div>;
+const MODE_SUN='M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',MODE_MOON='M20 14.2A8 8 0 1 1 9.8 4a6.4 6.4 0 0 0 10.2 10.2z';
+const ModeToggle=({theme,setTheme})=>{const i=themeInfo(theme);return <div className="seg" role="group" aria-label="Light or dark mode">{[['Light',false,MODE_SUN],['Dark',true,MODE_MOON]].map(([l,dk,d])=><button key={l} type="button" aria-pressed={i.dark===dk} onClick={()=>{if(i.dark!==dk)setTheme(flipMode(theme))}}>
+ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>{l}</button>)}</div>};
+const ColorPicker=({theme,setTheme})=>{const i=themeInfo(theme);return <div className="grid grid-cols-3 gap-2.5" role="group" aria-label="Theme color">{COLORS.map(c=>{const id=i.dark?c.d:c.l,t=THEMES.find(x=>x.id===id),on=i.fam===c.fam;
+ return <button key={c.fam} type="button" onClick={()=>setTheme(id)} aria-pressed={on} className={cx('flex flex-col items-center gap-2 rounded-2xl border px-2 py-3 transition-all duration-300',on?'border-accent bg-ink/[.08] ring-2 ring-accent/40':'border-line bg-ink/[.05] hover:bg-ink/[.09]')}>
+  <span className="relative grid h-9 w-9 place-items-center rounded-full border border-black/10 shadow-sm" style={{background:t.sw[1]}}>{on&&<svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke={i.dark?'#111':'#fff'} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>}</span>
+  <span className="text-xs font-bold">{c.fam}</span></button>})}</div>};
+const ThemePicker=({theme,setTheme})=>{const i=themeInfo(theme),legacy=!COLORS.some(c=>c.fam===i.fam);return <div className="flex flex-col gap-5">
+ <section><h3 className="mb-2 px-1 text-sm font-extrabold">Color</h3><ColorPicker theme={theme} setTheme={setTheme}/>{legacy&&<p className="mt-2 px-1 text-xs text-muted">Your current theme ({i.fam}) comes from an older version. Pick a color to switch to the new set.</p>}</section>
+ <section><h3 className="mb-2 px-1 text-sm font-extrabold">Mode</h3><ModeToggle theme={theme} setTheme={setTheme}/></section></div>};
 
 // Tiger mark: a tiger paw whose main pad is an open book, framed by tiger stripes. Pass a className to size it, e.g. "h-10 w-10".
 function TigerLogo({className='h-10 w-10',title='Gradely: tiger paw and open book'}){
@@ -1171,7 +1188,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
   const setRow=(i,j,v)=>{const t=str();t[i][j]=v;setCfg({table:t},'tbl'+i+j)};
   const rp=rawP(),tw=P.reduce((a,p)=>a+p.w,0);
   return <>
-   {A('ap','Appearance','Theme colours',<><ThemePicker theme={theme} setTheme={setTheme}/></>)}
+   {A('ap','Appearance','Color and light or dark mode',<><ThemePicker theme={theme} setTheme={setTheme}/></>)}
    {A('gd','GWA decimal places','Showing '+GD+' decimals · e.g. '+fw(ayAll!=null?ayAll:1.66432),<>
     <p className="text-sm text-muted">How many decimals every GWA shows: Overview, Report card, Target GWA and exported images. Subject grades such as 1.75 are not affected.</p>
     <Seg v={GD} on={v=>setCfg({gd:v},'cfggd')} opts={[[2,'2'],[3,'3'],[4,'4']]} cls="w-full"/>
@@ -1283,7 +1300,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
 }
 
 
-// Home screen: a slim "Meet the Creators" card that opens a centered pop-up dialog
+// Home screen: a quiet text link ("Meet the creators") that opens a centered pop-up dialog
 function CreatorsCard(){
  const [m,setM]=useState(false),[v,setV]=useState(false),tm=useRef(null);
  const openIt=()=>{clearTimeout(tm.current);setM(true);requestAnimationFrame(()=>requestAnimationFrame(()=>setV(true)))};
@@ -1292,10 +1309,7 @@ function CreatorsCard(){
  useLock(m);
  useEffect(()=>{if(!m)return;const k=e=>e.key==='Escape'&&closeIt();window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k)},[m]);
  return <>
-  <button onClick={openIt} aria-haspopup="dialog" className={cx(CARD,'hero lift mx-auto flex w-full max-w-md items-center gap-3 !rounded-2xl px-3.5 py-2.5 text-left')}>
-   <span className="flex shrink-0 -space-x-3">{CREATORS.map(c=><img key={c.n} src={c.src} alt="" width="40" height="40" draggable="false" className="h-9 w-9 rounded-full object-cover shadow ring-2 ring-surface"/>)}</span>
-   <span className="min-w-0 flex-1"><span className="block text-sm font-extrabold leading-tight">Meet the Creators</span><span className="block truncate text-[11px] text-muted">The students behind Gradely</span></span>
-   <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7.5 5l5 5-5 5"/></svg></button>
+  <button type="button" onClick={openIt} aria-haspopup="dialog" className="rounded-md px-1 py-0.5 text-xs font-semibold text-muted underline decoration-muted/40 underline-offset-4 transition-colors duration-200 hover:text-ink hover:decoration-ink/60">Meet the creators</button>
   {m&&createPortal(<div className="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Meet the Creators">
    <div onClick={closeIt} className="absolute inset-0 bg-black/45 backdrop-blur-sm" style={{transition:'all .3s ease-in-out',opacity:v?1:0}}/>
    <div className="gcs relative max-h-[90dvh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-3xl p-5 text-center" style={{transition:'all .3s ease-in-out',opacity:v?1:0,transform:v?'translateY(0) scale(1)':'translateY(14px) scale(.95)'}}>
@@ -1447,25 +1461,70 @@ function DevDashboard({onExit}){
 const HIc=({d,cls='h-[18px] w-[18px]'})=><svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>;
 const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_TUT='M4 5.5A1.5 1.5 0 0 1 5.5 4H11v15H5.5A1.5 1.5 0 0 0 4 20.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v15h5.5a1.5 1.5 0 0 1 1.5 1.5z',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',HI_USER='M19 21v-1.5a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4V21M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',HI_GROUP='M17 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h4a3.5 3.5 0 0 1 3.5 3.5V20M8.5 11a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5zM15.5 4.8a3.25 3.25 0 0 1 0 6.3',HI_DOWN='M12 5v14M6 13l6 6 6-6';
 const HOME_INTRO='Track, forecast, and ace your grades effortlessly. Welcome to your new academic hub! Gradely is designed to help you monitor your progress, predict your final scores, and stay fully organized throughout the semester.';
-function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2hs,showA2hs}){
+const HI_SUN=MODE_SUN,HI_MOON=MODE_MOON,HI_RESET='M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5';
+// Cartoon tiger head, drawn as a white translucent outline. It is a decoration behind the title card text (see .tiger-wm in index.html).
+function TigerWatermark(){
+ const L={fill:'none',stroke:'currentColor',strokeWidth:2.2,strokeLinecap:'round',strokeLinejoin:'round'};
+ return <svg className="tiger-wm" viewBox="0 0 120 100" aria-hidden="true" focusable="false">
+  <g {...L}>
+   <path d="M18 52C14 30 30 15 60 15s46 15 42 37c6 4 8 12 2 18 4 6-2 14-10 12-8 10-22 14-34 14S34 92 26 82c-8 2-14-6-10-12-6-6-4-14 2-18z" fill="rgb(255 255 255/.1)"/>
+   <path d="M25 31C15 18 21 6 34 8c8 2 13 8 16 13"/><path d="M95 31c10-13 4-25-9-23-8 2-13 8-16 13"/>
+   <path d="M28 25c-1-7 2-10 7-9"/><path d="M92 25c1-7-2-10-7-9"/>
+   <path d="M60 16c-2 7-2 13 0 19"/><path d="M47 19c2 6 4 10 7 12"/><path d="M73 19c-2 6-4 10-7 12"/>
+   <path d="M18 54c8 1 14 3 18 6"/><path d="M16 66c8-1 14 0 18 2"/><path d="M102 54c-8 1-14 3-18 6"/><path d="M104 66c-8-1-14 0-18 2"/>
+   <circle cx="42" cy="49" r="5.5"/><circle cx="78" cy="49" r="5.5"/>
+   <ellipse cx="60" cy="72" rx="17" ry="12" fill="rgb(255 255 255/.12)"/>
+   <path d="M53 63c4-2 10-2 14 0-1 5-4 8-7 8s-6-3-7-8z" fill="currentColor" stroke="none" opacity=".9"/>
+   <path d="M60 71v4"/><path d="M60 75c-3 4-8 5-12 2"/><path d="M60 75c3 4 8 5 12 2"/>
+   <path d="M44 70l-17-3"/><path d="M44 75l-16 5"/><path d="M76 70l17-3"/><path d="M76 75l16 5"/>
+  </g>
+  <circle cx="43" cy="50" r="2.2" fill="currentColor"/><circle cx="79" cy="50" r="2.2" fill="currentColor"/></svg>;
+}
+// Paged Quick actions: no native scrolling. Chips are measured, packed into pages that fit, and the arrows (or a swipe) fade between pages.
+function QuickCarousel({items}){
+ const wrap=useRef(null),meas=useRef(null),tx=useRef(null),[pages,setPages]=useState(()=>[items.map((_,i)=>i)]),[pg,setPg]=useState(0);
+ const sig=items.map(x=>x.k+':'+x.label).join('|');
+ const pack=()=>{const w=wrap.current,m=meas.current;if(!w||!m||!w.clientWidth)return;const W=[...m.children].map(c=>c.getBoundingClientRect().width),G=6,cw=w.clientWidth;
+  const total=W.reduce((a,b)=>a+b,0)+G*Math.max(0,W.length-1);let out;
+  if(total<=cw-18)out=[W.map((_,i)=>i)];
+  else{const av=cw-2*36-18;out=[];let cur=[],cu=0;W.forEach((x,i)=>{const nu=cur.length?cu+G+x:x;if(cur.length&&nu>av){out.push(cur);cur=[i];cu=x}else{cur.push(i);cu=nu}});if(cur.length)out.push(cur)}
+  setPages(p=>JSON.stringify(p)===JSON.stringify(out)?p:out)};
+ useLayoutEffect(()=>{pack()},[sig]);
+ useEffect(()=>{pack();const ro=typeof ResizeObserver!=='undefined'?new ResizeObserver(pack):null;if(ro){wrap.current&&ro.observe(wrap.current);meas.current&&ro.observe(meas.current)}
+  try{document.fonts&&document.fonts.ready.then(pack)}catch(e){}return()=>ro&&ro.disconnect()},[sig]);
+ useEffect(()=>{setPg(p=>Math.max(0,Math.min(p,pages.length-1)))},[pages]);
+ const multi=pages.length>1,go=d=>setPg(p=>Math.max(0,Math.min(pages.length-1,p+d)));
+ const Chip=(x,live)=><button key={x.k} type="button" className={cx('qa-chip',x.cls)} {...(live?{onClick:x.onClick,disabled:x.disabled,'aria-pressed':x.sw===undefined?undefined:!!x.sw}:{tabIndex:-1})}>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={x.spin?'animate-spin':''}><path d={x.icon}/></svg>{x.label}{x.sw!==undefined&&<span className={cx('qa-sw',x.sw&&'on')} aria-hidden="true"/>}</button>;
+ const Arrow=(d,l)=><button type="button" className={'qa-arrow '+(d<0?'l':'r')} aria-label={l} disabled={d<0?pg===0:pg===pages.length-1} onClick={()=>go(d)}><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d<0?'M12.5 4.5l-5.5 5.5 5.5 5.5':'M7.5 4.5l5.5 5.5-5.5 5.5'}/></svg></button>;
+ return <nav ref={wrap} aria-label="Quick actions" className="gc qa anim-rise mx-auto mt-2 w-full" style={{animationDelay:'40ms'}}>
+  {multi&&Arrow(-1,'Previous quick actions')}
+  <div className="qa-view" role="toolbar" aria-label="Quick actions" onTouchStart={e=>{tx.current=e.touches[0].clientX}} onTouchEnd={e=>{if(tx.current==null)return;const dx=e.changedTouches[0].clientX-tx.current;tx.current=null;if(Math.abs(dx)>45)go(dx<0?1:-1)}}>
+   {pages.map((p,pi)=><div key={pi} className="qa-page" data-s={pi===pg?'cur':pi<pg?'prev':'next'} inert={pi!==pg} aria-hidden={pi!==pg}>{p.map(i=>items[i]&&Chip(items[i],true))}</div>)}
+  </div>
+  {multi&&Arrow(1,'Next quick actions')}
+  <div ref={meas} className="qa-meas" aria-hidden="true" inert>{items.map(x=>Chip(x,false))}</div></nav>;
+}
+function HomeHeader({busy,at,cloud,dark,onMode,onRefresh,onTheme,onTour,onJoin,onReset,onReport,onA2hs,showA2hs}){
  const status=!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
- const CH='inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-line/70 bg-ink/[.05] px-3 text-xs font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40',IC='h-3.5 w-3.5';
- // two stacked pieces: a compact title card, then a separate, very slim Quick actions card (one horizontally scrollable row)
- return <><header className="gc hdr anim-rise mx-auto w-full overflow-hidden !rounded-2xl" style={{marginTop:'var(--tp)'}}>
-  <div className="flex flex-col items-center px-4 pb-3 pt-4 text-center sm:px-8 sm:pb-4 sm:pt-5">
-   <h1 className="text-3xl font-black leading-none tracking-tight sm:text-5xl">Gradely</h1>
-   <p className="mx-auto mt-2 max-w-md text-xs font-medium leading-snug text-muted sm:text-sm">{HOME_INTRO}</p>
+ // order of importance: mode, tutorial, join, themes, sync, reset, report (install only appears when the app is not installed yet)
+ const items=[
+  {k:'mode',label:'Dark mode',icon:dark?HI_MOON:HI_SUN,sw:dark,onClick:onMode},
+  {k:'tour',label:'How it works',icon:HI_TOUR,cls:'pri',onClick:onTour},
+  {k:'join',label:'Join with code',icon:HI_JOIN,disabled:!cloud,onClick:onJoin},
+  {k:'theme',label:'Themes',icon:HI_THEME,onClick:onTheme},
+  ...(cloud?[{k:'sync',label:'Sync now',icon:HI_SYNC,spin:busy,onClick:onRefresh}]:[]),
+  {k:'reset',label:'Reset Site Data',icon:HI_RESET,cls:'dng',onClick:onReset},
+  {k:'report',label:'Report a problem',icon:HI_BUG,onClick:onReport},
+  ...(showA2hs?[{k:'install',label:'Install app',icon:HI_INSTALL,onClick:onA2hs}]:[])];
+ return <><header className="gc hdr anim-rise relative mx-auto w-full overflow-hidden !rounded-2xl" style={{marginTop:'var(--tp)'}}>
+  <TigerWatermark/>
+  <div className="hdr-txt flex flex-col items-center px-4 pb-3 pt-4 text-center sm:px-8 sm:pb-4 sm:pt-5">
+   <div className="hdr-row"><h1 className="text-3xl font-black leading-none tracking-tight sm:text-5xl">Gradely</h1></div>
+   <p className="mx-auto max-w-md text-xs font-medium leading-snug text-muted sm:text-sm">{HOME_INTRO}</p>
    <div className="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-line/70 bg-surface/60 px-2.5 py-1 text-[11px] font-semibold text-muted" role="status"><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></div>
   </div></header>
-  <nav aria-label="Quick actions" className="gc anim-rise mx-auto mt-2 w-full !rounded-2xl px-2 py-1.5" style={{animationDelay:'40ms'}}>
-   <div className="no-scrollbar flex flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-[5px]" role="toolbar" aria-label="Quick actions" style={{overflowX:'auto',whiteSpace:'nowrap',paddingBottom:5,scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
-    <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls={IC}/>How it works</button>
-    <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls={IC}/>Join with code</button>
-    <button className={CH} onClick={onReport}><HIc d={HI_BUG} cls={IC}/>Report a problem</button>
-    {cloud&&<button className={CH} onClick={onRefresh}><span className={busy?'animate-spin':''}><HIc d={HI_SYNC} cls={IC}/></span>Sync now</button>}
-    <button className={CH} onClick={onTheme}><HIc d={HI_THEME} cls={IC}/>Themes</button>
-    {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls={IC}/>Install app</button>}
-   </div></nav></>;
+  <QuickCarousel items={items}/></>;
 }
 
 // Section description for Profiles / Your groups: shown in full when signed out, collapsed behind "View more" once signed in
@@ -1478,6 +1537,15 @@ function SecDesc({text,loggedIn}){
   <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="mt-0.5 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-300 ease-in-out',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3 w-3"/></span></button></div>;
 }
 
+// Wipes everything this site stored on the device (settings, session, local-only data, offline cache and service worker), then reloads fresh.
+async function resetSiteData(){
+ try{localStorage.clear()}catch(e){}try{sessionStorage.clear()}catch(e){}
+ try{if(window.caches){for(const k of await caches.keys())await caches.delete(k)}}catch(e){}
+ try{if(navigator.serviceWorker){for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister()}}catch(e){}
+ try{if(window.indexedDB&&indexedDB.databases){for(const d of await indexedDB.databases())if(d.name)indexedDB.deleteDatabase(d.name)}}catch(e){}
+ try{localStorage.clear()}catch(e){}
+ location.replace(location.pathname);
+}
 function Home({book,theme,setTheme,ctl,busy,at}){
  const [gv,setGvS]=useState(()=>{try{const v=localStorage.getItem('gtf-hv');return book.groups.some(g=>g.id===v)?v:null}catch(e){return null}}),setGv=v=>{setGvS(v);try{v?localStorage.setItem('gtf-hv',v):localStorage.removeItem('gtf-hv')}catch(e){}},[sh,setSh]=useState(()=>joinParam()?{t:'joinGroup'}:null),[arm,setArm]=useState(null),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
  const [ng,setNg]=useState({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''}),[jf,setJf]=useState({code:joinParam(),name:'',pass:'',adv:false}),[rp,setRp]=useState({c:'bug',m:'',ct:'',done:false}),[dv,setDv]=useState({u:'',p:''}),[cp,setCp]=useState(''),[na,setNa]=useState({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false}),[uf,setUf]=useState({pass:''}),[sf,setSf]=useState({name:'',pass:''}),[ef,setEf]=useState({pass:''}),[gp,setGp]=useState('');
@@ -1511,7 +1579,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
- const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
+ const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} dark={themeInfo(theme).dark} onMode={()=>setTheme(flipMode(theme))} onReset={()=>ask({title:'Reset site data?',msg:'This clears everything Gradely saved on this device: accounts and groups that are not in the cloud, your sign-in, theme, settings and the offline copy of the app. Cloud accounts stay safe and you can sign in to them again.',yes:'Reset site data',final:'Last check: anything saved only on this device will be gone for good. Reset it now?',next:'Continue',onYes:resetSiteData})} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
  const loggedIn=book.list.length>0;
  const SecHd=(ic,title,sub,actions,alt)=><div className={cx('panel-hd flex flex-col items-center gap-2.5 border-b border-line/70 px-3.5 py-3.5 text-center sm:px-6',alt&&'alt')}>
   <div className="flex min-w-0 flex-col items-center"><span className="mb-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-4 w-4"/></span><h2 className="text-base font-black leading-tight tracking-tight sm:text-lg">{title}</h2><SecDesc text={sub} loggedIn={loggedIn}/></div>
@@ -1557,8 +1625,8 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
  return <div className="mx-auto max-w-6xl px-3 pb-16 pt-0 sm:px-8">
   {Top}
   <div key={gv||'groups'}>{grp?GroupScreen():GroupsScreen()}</div>
-  <div className="mt-5 flex flex-col items-center gap-3"><CreatorsCard/>
-   <button onClick={()=>{setDv({u:'',p:''});setCm('');setSh({t:'dev'})}} className="text-[11px] font-semibold text-muted/70 underline decoration-dotted underline-offset-4 transition hover:text-ink">Developer sign-in</button></div>
+  <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2"><CreatorsCard/>
+   <button onClick={()=>{setDv({u:'',p:''});setCm('');setSh({t:'dev'})}} className="rounded-md px-1 py-0.5 text-[11px] font-semibold text-muted/70 underline decoration-dotted underline-offset-4 transition hover:text-ink">Developer sign-in</button></div>
 
   <Sheet open={!!sh&&sh.t==='newGroup'} onClose={()=>setSh(null)} title="Create New Group">
    {Photo(ng,pic=>setNg({...ng,pic}),()=>setNg({...ng,pic:''}),<GroupIcon g={ng} s="h-16 w-16" t="text-4xl"/>)}
