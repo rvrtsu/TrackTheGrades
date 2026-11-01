@@ -2,17 +2,21 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v36, step 1: Home redesign)
+## What's new in this version (v36, step 2: tutorial, cleanup and recovery)
+- **Interactive Tracker tutorial.** A swipeable, six-slide walkthrough built on **sample subject cards** (it never reads or writes your real account). It shows how to switch subjects (swipe, tap the arrows, or use the arrow keys), add scores (the percent and grade update as you type), open **Options** (the Subject, Grading System, Base Configuration and Forecasting bubbles) and use the **Reverse Calculator**. It opens by itself the first time you visit the Tracker (remembered per device) and can be replayed from: the **Tutorial** button in the Home header, **Profile › Settings › Tutorial**, and the **Replay Tutorial** button at the top of the Tracker tab. The original welcome tour is still there as **Replay welcome tour**. The older one-off Tracker tips are retired because the tutorial covers them.
+- **Changelog cleanup.** The update dialog and its **Previous updates** list now pass every note through a filter before it is shown. Any note (or whole version) that mentions developer sign-in, developer accounts, API keys, credentials or similar internal wording is hidden, so future release notes can never expose developer details to students. The filter lives next to `RELEASE_NOTES` in `src/app.jsx` (`DEV_TRACE`). Old notes that named the developer account were also removed from the source.
+- **No hardcoded developer login.** The developer username, email and password were removed from the app, the update notes and this README. The dashboard relies strictly on a Firebase Authentication session: you sign in with the email and password of your own Firebase user (Part 4) and the header simply reads **Developer session**. Nothing in the app checks a fixed name; Firebase and your database rules decide who the developer is.
+- **Undo, Redo and Recently deleted (developer dashboard).** The dashboard has **Undo** and **Redo** buttons (also **Ctrl/Cmd+Z** and **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y**; they are ignored while you type in a text box). Every change is recorded: edits, join codes, admins, members, deletes and report status. Undoing an edit only puts back the fields you changed, so it never overwrites grades a student saved meanwhile. **Recently deleted** keeps deleted groups, accounts, members, join codes and reports (latest 30, up to 30 days) with a one-tap **Restore**. The copy is saved in your database under `devtrash` and `devtrashidx` (only the developer can read them; the existing developer rule already covers it, so no new rules are needed). If that save fails, the item is kept in **session memory** and marked "this session only", and Undo/Redo keep working locally. Signing out clears session memory.
+- Service worker cache is `gradely-v36`. Open the app twice on each device so the update loads.
+
+### Earlier (v36, step 1: Home redesign)
 - **Home header.** The flush app bar is now a standalone, curved card that matches the rest of the app. The logo is gone from Home; a large, centered **Gradely** title leads, followed by a short intro ("Track, forecast, and ace your grades effortlessly...") and a small sync status chip. **How it works**, **Join with code** and **Report a problem** (plus **Sync now**, **Themes** and **Install app** when available) now sit inside a collapsible **Quick actions** menu in the card. It scrolls with the page instead of staying fixed.
 - **Profiles first.** Home now opens with a **Profiles** panel (subtitle plus **Sign In** and **Create Account** in its heading), a divider, then a **Your groups** panel (subtitle plus **Join Group** and **Create Group** in its heading). The old "Add a group or account" block, the **How this app works** link and the bottom **Report a Problem** button are gone, because the header and the panel headings already hold them. Account and group cards sit two per row on phones. The **Profiles** and **Your groups** descriptions show in full when no account is on this device; once you are signed in they fold away behind a small **View more** toggle. Headings, cards and empty states are centered with more whitespace.
 - **Groups follow your account.** Sign In now works straight from Home (no group needed). Each cloud account document stores the list of groups it belongs to (a small `g` field next to `t`, `d`, `n`, `e`, `p`, `b`), so signing in on any device adds all of them to **Your groups** automatically. Devices that already have the account pick up groups added elsewhere the next time they sync. It only ever adds groups; nothing is removed from another device. **The Firebase rules do not need to change** (the existing `$other` rule already allows the new field), and older accounts gain the field the next time they join or leave a group.
-- Panel styles (`.panel`, `.panel-hd`) live in `index.html`. Service worker cache is `gradely-v36-step1`. Open the app twice on each device so the update loads.
+- Panel styles (`.panel`, `.panel-hd`) live in `index.html`. Service worker cache was `gradely-v36-step1`.
 
 ### Earlier (v31)
 - **Home header redesign.** The pill is replaced by a flush, full-width Material-style app bar (soft translucency, slight tint, elevation, no glow). It is large at the top of the page (big icon, divider, **Gradely** and the tagline) and condenses as you scroll, swapping the tagline for your sync status. A quick-action row holds **How it works** (tutorial), **Join with code**, **Install app** (when not installed) and **Report a problem**; Refresh and Theme are icon buttons. It keeps clear of the notch and Dynamic Island. Service worker cache is `gradely-v31`.
-
-### Earlier (v30)
-- **Developer sign-in fix.** The username box now accepts either `dev_roeverjosh` or the full email `dev_roeverjosh@gradely.app`. Before, typing the full email always showed "Wrong developer username or password" without contacting Firebase. A blocked API key (website restrictions) now has its own message. Service worker cache is `gradely-v30`.
 
 ### Earlier (v29)
 - **New home header.** The top of the home screen is now a floating glass pill: tiger icon, a hairline divider, **Gradely** and the tagline "Track, Forecast, and Ace your Sem". It sticks below the status bar and respects the notch and Dynamic Island (safe-area inset, with a 3rem minimum when installed on a phone).
@@ -24,7 +28,7 @@ Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**
 - **Creator = admin.** Creating a group also creates (or reuses) your account and makes it the group admin. There is no separate admin account to set up.
 - **Themes.** **Yellow Dark** is the default for new installs (devices that already picked a theme keep it). Red is now a deeper **Maroon**. **Pink**, **Lavender** and **Mint** are new, each with a Light and a Dark version. The theme picker groups them by colour.
 - **Report a Problem.** A button on the home screen sends a bug report to `reports/` in your database.
-- **Developer dashboard.** Sign in from the small **Developer sign-in** link (username `dev_roeverjosh`). The dashboard lists bug reports (status, notes, delete), groups (rename, join code, members, admins, delete) and accounts (name, bio, raw data, delete). See **Part 4**. **You must publish the new rules in Part 1 and do Part 4 for it to work.**
+- **Developer dashboard.** Sign in from the small **Developer sign-in** link with your Firebase developer user. The dashboard lists bug reports (status, notes, delete), groups (rename, join code, members, admins, delete) and accounts (name, bio, raw data, delete). See **Part 4**. **You must publish the new rules in Part 1 and do Part 4 for it to work.**
 - **UI.** **Hide Prelim Grades** now appears only in the report card export. **Meet the Creators** on the home screen is a large collapsible card. The Tracker has a small **Replay Tutorial** button.
 - Service worker cache is `gradely-v28`. Open the app twice on each device so the update loads.
 
@@ -95,13 +99,13 @@ Soft glass look, centred homepage, Report tab, Forecast tab removed, Overview ho
 ## Part 1: Create the free database (about 5 minutes)
 1. Go to **console.firebase.google.com**, click **Create a project**, turn Google Analytics off.
 2. **Build → Realtime Database → Create Database** (pick **Singapore**), start in **locked mode**.
-3. Open the **Rules** tab, replace everything with this, and click **Publish** (**v28 adds `codes`, `reports` and the two developer lines at the top**, so republish even if you already have older rules):
+3. Open the **Rules** tab, replace everything with this, and click **Publish**. Replace `PASTE_YOUR_DEVELOPER_UID` with the **User UID** of your developer user from Part 4 (skip Part 4 for now and the two developer lines simply match nobody). If you published the older rules that matched an email address, they keep working; switch to the UID version whenever it suits you (**v28 adds `codes`, `reports` and the two developer lines at the top**, so republish even if you already have older rules):
 
 ```json
 {
   "rules": {
-    ".read": "auth != null && auth.token.email == 'dev_roeverjosh@gradely.app'",
-    ".write": "auth != null && auth.token.email == 'dev_roeverjosh@gradely.app'",
+    ".read": "auth != null && auth.uid == 'PASTE_YOUR_DEVELOPER_UID'",
+    ".write": "auth != null && auth.uid == 'PASTE_YOUR_DEVELOPER_UID'",
     "sync": {
       "$key": {
         ".read": true,
@@ -150,12 +154,15 @@ Open `config.js`, replace the placeholder URL (keep the quotes), then upload **e
 - **Privacy:** a group only lists cards (name, bio, picture, sync name). Account grades stay behind each account's own passcode. Use long passcodes.
 
 ## Part 4: Developer dashboard (one-time setup)
-The dashboard needs Firebase Authentication so only the developer can read every group and account. The developer password is **not** stored in the app: Firebase checks it.
+The dashboard needs Firebase Authentication so only the developer can read every group and account. No developer name, email or password is stored in the app: Firebase checks the sign-in, and your database rules decide who counts as the developer.
 1. Firebase console → **Build → Authentication → Get started → Sign-in method** → turn on **Email/Password**.
-2. **Users → Add user**: email `dev_roeverjosh@gradely.app`, and a strong password of your choice.
-3. **Project settings → General** → copy the **Web API key** and paste it between the quotes after `apiKey` in `config.js`.
-4. Optional but recommended: **Authentication → Settings → User actions** → turn off **Enable create (sign-up)**, so nobody else can register users.
-5. Open the app → **Developer sign-in** (bottom of the home screen) → username `dev_roeverjosh` and the password from step 2. The session is remembered on that device until you tap **Sign out**.
+2. **Users → Add user**: use an email address you own and a strong password of your choice. Copy the user's **User UID** from the Users table.
+3. Back in **Realtime Database → Rules**, paste that UID in place of `PASTE_YOUR_DEVELOPER_UID` (Part 1) and **Publish**.
+4. **Project settings → General** → copy the **Web API key** and paste it between the quotes after `apiKey` in `config.js`.
+5. Optional but recommended: **Authentication → Settings → User actions** → turn off **Enable create (sign-up)**, so nobody else can register users. In Google Cloud, you can also restrict the API key to your website address.
+6. Open the app → **Developer sign-in** (bottom of the home screen) → enter your developer email and password. The session is remembered on that device until you tap **Sign out**, and the dashboard header shows **Developer session**.
+
+**Undo and recovery.** The dashboard toolbar has **Undo**, **Redo** and **Recently deleted** (see "What's new" above). Restoring a deleted account puts its cloud copy back; a device that already removed it can get it again by signing in with its passcode.
 
 Deleting an account from the dashboard leaves a small marker so other devices drop the account instead of uploading it again.
 
