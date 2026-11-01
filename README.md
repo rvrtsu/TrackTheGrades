@@ -2,7 +2,13 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v31)
+## What's new in this version (v36, step 1: Home redesign)
+- **Home header.** A full-width, flush Material app bar (no pill, softer blur, a light accent tint and an elevation that deepens as you scroll). It is taller, with a larger **Gradely** title and the full tagline **Track, Forecast, and Ace your grades** (it wraps instead of being cut off). The quick actions no longer scroll sideways: a status chip with **Sync now** and **Themes**, a divider, then **How it works**, **Join with code**, **Install app** (when not installed) and **Report a problem**, which wrap into rows. The buttons are slightly smaller. It still keeps clear of the notch and status bar, and condenses to a slim bar (logo, status, refresh and theme icons) once you scroll.
+- **Profiles first.** Home now opens with a **Profiles** panel (subtitle plus **Sign In** and **Create Account** in its heading), a divider, then a **Your groups** panel (subtitle plus **Join Group** and **Create Group** in its heading). The old "Add a group or account" block, the **How this app works** link and the bottom **Report a Problem** button are gone, because the header and the panel headings already hold them. Account and group cards sit two per row on phones.
+- **Groups follow your account.** Sign In now works straight from Home (no group needed). Each cloud account document stores the list of groups it belongs to (a small `g` field next to `t`, `d`, `n`, `e`, `p`, `b`), so signing in on any device adds all of them to **Your groups** automatically. Devices that already have the account pick up groups added elsewhere the next time they sync. It only ever adds groups; nothing is removed from another device. **The Firebase rules do not need to change** (the existing `$other` rule already allows the new field), and older accounts gain the field the next time they join or leave a group.
+- Panel styles (`.panel`, `.panel-hd`) live in `index.html`. Service worker cache is `gradely-v36-step1`. Open the app twice on each device so the update loads.
+
+### Earlier (v31)
 - **Home header redesign.** The pill is replaced by a flush, full-width Material-style app bar (soft translucency, slight tint, elevation, no glow). It is large at the top of the page (big icon, divider, **Gradely** and the tagline) and condenses as you scroll, swapping the tagline for your sync status. A quick-action row holds **How it works** (tutorial), **Join with code**, **Install app** (when not installed) and **Report a problem**; Refresh and Theme are icon buttons. It keeps clear of the notch and Dynamic Island. Service worker cache is `gradely-v31`.
 
 ### Earlier (v30)

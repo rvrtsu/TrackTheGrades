@@ -111,6 +111,7 @@ const BK='gtf-book',EMO=[],GEMO=[];
 const okState=d=>d&&Array.isArray(d.years)&&d.years.length&&d.years.every(y=>y&&Array.isArray(y.sems)&&y.sems.length);
 const defGroup=()=>({id:'g'+uid(),name:'General',icon:''});
 // An account can belong to several groups: gids is the full list, gid (the first one) is kept for older saves
+const listOf=v=>Array.isArray(v)?v:v&&typeof v==='object'?Object.values(v):[];
 const gidsOf=a=>a?(Array.isArray(a.gids)&&a.gids.length?a.gids:a.gid?[a.gid]:[]):[];
 // group admins: g.adm is a list of member ids (mid). Cloud groups mirror it at groups/<key>/admins (an object of mid:true).
 const admKeys=o=>o&&typeof o==='object'?Object.keys(o).filter(k=>o[k]):[];
@@ -356,6 +357,10 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v36',notes:[
+ 'Home header redesigned: a full-width Material app bar with a bigger title, the full tagline and tidy quick actions that wrap instead of scrolling',
+ 'Profiles now sit at the top of Home, above Your groups, each in its own panel with Sign In, Create Account, Join Group and Create Group right in the heading',
+ 'Sign in from Home and every group your account belongs to is added automatically']},
  {v:'v31',notes:[
  'New home header: a bigger, flush app bar with a Material look. It shrinks as you scroll and shows your sync status',
  'Quick actions in the header: How it works (tutorial), Join with code, Install app and Report a problem, plus Refresh and Theme buttons']},
@@ -400,7 +405,7 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v31';
+const APP_VER='v36';
 /* ---- one-time contextual tab tutorials ---- */
 const tipSeen=k=>{try{return localStorage.getItem('gtf-tip-'+k)==='1'}catch(e){return false}};
 const tipDone=k=>{try{localStorage.setItem('gtf-tip-'+k,'1')}catch(e){}};
@@ -1268,38 +1273,51 @@ function DevDashboard({onExit}){
    ===================================================================== */
 /* ---- home header: a flush, full-width Material-style app bar. Large while the page is at the top, condenses once you scroll ---- */
 const HIc=({d,cls='h-[18px] w-[18px]'})=><svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>;
-const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7';
+const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',HI_USER='M19 21v-1.5a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4V21M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',HI_GROUP='M17 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h4a3.5 3.5 0 0 1 3.5 3.5V20M8.5 11a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5zM15.5 4.8a3.25 3.25 0 0 1 0 6.3',HI_DOWN='M12 5v14M6 13l6 6 6-6';
 function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2hs,showA2hs}){
  const [col,setCol]=useState(false),[h,setH]=useState(0),ref=useRef(null),colR=useRef(false);
  // collapse after 56px of scroll, expand again only when back near the top (hysteresis stops flicker)
  useEffect(()=>{let raf=0;const f=()=>{raf=0;const y=window.scrollY||document.documentElement.scrollTop||0,n=colR.current?y>6:y>56;if(n!==colR.current){colR.current=n;setCol(n)}};const on=()=>{if(!raf)raf=requestAnimationFrame(f)};f();window.addEventListener('scroll',on,{passive:true});return()=>{window.removeEventListener('scroll',on);if(raf)cancelAnimationFrame(raf)}},[]);
  // the bar is position:fixed, so a spacer keeps the page layout steady (its height is the expanded bar, so collapsing never shifts the content)
- useLayoutEffect(()=>{const m=()=>{if(!colR.current&&ref.current)setH(ref.current.offsetHeight)};m();window.addEventListener('resize',m);try{document.fonts&&document.fonts.ready.then(m)}catch(e){}return()=>window.removeEventListener('resize',m)},[showA2hs]);
+ // measured again after fonts and the Tailwind stylesheet have loaded, and whenever the width changes (the tagline may wrap)
+ useLayoutEffect(()=>{const m=()=>{if(!colR.current&&ref.current)setH(ref.current.offsetHeight)};m();const t1=setTimeout(m,350),t2=setTimeout(m,1400);window.addEventListener('resize',m);try{document.fonts&&document.fonts.ready.then(m)}catch(e){}return()=>{clearTimeout(t1);clearTimeout(t2);window.removeEventListener('resize',m)}},[showA2hs]);
  const status=!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
  const IB='grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink transition hover:bg-ink/[.08] active:scale-95 disabled:opacity-40',
-  CH='inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-line/70 bg-ink/[.05] px-3 text-[13px] font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40';
+  CH='inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-lg border border-line/70 bg-ink/[.05] px-2.5 text-xs font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40',
+  GR=' grow basis-[calc(50%_-_.1875rem)] sm:grow-0 sm:basis-auto',IC='h-3.5 w-3.5';
  return <div style={{height:h||undefined}} className="mb-1">
-  <header ref={ref} className="fixed inset-x-0 top-0 z-30 flex justify-center">
-   <div className={cx('w-full max-w-6xl border-b border-line/60 bg-surface/[.88] backdrop-blur-xl transition-[border-radius,box-shadow,padding] duration-300 ease-out sm:border-x',col?'rounded-b-2xl shadow-[0_10px_24px_-12px_rgb(0_0_0/.5)]':'rounded-b-[2rem] shadow-[0_2px_8px_-3px_rgb(0_0_0/.22)]')} style={{paddingTop:col?'calc(var(--tp) - .3rem)':'var(--tp)',paddingBottom:col?'.5rem':'.75rem',backgroundImage:'linear-gradient(180deg,rgb(var(--accent)/.10),rgb(var(--accent)/0) 75%)',WebkitBackdropFilter:'blur(20px) saturate(1.5)',backdropFilter:'blur(20px) saturate(1.5)'}}>
-    <div className="flex items-center gap-3 px-4 sm:px-8">
-     <TigerLogo className={cx('shrink-0 drop-shadow-sm transition-all duration-300',col?'h-9 w-9':'h-14 w-14')}/>
-     <span aria-hidden="true" className={cx('w-px shrink-0 bg-line transition-all duration-300',col?'h-6':'h-10')}/>
-     <div className="min-w-0 flex-1">
-      <div className={cx('truncate font-black leading-none tracking-tight transition-all duration-300',col?'text-lg':'text-[28px]')}>Gradely</div>
-      <div key={col?'s':'t'} className="anim-fade mt-1.5 flex items-center gap-1.5 truncate text-xs font-semibold text-muted">{col?<><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></>:<span className="truncate">Track, Forecast, and Ace your Sem</span>}</div>
-     </div>
-     <div className="flex shrink-0 items-center">
-      {cloud&&<button className={IB} onClick={onRefresh} aria-label="Refresh from cloud"><span className={busy?'animate-spin':''}><HIc d={HI_SYNC}/></span></button>}
-      <button className={IB} onClick={onTheme} aria-label="Change theme"><HIc d={HI_THEME}/></button>
+  <header ref={ref} className="fixed inset-x-0 top-0 z-30">
+   <div className={cx('w-full border-b border-line/70 transition-shadow duration-300',col?'shadow-[0_4px_12px_-3px_rgb(0_0_0/.3)]':'shadow-[0_1px_3px_rgb(0_0_0/.18)]')} style={{paddingTop:col?'calc(var(--tp) - .3rem)':'var(--tp)',paddingBottom:col?'.5rem':'.875rem',backgroundColor:'rgb(var(--surface)/.9)',backgroundImage:'linear-gradient(180deg,rgb(var(--accent)/.09),rgb(var(--accent)/.02) 85%)',WebkitBackdropFilter:'blur(14px) saturate(1.25)',backdropFilter:'blur(14px) saturate(1.25)'}}>
+    <div className="mx-auto max-w-6xl px-4 sm:px-8">
+     <div className="flex items-center gap-3 sm:gap-4">
+      <TigerLogo className={cx('shrink-0 drop-shadow-sm transition-all duration-300',col?'h-9 w-9':'h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem]')}/>
+      <span aria-hidden="true" className={cx('w-px shrink-0 bg-line transition-all duration-300',col?'h-6':'h-12 sm:h-14')}/>
+      <div className="min-w-0 flex-1">
+       <div className={cx('font-black leading-none tracking-tight transition-all duration-300',col?'text-xl':'text-[34px] sm:text-[42px]')}>Gradely</div>
+       <div key={col?'s':'t'} className="anim-fade mt-1.5">{col?<div className="flex items-center gap-1.5 truncate text-xs font-semibold text-muted"><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></div>:<p className="text-[13px] font-semibold leading-snug text-muted sm:text-[15px]">Track, Forecast, and Ace your grades</p>}</div>
+      </div>
+      {col&&<div className="anim-fade flex shrink-0 items-center">
+       {cloud&&<button className={IB} onClick={onRefresh} aria-label="Refresh from cloud"><span className={busy?'animate-spin':''}><HIc d={HI_SYNC}/></span></button>}
+       <button className={IB} onClick={onTheme} aria-label="Change theme"><HIc d={HI_THEME}/></button>
+      </div>}
      </div>
     </div>
     <div className={cx('acc',!col&&'open')} inert={col}><div>
-     <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-0.5 pt-3.5 sm:px-8" role="toolbar" aria-label="Quick actions">
-      <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl px-1 text-xs font-semibold text-muted"><span className={cx('h-2 w-2 rounded-full',dot)}/>{status}</span>
-      <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls="h-4 w-4"/>How it works</button>
-      <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls="h-4 w-4"/>Join with code</button>
-      {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls="h-4 w-4"/>Install app</button>}
-      <button className={CH} onClick={onReport}><HIc d={HI_BUG} cls="h-4 w-4"/>Report a problem</button>
+     <div className="mx-auto max-w-6xl px-4 sm:px-8">
+      <div className="mt-3.5 border-t border-line/60 pt-3 sm:flex sm:items-stretch sm:gap-3" role="toolbar" aria-label="Quick actions">
+       <div className="flex items-center gap-1.5 sm:shrink-0 sm:self-start">
+        <span className="inline-flex h-8 min-w-0 flex-1 items-center gap-2 px-1 text-xs font-semibold text-muted sm:flex-none"><span className={cx('h-2 w-2 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></span>
+        {cloud&&<button className={CH} onClick={onRefresh}><span className={busy?'animate-spin':''}><HIc d={HI_SYNC} cls={IC}/></span>Sync now</button>}
+        <button className={CH} onClick={onTheme}><HIc d={HI_THEME} cls={IC}/>Themes</button>
+       </div>
+       <span aria-hidden="true" className="my-2.5 block h-px bg-line/60 sm:my-0 sm:h-auto sm:w-px"/>
+       <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+        <button className={cx(CH,GR,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls={IC}/>How it works</button>
+        <button className={CH+GR} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls={IC}/>Join with code</button>
+        {showA2hs&&<button className={CH+GR} onClick={onA2hs}><HIc d={HI_INSTALL} cls={IC}/>Install app</button>}
+        <button className={CH+GR} onClick={onReport}><HIc d={HI_BUG} cls={IC}/>Report a problem</button>
+       </div>
+      </div>
      </div>
     </div></div>
    </div>
@@ -1324,16 +1342,16 @@ function Home({book,theme,setTheme,ctl,busy,at}){
 
  /* ---- cards ---- */
  const EditBtn=(fn,label)=><button onClick={fn} className="absolute right-2 top-2 rounded-lg px-1.5 py-1 text-xs text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label={label}>Edit</button>;
- const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2.5 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
+ const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[calc(50%_-_.375rem)] cursor-pointer flex-col items-center gap-2.5 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editGroup',id:g.id});setArm(null);setCm('');setGp('')},'Edit group')}
   <GroupIcon g={g} s="h-14 w-14" t="text-3xl"/>
   <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{g.name}</div><div className="mt-0.5 truncate text-xs text-muted">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'not in the cloud'}</div></div></div>;
- const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
+ const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-[calc(50%_-_.375rem)] cursor-pointer flex-col items-center gap-2 p-4 pt-5 text-center hover:border-accent/60 hover:shadow-md sm:w-48')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})},'Edit account')}
   <Avatar a={a} s="h-16 w-16" t="text-3xl"/>
   <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{a.name||'Untitled'}</div><div className="text-[11px] font-semibold text-muted" title={a.cloud?'Cloud account':'Not in the cloud yet'}>{a.cloud?'Cloud':'Not in the cloud'}{gidsOf(a).length?'':' · Individual'}</div></div>
   <div className="line-clamp-2 text-xs leading-snug text-muted">{a.bio||'No bio yet'}</div></div>;
- const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-[10.5rem] cursor-pointer flex-col items-center gap-2 border-dashed p-4 pt-5 text-center hover:border-accent/60 sm:w-48')} style={{animationDelay:i*40+'ms'}}>
+ const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-[calc(50%_-_.375rem)] cursor-pointer flex-col items-center gap-2 border-dashed p-4 pt-5 text-center hover:border-accent/60 sm:w-48')} style={{animationDelay:i*40+'ms'}}>
   <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-16 w-16" t="text-3xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
   <div className="min-w-0 max-w-full"><div className="truncate text-base font-extrabold">{m.n||'Account'}</div></div><div className="line-clamp-2 text-xs leading-snug text-muted">{m.b||'Tap to unlock with its passcode'}</div></div>;
 
@@ -1341,15 +1359,32 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
  const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
- const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <>
-  <div className="anim-rise pb-5 pt-7 text-center sm:pt-9"><h1 className="text-3xl font-black tracking-tight sm:text-5xl">Your groups</h1><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Open a group, then pick your account.</p></div>
-  {book.groups.length?<div className="flex flex-wrap justify-center gap-3">{book.groups.map(GroupCard)}</div>
-   :<div className={cx(CARD,'mx-auto max-w-md p-6 text-center')}><p className="font-bold">No groups yet</p><p className="mt-1 text-sm text-muted">Create a group, or join one with its passcode, using the buttons below.</p></div>}
-  {people.length>0&&<><h2 className="mb-3 mt-9 text-center text-lg font-extrabold">Profiles</h2><div className="flex flex-wrap justify-center gap-3">{people.map(AcctCard)}</div></>}
-  <div className="mt-10 flex flex-col items-center gap-2.5 border-t border-line/60 pt-5 text-center"><div className={LBL}>Add a group or account</div>
-   <div className="flex w-full max-w-md flex-row gap-2"><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={NewG} disabled={!CLOUD}>Create Group</button><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={JoinG} disabled={!CLOUD}>Join Group</button><button className={'flex h-14 min-w-0 flex-1 basis-0 items-center justify-center rounded-2xl border border-line bg-ink/[.06] px-2 text-center text-[13px] font-extrabold leading-tight text-ink transition hover:border-accent/60 hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40'} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>Individual Account</button></div>
-   <button className="mt-1 text-xs font-semibold underline decoration-dotted underline-offset-4 hover:text-ink" onClick={ctl.tour}>How this app works</button>
-   {!CLOUD&&<p className="max-w-sm text-xs font-semibold text-bad">Gradely stores everything in the cloud. Add your database URL in config.js to create or join a group.</p>}</div></>};
+ const SecHd=(ic,title,sub,actions,alt)=><div className={cx('panel-hd flex flex-col gap-3.5 border-b border-line/70 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6',alt&&'alt')}>
+  <div className="flex min-w-0 flex-1 items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-5 w-5"/></span><div className="min-w-0"><h2 className="text-xl font-black leading-tight tracking-tight sm:text-2xl">{title}</h2><p className="mt-0.5 text-[13px] leading-snug text-muted">{sub}</p></div></div>
+  <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">{actions}</div></div>;
+ const SB=BTN+' w-full sm:w-auto',PB=BTNP+' w-full sm:w-auto';
+ const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <div className="mt-5 sm:mt-6">
+  {!CLOUD&&<p className="mb-4 rounded-2xl border border-bad/30 bg-bad/10 px-4 py-3 text-center text-xs font-semibold text-bad">Gradely stores everything in the cloud. Add your database URL in config.js to sign in, create or join a group.</p>}
+  <section className="panel anim-rise" aria-label="Profiles">
+   {SecHd(HI_USER,'Profiles','Accounts on this device. Sign in and every group you have joined is added automatically.',<>
+    <button className={SB} disabled={!CLOUD} onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign In</button>
+    <button className={PB} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>Create Account</button></>)}
+   <div className="p-4 sm:p-6">
+    {msg&&<p role="status" className="mb-4 rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-sm font-semibold">{msg}</p>}
+    {people.length?<div className="flex flex-wrap justify-start gap-3">{people.map(AcctCard)}</div>
+     :<div className="rounded-2xl border border-dashed border-line px-4 py-7 text-center"><p className="font-bold">No profiles yet</p><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Tap Sign In to use an account from another device, or Create Account to start a new one.</p></div>}
+   </div>
+  </section>
+  <div className="my-5 flex items-center gap-3 sm:my-6" aria-hidden="true"><span className="h-px flex-1 bg-line/70"/><span className="grid h-8 w-8 place-items-center rounded-full border border-line bg-surface/80 text-muted"><HIc d={HI_DOWN} cls="h-4 w-4"/></span><span className="h-px flex-1 bg-line/70"/></div>
+  <section className="panel anim-rise" style={{animationDelay:'80ms'}} aria-label="Your groups">
+   {SecHd(HI_GROUP,'Your groups','Groups you created or joined. Open one, then pick your account.',<>
+    <button className={SB} disabled={!CLOUD} onClick={JoinG}>Join Group</button>
+    <button className={PB} disabled={!CLOUD} onClick={NewG}>Create Group</button></>,true)}
+   <div className="p-4 sm:p-6">
+    {book.groups.length?<div className="flex flex-wrap justify-start gap-3">{book.groups.map(GroupCard)}</div>
+     :<div className="rounded-2xl border border-dashed border-line px-4 py-7 text-center"><p className="font-bold">No groups yet</p><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Join one with its code, create your own, or sign in to a profile and its groups appear here.</p></div>}
+   </div>
+  </section></div>};
  
 const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a.last||0)||(a.name||'').localeCompare(b.name||'')),rs=remotesOf(grp);return <>
   <div className="anim-rise relative flex flex-col items-center gap-2 pb-5 pt-14 text-center sm:pt-14"><button className={BTN+' !px-3 absolute left-0 top-2'} onClick={()=>setGv(null)} aria-label="Back to groups">← <span className="hidden sm:inline">Groups</span></button><GroupIcon g={grp} s="h-16 w-16" t="text-3xl"/><div className="min-w-0 max-w-full"><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">{grp.name}</h1><div className="text-xs text-muted">{countOf(grp)} account{countOf(grp)===1?'':'s'} · {grp.cloud?(grp.missing?'group not found in the cloud':'cloud group'):'not in the cloud yet'}</div></div>
@@ -1369,7 +1404,6 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
   {Top}
   <div key={gv||'groups'}>{grp?GroupScreen():GroupsScreen()}</div>
   <div className="mt-10 flex flex-col items-center gap-4"><CreatorsCard/>
-   <button className={BTN} onClick={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}}><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Report a Problem</button>
    <button onClick={()=>{setDv({u:'',p:''});setCm('');setSh({t:'dev'})}} className="text-[11px] font-semibold text-muted/70 underline decoration-dotted underline-offset-4 transition hover:text-ink">Developer sign-in</button></div>
 
   <Sheet open={!!sh&&sh.t==='newGroup'} onClose={()=>setSh(null)} title="Create New Group">
@@ -1408,7 +1442,7 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
     {gg.cloud&&ctl.canAdmin(gg.id)&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+gg.name+'” for everyone?',msg:'The group is deleted from the cloud, so nobody can join it or see its member list again.',next:'Continue',final:'This cannot be undone. Every member loses the group on every device the next time they open the app. Delete it anyway?',yes:'Yes, delete for everyone',onYes:()=>{ctl.deleteGroup(gg.id,true);setSh(null);setGv(null)}})}>Delete group from the cloud too</button>}
     <p className="text-xs text-muted">Accounts in a removed group move to another group. Account data is never deleted by removing a group.</p></div></>}</Sheet>
 
-  <Sheet open={!!sh&&sh.t==='newAcct'} onClose={()=>setSh(null)} title={(grp?'':'Individual account · ')+'New Account'}>
+  <Sheet open={!!sh&&sh.t==='newAcct'} onClose={()=>setSh(null)} title={grp?'New account':'Create account'}>
    {!grp&&<p className="text-sm text-muted">An individual account is not in any group. You can add it to a group later from Edit.</p>}
    {Photo(na,pic=>setNa({...na,pic}),()=>setNa({...na,pic:''}))}
    {!na.pic&&Emojis(EMO,na.emoji,e=>setNa({...na,emoji:e}))}
@@ -1427,10 +1461,10 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    <TextIn type="password" v={uf.pass} on={v=>setUf({pass:v})} ph="Account passcode"/>
    {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.unlock(grp.id,um.mid,uf.pass),r=>ctl.open(r.slice(3),grp&&grp.id))}>{cb?'Working…':'Unlock'}</button>{grp.rec?<a className="text-center text-xs font-semibold text-accent-text underline" href={'mailto:'+grp.rec+'?subject='+encodeURIComponent('Passcode help for '+(um.n||'my account'))+'&body='+encodeURIComponent('Hi, I forgot the passcode for the account "'+(um.n||'')+'" in the group "'+grp.name+'". Could you help me recover it?')}>Forgot passcode? Email the group creator</a>:<p className="text-center text-xs text-muted">Forgot the passcode? This group has no recovery email, so ask the group creator.</p>}</>}</Sheet>
 
-  <Sheet open={!!sh&&sh.t==='signin'&&!!grp} onClose={()=>setSh(null)} title="Sign in to a cloud account">
-   <p className="text-sm text-muted">Use the sync name and passcode of an account created on another device. It is added to this group.</p>
+  <Sheet open={!!sh&&sh.t==='signin'} onClose={()=>setSh(null)} title="Sign in to a cloud account">
+   <p className="text-sm text-muted">{grp?'Use the sync name and passcode of an account created on another device. It is added to this group.':'Use the sync name and passcode of your account. It is added to this device, and every group it belongs to appears under Your groups.'}</p>
    <TextIn v={sf.name} on={v=>setSf({...sf,name:v})} ph="Sync name"/><TextIn type="password" v={sf.pass} on={v=>setSf({...sf,pass:v})} ph="Passcode"/>
-   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.signIn(grp.id,sf.name,sf.pass),r=>ctl.open(r.slice(3),grp&&grp.id))}>{cb?'Working…':'Sign in'}</button></Sheet>
+   {Err()}<button disabled={cb} className={BTNP} onClick={()=>go(()=>ctl.signIn(grp?grp.id:null,sf.name,sf.pass),r=>{const q=r.split(':'),n=+q[2]||0;if(grp)return ctl.open(q[1],grp.id);const ac=book.list.find(z=>z.id===q[1]);setMsg('Signed in as '+((ac&&ac.name)||'your account')+(n?'. '+n+(n===1?' group was':' groups were')+' added to Your groups.':'. Your groups are up to date.'));setTimeout(()=>setMsg(''),9000)})}>{cb?'Working…':'Sign in'}</button></Sheet>
 
   <Sheet open={!!ga} onClose={()=>{setSh(null);setArm(null)}} title="Edit account">{ga&&<>
    {Photo(ga,pic=>ctl.rename(ga.id,{pic}),()=>ctl.rename(ga.id,{pic:''}))}
@@ -1480,7 +1514,20 @@ function Root(){
  const acc=id=>bk.current.list.find(a=>a.id===id),grp=id=>bk.current.groups.find(g=>g.id===id);
  const fail=e=>setStat(navigator.onLine&&/^(get|put) [45]/.test(String(e&&e.message))?'error':'offline');
  const stamp=id=>{const a=acc(id);if(a){a.sy={...(a.sy||{}),at:Date.now()};saveBook(bk.current)}};
- const docOf=(a,id,t)=>({t,d:JSON.stringify(bk.current.data[id]),n:a.name,e:a.emoji,p:a.pic||null,b:a.bio||''});
+ const refsOf=a=>gidsOf(a).map(x=>grp(x)).filter(g=>g&&g.cloud).map(g=>({k:g.cloud.k,sn:g.cloud.sn}));
+ const docOf=(a,id,t)=>({t,d:JSON.stringify(bk.current.data[id]),n:a.name,e:a.emoji,p:a.pic||null,b:a.bio||'',g:refsOf(a)});
+ /* ---- an account's cloud document lists its groups (g). Signing in on any device re-creates them here, so they appear on Home on their own ---- */
+ const pubGs=async id=>{const a=acc(id);if(!CLOUD||!a||!a.cloud||!navigator.onLine)return;const g=refsOf(a);try{await fetch(curl(a.cloud.k),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({g:g.length?g:null})})}catch(e){}};
+ const hyd=async(a,refs,pw)=>{if(!CLOUD||!a||!a.cloud||!navigator.onLine)return 0;let added=0,ch=false;
+  for(const f of listOf(refs)){if(!f||typeof f.k!=='string'||!f.k)continue;
+   try{let g=bk.current.groups.find(x=>x.cloud&&x.cloud.k===f.k),r=null;
+    if(!g||(pw&&!a.mid)){r=await gread(f.k);if(!r||!r.meta)continue}
+    if(!g){g={id:'g'+uid(),name:r.meta.n||f.sn||'Group',icon:r.meta.i||'',rec:r.meta.r||'',code:r.meta.c||'',cloud:{k:f.k,sn:f.sn||r.meta.n||'Group'},members:r.m||{},adm:admKeys(r.admins),joined:true,fetched:Date.now()};if(r.meta.p)g.pic=r.meta.p;bk.current.groups=[...bk.current.groups,g];added++;ch=true}
+    if(!gidsOf(a).includes(g.id)){a.gids=[...gidsOf(a),g.id];a.gid=a.gids[0];ch=true}
+    // signed in with the passcode: same sync name + passcode means the same account, so its own member card is recognised (not listed twice, admin role kept)
+    if(pw&&!a.mid&&r&&r.m){for(const [mid,c] of Object.entries(r.m)){if(c&&c.sn&&await ckey(c.sn,pw)===a.cloud.k){a.mid=mid;ch=true;break}}}
+   }catch(e){}}
+  if(ch)save();return added};
  /* ---- account documents (unchanged engine: last edit wins, the other version is kept) ---- */
  const apply=(id,r)=>{const a=acc(id);if(!a)return;let d;try{d=mig(JSON.parse(r.d))}catch(e){return}if(!okState(d))return;
   bk.current.data[id]=d;a.name=r.n||a.name;a.emoji=r.e||a.emoji;if(r.b!==undefined)a.bio=r.b;if(r.p)a.pic=r.p;else delete a.pic;
@@ -1491,6 +1538,7 @@ function Root(){
  const dropLocal=id=>{bk.current.list=bk.current.list.filter(x=>x.id!==id);delete bk.current.data[id];if(curR.current&&curR.current.id===id){clearSession();setCur(null)}saveBook(bk.current);tick(x=>x+1)};
  const sync=async id=>{const a=acc(id);if(!a||!a.cloud||bz.current['s'+id])return;if(!navigator.onLine){setStat('offline');return}bz.current['s'+id]=1;
   try{const r=await cget(a.cloud.k),sy=a.sy||{t:0,base:0,dirty:false};
+   if(validDoc(r)&&r.g)hyd(a,r.g).catch(()=>{});
    if(r&&r.x===1){dropLocal(id);setStat('synced')}
    else if(!validDoc(r)){a.sy={...sy,t:sy.t||Date.now(),dirty:true};await push(id)}
    else if(r.t===sy.t){a.sy={...sy,base:r.t,dirty:false,at:Date.now()};saveBook(bk.current);setStat('synced')}
@@ -1506,7 +1554,7 @@ function Root(){
  /* ---- group directories (public cards only) ---- */
  const pubM=async(id,only)=>{const a=acc(id);if(!CLOUD||!a||!a.cloud||!navigator.onLine)return;const gs=(only?[only]:gidsOf(a)).map(x=>grp(x)).filter(g=>g&&g.cloud);if(!gs.length)return;if(!a.mid){a.mid='m'+uid();saveBook(bk.current)}
   const card={n:a.name,b:a.bio||'',e:a.emoji,p:a.pic||null,sn:a.cloud.sn,t:Date.now()};
-  await Promise.all(gs.map(async g=>{try{await gwrite(g.cloud.k,'m/'+a.mid,card)}catch(e){}}))};
+  await Promise.all(gs.map(async g=>{try{await gwrite(g.cloud.k,'m/'+a.mid,card)}catch(e){}}));pubGs(id)};
  const pubLater=id=>{clearTimeout(pm.current[id]);pm.current[id]=setTimeout(()=>pubM(id),900)};
  const pubG=async id=>{const g=grp(id);if(!g||!g.cloud||!navigator.onLine)return;try{await gpatch(g.cloud.k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,t:Date.now()});g.dirty=false;saveBook(bk.current)}catch(e){}};
  const pubGLater=id=>{clearTimeout(pg.current[id]);pg.current[id]=setTimeout(()=>pubG(id),900)};
@@ -1607,23 +1655,23 @@ function Root(){
   try{const k=await gkey(g.name,pw),ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose a different passcode.';const code=await freeCode();await gwrite(k,'meta',{n:g.name,i:g.icon||'',p:g.pic||null,r:g.rec||null,c:code,t:Date.now()});await dput('codes/'+code,{k,sn:g.name.trim(),t:Date.now()});g.code=code;g.cloud={k,sn:g.name.trim()};g.members={};save();bk.current.list.filter(a=>gidsOf(a).includes(id)&&a.cloud).forEach(a=>pubM(a.id,id));return'ok'}catch(e){return BADNET}};
  const deleteGroup=async(id,everywhere)=>{const g=grp(id);if(!g)return;if(everywhere&&g.cloud){try{await gremove(g.cloud.k)}catch(e){}if(g.code){try{await ddel('codes/'+g.code)}catch(e){}}}
   let gs=bk.current.groups.filter(x=>x.id!==id);bk.current.groups=gs;
-  bk.current.list.forEach(a=>{const all=gidsOf(a),rest=all.filter(x=>x!==id);if(rest.length!==all.length){a.gids=rest;a.gid=rest[0]||null}});save()};
+  bk.current.list.forEach(a=>{const all=gidsOf(a),rest=all.filter(x=>x!==id);if(rest.length!==all.length){a.gids=rest;a.gid=rest[0]||null;if(a.cloud)pubGs(a.id)}});save()};
  const createAccount=async n=>{const name=(n.name||'').trim();if(!name)return'Enter a name.';const d=blank(n.pre),o={name,bio:n.bio,emoji:n.emoji,pic:n.pic,gid:n.gid};
   if(!CLOUD)return NOCLOUD;if((n.pass||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(name,n.pass),ex=await cget(k);if(validDoc(ex))return'An account with that name and passcode already exists. Choose a different passcode.';const t=Date.now();
    const id=addAcc({...o,extra:{mid:'m'+uid(),cloud:{k,sn:name},sy:{t,base:t,dirty:false,at:t}}},d);await cput(k,docOf(acc(id),id,t));save();pubM(id);return'ok:'+id}catch(e){return BADNET}};
  const unlock=async(gid,mid,pw)=>{const g=grp(gid),m=g&&g.members&&g.members[mid];if(!m)return'That account is no longer in the group.';if((pw||'').length<6)return'Enter the account passcode (6+ characters).';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(m.sn,pw),r=await cget(k);if(!validDoc(r))return'Wrong passcode.';let d;try{d=mig(JSON.parse(r.d))}catch(e){d=null}if(!okState(d))return'That account has unreadable data.';
-   const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex){if(!ex.mid)ex.mid=mid;else if(ex.mid!==mid)ex.alt=[...new Set([...(ex.alt||[]),mid])];if(!gidsOf(ex).includes(gid)){ex.gids=[...gidsOf(ex),gid];ex.gid=ex.gids[0]}save();return'ok:'+ex.id}
+   const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex){if(!ex.mid)ex.mid=mid;else if(ex.mid!==mid)ex.alt=[...new Set([...(ex.alt||[]),mid])];if(gid&&!gidsOf(ex).includes(gid)){ex.gids=[...gidsOf(ex),gid];ex.gid=ex.gids[0];pubGs(ex.id)}save();return'ok:'+ex.id}
    const id=addAcc({name:r.n||m.n,bio:r.b!==undefined?r.b:m.b,emoji:r.e||m.e,pic:r.p||m.p,gid,extra:{mid,cloud:{k,sn:m.sn},sy:{t:r.t,base:r.t,dirty:false,at:Date.now()}}},d);save();return'ok:'+id}catch(e){return BADNET}};
  const signIn=async(gid,sn,pw)=>{if(!CLOUD)return NOCLOUD;if(!(sn||'').trim()||(pw||'').length<6)return'Enter the sync name and passcode (6+ characters).';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(sn,pw),r=await cget(k);if(!validDoc(r))return'No account found with that name and passcode.';let d;try{d=mig(JSON.parse(r.d))}catch(e){d=null}if(!okState(d))return'That account has unreadable data.';
-   const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex){if(!gidsOf(ex).includes(gid)){ex.gids=[...gidsOf(ex),gid];ex.gid=ex.gids[0];save();pubM(ex.id,gid)}return'ok:'+ex.id}
-   const id=addAcc({name:r.n||sn,bio:r.b||'',emoji:r.e||'',pic:r.p,gid,extra:{cloud:{k,sn:sn.trim()},sy:{t:r.t,base:r.t,dirty:false,at:Date.now()}}},d);save();pubLater(id);return'ok:'+id}catch(e){return BADNET}};
+   const ex=bk.current.list.find(a=>a.cloud&&a.cloud.k===k);if(ex){if(gid&&!gidsOf(ex).includes(gid)){ex.gids=[...gidsOf(ex),gid];ex.gid=ex.gids[0];save();pubM(ex.id,gid)}const n0=await hyd(ex,r.g,pw);return'ok:'+ex.id+':'+n0}
+   const id=addAcc({name:r.n||sn,bio:r.b||'',emoji:r.e||'',pic:r.p,gid:gid||null,extra:{cloud:{k,sn:sn.trim()},sy:{t:r.t,base:r.t,dirty:false,at:Date.now()}}},d);save();const n1=await hyd(acc(id),r.g,pw);if(gid)pubLater(id);return'ok:'+id+':'+n1}catch(e){return BADNET}};
  const rename=(id,p)=>{const a=acc(id);if(!a)return;const before=gidsOf(a);Object.assign(a,p);if(p.pic==='')delete a.pic;
   if(p.gids){const nx=[...new Set(p.gids.filter(x=>grp(x)))];a.gids=nx;a.gid=nx[0]||null;delete a.group;
    before.filter(x=>!nx.includes(x)).forEach(x=>{const g=grp(x);if(a.mid&&g&&admOf(g).includes(a.mid)&&admOf(g).length>1){g.adm=admOf(g).filter(m=>m!==a.mid);if(g.cloud)gpatch(g.cloud.k,'admins',{[a.mid]:null}).catch(()=>{})}if(a.mid&&g&&g.cloud)gremove(g.cloud.k,'m/'+a.mid).catch(()=>{})});
-   if(a.cloud)nx.filter(x=>!before.includes(x)).forEach(x=>pubM(id,x))}
+   if(a.cloud){nx.filter(x=>!before.includes(x)).forEach(x=>pubM(id,x));pubGs(id)}}
   if(a.cloud){a.sy={...(a.sy||{}),t:Date.now(),dirty:true};later(id);pubLater(id)}save()};
  const enable=async(id,sn,pw)=>{const a=acc(id);if(!a)return'Account not found.';if(!CLOUD)return NOCLOUD;if(!(sn||'').trim()||(pw||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(sn,pw),ex=await cget(k);if(validDoc(ex))return'A cloud account with that name and passcode already exists. Choose a different passcode.';const t=Date.now();await cput(k,docOf(a,id,t));a.cloud={k,sn:sn.trim()};a.sy={t,base:t,dirty:false,at:Date.now()};save();pubLater(id);return'ok'}catch(e){return BADNET}};
