@@ -394,6 +394,7 @@ const RELEASE_NOTES=[
  'Home now adapts to you: once you are signed in, Profiles shows Sign Out and Sign Out All in one row, and Sign In and Create Account tuck behind View more',
  'Once you have a group, Join Group and Create Group move behind View more, and a group joined while signed in is linked to your profile so it follows you to every device',
  'A single profile or group card is now centered instead of sitting on the left',
+ 'Profile and group cards now have a soft shadow in Light and Dark, bios stay on one line and line up across a row, Profiles and Your groups headers are more compact with the icon beside the title, the lock icon no longer sits on a white circle, and Sign Out moved into Edit account',
  'Blue, Green, Classic and Monochrome are back in the color picker, joined by Teal, Sky, Indigo, Rose, Orange, Peach, Lime and Slate, each with a Light and a Dark version']},
  {v:'v36',notes:[
  'New interactive Tracker tutorial with sample subjects: switch subjects, add scores, open Options and try the Reverse Calculator. It opens the first time you visit the Tracker',
@@ -1554,10 +1555,10 @@ function HomeHeader({busy,at,cloud,dark,onMode,onRefresh,onTheme,onTour,onJoin,o
 function SecDesc({text,collapsed,more}){
  const [open,setOpen]=useState(!collapsed);
  useEffect(()=>{setOpen(!collapsed)},[collapsed]);
- if(!collapsed)return <p className="mx-auto mt-1 max-w-md text-xs font-medium leading-snug text-muted sm:text-[13px]">{text}</p>;
+ if(!collapsed)return <p className="mx-auto mt-0.5 max-w-md text-xs font-medium leading-snug text-muted sm:text-[13px]">{text}</p>;
  return <div className="mt-0.5 flex w-full flex-col items-center">
-  <div className={cx('acc w-full',open&&'open')} inert={!open}><div><div className="flex flex-col items-center gap-2 pb-1 pt-1"><p className="mx-auto max-w-md text-xs leading-snug text-muted">{text}</p>{more&&<div className="grid w-full max-w-xs grid-cols-2 gap-2">{more}</div>}</div></div></div>
-  <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="mt-0.5 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-300 ease-in-out',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3 w-3"/></span></button></div>;
+  <div className={cx('acc w-full',open&&'open')} inert={!open}><div><div className="flex flex-col items-center gap-1.5 pb-0.5 pt-0.5"><p className="mx-auto max-w-md text-xs leading-snug text-muted">{text}</p>{more&&<div className="grid w-full max-w-xs grid-cols-2 gap-2">{more}</div>}</div></div></div>
+  <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="inline-flex items-center gap-1 rounded-lg px-2 py-0 text-[11px] font-bold leading-5 text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-300 ease-in-out',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3 w-3"/></span></button></div>;
 }
 
 // Wipes everything this site stored on the device (settings, session, local-only data, offline cache and service worker), then reloads fresh.
@@ -1586,57 +1587,55 @@ function Home({book,theme,setTheme,ctl,busy,at}){
 
  /* ---- cards ---- */
  const EditBtn=(fn,label)=><button onClick={fn} className="absolute right-1 top-1 rounded-md px-1.5 py-0.5 text-[10px] text-muted opacity-70 transition hover:bg-ink/[.09] hover:opacity-100" aria-label={label}>Edit</button>;
- const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-full min-w-0 cursor-pointer flex-col items-center gap-1.5 !rounded-2xl p-2.5 pt-3.5 text-center hover:border-accent/60 hover:shadow-md')}>
+ const GroupCard=(g,i)=><div key={g.id} role="button" tabIndex={0} onClick={()=>setGv(g.id)} onKeyDown={e=>e.key==='Enter'&&setGv(g.id)} style={{animationDelay:i*50+'ms'}} className={cx(CARD,'pcard lift anim-rise relative flex w-full min-w-0 cursor-pointer flex-col items-center gap-1.5 !rounded-2xl p-2.5 pt-3.5 text-center hover:border-accent/60')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editGroup',id:g.id});setArm(null);setCm('');setGp('')},'Edit group')}
   <GroupIcon g={g} s="h-11 w-11" t="text-2xl"/>
   <div className="min-w-0 max-w-full"><div className="truncate text-sm font-extrabold">{g.name}</div><div className="truncate text-[11px] text-muted">{countOf(g)} account{countOf(g)===1?'':'s'} · {g.cloud?(g.missing?'not found':'cloud'):'not in the cloud'}</div></div></div>;
- const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-full min-w-0 cursor-pointer flex-col items-center gap-1 !rounded-2xl p-2.5 pt-3.5 text-center hover:border-accent/60 hover:shadow-md')}>
+ const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'pcard lift anim-rise relative flex w-full min-w-0 cursor-pointer flex-col items-center gap-1 !rounded-2xl p-2.5 pt-3.5 text-center hover:border-accent/60')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})},'Edit account')}
   <Avatar a={a} s="h-12 w-12" t="text-2xl"/>
-  <div className="min-w-0 max-w-full"><div className="truncate text-sm font-extrabold">{a.name||'Untitled'}</div><div className="text-[10px] font-semibold text-muted" title={a.cloud?'Cloud account':'Not in the cloud yet'}>{a.cloud?'Cloud':'Not in the cloud'}{gidsOf(a).length?'':' · Individual'}{a.id===ctl.activeId&&cloudAccts.length>1&&<span className="ml-1 rounded-full bg-accent/20 px-1.5 py-px text-[9px] font-bold text-accent-text">Active</span>}</div></div>
-  <div className="line-clamp-2 text-[11px] leading-snug text-muted">{a.bio||'No bio yet'}</div></div>;
- const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-full min-w-0 cursor-pointer flex-col items-center gap-1 !rounded-2xl border-dashed p-2.5 pt-3.5 text-center hover:border-accent/60')} style={{animationDelay:i*40+'ms'}}>
-  <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-12 w-12" t="text-2xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
-  <div className="min-w-0 max-w-full"><div className="truncate text-sm font-extrabold">{m.n||'Account'}</div></div><div className="line-clamp-2 text-[11px] leading-snug text-muted">{m.b||'Tap to unlock with its passcode'}</div></div>;
+  <div className="min-w-0 w-full"><div className="truncate text-sm font-extrabold">{a.name||'Untitled'}</div><div className="pc-st truncate text-[10px] font-semibold text-muted" title={a.cloud?'Cloud account':'Not in the cloud yet'}>{a.cloud?'Cloud':'Not in the cloud'}{gidsOf(a).length?'':' · Individual'}</div></div>
+  <div className="pc-bio" title={a.bio||''}>{a.bio||'No bio yet'}</div></div>;
+ const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'pcard lift anim-rise flex w-full min-w-0 cursor-pointer flex-col items-center gap-1 !rounded-2xl border-dashed p-2.5 pt-3.5 text-center hover:border-accent/60')} style={{animationDelay:i*40+'ms'}}>
+  <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-12 w-12" t="text-2xl"/><svg viewBox="0 0 24 24" className="pc-lock absolute -bottom-1 -right-1.5 h-[18px] w-[18px] text-ink" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-label="Locked"><rect x="5" y="11" width="14" height="9" rx="2" fill="rgb(var(--surface))"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+  <div className="min-w-0 w-full"><div className="truncate text-sm font-extrabold">{m.n||'Account'}</div><div className="pc-st truncate text-[10px] font-semibold text-muted">Locked</div></div><div className="pc-bio" title={m.b||''}>{m.b||'Tap to unlock with its passcode'}</div></div>;
 
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
  const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} dark={themeInfo(theme).dark} onMode={()=>setTheme(flipMode(theme))} onReset={()=>ask({title:'Reset site data?',msg:'This clears everything Gradely saved on this device: accounts and groups that are not in the cloud, your sign-in, theme, settings and the offline copy of the app. Cloud accounts stay safe and you can sign in to them again.',yes:'Reset site data',final:'Last check: anything saved only on this device will be gone for good. Reset it now?',next:'Continue',onYes:resetSiteData})} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
  // signed in = at least one cloud account on this device; hasGroups = at least one group on this device
- const signedIn=book.list.some(a=>a.cloud),hasGroups=book.groups.length>0,act=ctl.activeId?book.list.find(a=>a.id===ctl.activeId):null;
+ const signedIn=book.list.some(a=>a.cloud),hasGroups=book.groups.length>0;
  // actions = the always-visible row (one single row, never scrolls). o.collapsed folds the description behind View more and o.more holds the buttons that move in there.
- const SecHd=(ic,title,sub,actions,o={})=><div className={cx('panel-hd flex flex-col items-center gap-2.5 border-b border-line/70 px-3.5 py-3.5 text-center sm:px-6',o.alt&&'alt')}>
-  <div className="flex w-full min-w-0 flex-col items-center"><span className="mb-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-4 w-4"/></span><h2 className="text-base font-black leading-tight tracking-tight sm:text-lg">{title}</h2><SecDesc text={sub} collapsed={!!o.collapsed} more={o.more}/></div>
+ const SecHd=(ic,title,sub,actions,o={})=><div className={cx('panel-hd flex flex-col items-center gap-1.5 border-b border-line/70 px-3 py-2 text-center sm:px-5',o.alt&&'alt')}>
+  <div className="flex w-full min-w-0 flex-col items-center"><div className="flex items-center justify-center gap-2"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-accent/20 text-accent-text"><HIc d={ic} cls="h-3.5 w-3.5"/></span><h2 className="text-base font-black leading-tight tracking-tight sm:text-lg">{title}</h2></div><SecDesc text={sub} collapsed={!!o.collapsed} more={o.more}/></div>
   {actions&&<div className="grid w-full max-w-xs grid-cols-2 gap-2 sm:flex sm:w-auto sm:max-w-none sm:justify-center">{actions}</div>}</div>;
  const SB=BTN+' w-full !py-1.5 !text-xs sm:w-auto',PB=BTNP+' w-full !py-1.5 !text-xs sm:w-auto',SBX=SB+' whitespace-nowrap !border-bad/30 !text-bad hover:!bg-bad/10';
  const SignInB=<button key="si" className={SB} disabled={!CLOUD} onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign In</button>,
   CreateAcB=<button key="ca" className={PB} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>Create Account</button>,
   JoinB=<button key="jg" className={SB} disabled={!CLOUD} onClick={JoinG}>Join Group</button>,
   CreateGB=<button key="cg" className={PB} disabled={!CLOUD} onClick={NewG}>Create Group</button>;
- // Sign out: removes the account(s) from this device only. Cloud data is never deleted, and signing in again brings the groups back.
- const doSignOut=async all=>{const r=await ctl.signOut(all);if(String(r).startsWith('ok')){setGv(null);setMsg(all?'Signed out of all accounts.':'Signed out of the active account.');setTimeout(()=>setMsg(''),7000)}else{setMsg(r);setTimeout(()=>setMsg(''),9000)}};
- const askOut=all=>ask({title:all?'Sign out of all accounts?':'Sign out of '+((act&&act.name)||'the active account')+'?',msg:(all?'Every signed-in account':'This account')+' and the groups linked to '+(all?'them':'it')+' are removed from this device. Your grades stay safe in the cloud, and signing in again brings everything back.',yes:all?'Sign out of all':'Sign out',onYes:()=>doSignOut(all)});
- const SignOutRow=<><button key="so" className={SB} aria-label="Sign out of active account" title={'Sign out of active account'+(act&&act.name?' ('+act.name+')':'')} onClick={()=>askOut(false)}>Sign Out</button>
-  <button key="sa" className={SBX} aria-label="Sign out of all accounts" title="Sign out of all accounts" onClick={()=>askOut(true)}>Sign Out All</button></>;
+ // Sign out lives in the Edit account sheet. It removes the account(s) from this device only; cloud data is never deleted and signing in again restores everything.
+ const doSignOut=async(all,id)=>{const r=await ctl.signOut(all,id);if(String(r).startsWith('ok')){setSh(null);setGv(null);setMsg(all?'Signed out of all accounts.':'Signed out.');setTimeout(()=>setMsg(''),7000)}else setCm(r)};
+ const askOut=(all,a)=>ask({title:all?'Sign out of all accounts?':'Sign out of '+(a.name||'this account')+'?',msg:(all?'Every signed-in account':'This account')+' and the groups linked to '+(all?'them':'it')+' are removed from this device. Your grades stay safe in the cloud, and signing in again brings everything back.',yes:all?'Sign out of all':'Sign out',onYes:()=>doSignOut(all,a.id)});
  const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <div className="mt-3 sm:mt-4">
   {!CLOUD&&<p className="mb-3 rounded-xl border border-bad/30 bg-bad/10 px-3 py-2 text-center text-xs font-semibold text-bad">Gradely stores everything in the cloud. Add your database URL in config.js to sign in, create or join a group.</p>}
   <section className="panel anim-rise !rounded-2xl" aria-label="Profiles">
    {signedIn
-    ?SecHd(HI_USER,'Profiles','Accounts on this device. Your joined groups are linked to your profile and appear below automatically. Need another account? Sign in or create one here.',SignOutRow,{collapsed:true,more:<>{SignInB}{CreateAcB}</>})
+    ?SecHd(HI_USER,'Profiles','Accounts on this device. Your joined groups are linked to your profile and appear below automatically. Need another account? Sign in or create one here. To sign out, open Edit on a card.',null,{collapsed:true,more:<>{SignInB}{CreateAcB}</>})
     :SecHd(HI_USER,'Profiles','Accounts on this device. Sign in and every group you have joined is added automatically.',<>{SignInB}{CreateAcB}</>)}
-   <div className="p-3 sm:p-4">
+   <div className="p-2.5 sm:p-3">
     {msg&&<p role="status" className="mx-auto mb-3 max-w-md rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-center text-xs font-semibold">{msg}</p>}
     {people.length?<div className="g2">{people.map(AcctCard)}</div>
      :<div className="rounded-xl border border-dashed border-line px-3 py-4 text-center"><p className="text-sm font-bold">No profiles yet</p><p className="mx-auto mt-0.5 max-w-sm text-xs text-muted">Tap Sign In to use an account from another device, or Create Account to start a new one.</p></div>}
    </div>
   </section>
-  <div className="my-3.5 flex items-center gap-3 sm:my-4" aria-hidden="true"><span className="h-px flex-1 bg-line/70"/><span className="grid h-6 w-6 place-items-center rounded-full border border-line bg-surface/80 text-muted"><HIc d={HI_DOWN} cls="h-3 w-3"/></span><span className="h-px flex-1 bg-line/70"/></div>
+  <div className="my-2.5 flex items-center gap-3 sm:my-3" aria-hidden="true"><span className="h-px flex-1 bg-line/70"/><span className="grid h-6 w-6 place-items-center rounded-full border border-line bg-surface/80 text-muted"><HIc d={HI_DOWN} cls="h-3 w-3"/></span><span className="h-px flex-1 bg-line/70"/></div>
   <section className="panel anim-rise !rounded-2xl" style={{animationDelay:'80ms'}} aria-label="Your groups">
    {hasGroups
     ?SecHd(HI_GROUP,'Your groups','Groups you created or joined. Open one, then pick your account. Want another? Join or create one here.',null,{alt:true,collapsed:true,more:<>{JoinB}{CreateGB}</>})
     :SecHd(HI_GROUP,'Your groups','Groups you created or joined. Open one, then pick your account.',<>{JoinB}{CreateGB}</>,{alt:true})}
-   <div className="p-3 sm:p-4">
+   <div className="p-2.5 sm:p-3">
     {book.groups.length?<div className="g2">{book.groups.map(GroupCard)}</div>
      :<div className="rounded-xl border border-dashed border-line px-3 py-4 text-center"><p className="text-sm font-bold">No groups yet</p><p className="mx-auto mt-0.5 max-w-sm text-xs text-muted">Join one with its code, create your own, or sign in to a profile and its groups appear here.</p></div>}
    </div>
@@ -1731,7 +1730,9 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    {CLOUD&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">{ga.cloud?'Cloud sync':'Move to the cloud'}</div>
     {ga.cloud?<p className="text-sm text-muted">Syncing as <b className="text-ink">{ga.cloud.sn}</b></p>
      :<><p className="text-xs text-muted">This older account is stored on this device only. Gradely is cloud-only now, so choose a passcode to move it to the cloud. Your grades are kept.</p><TextIn type="password" v={ef.pass} on={v=>setEf({pass:v})} ph="Passcode (6+ characters)"/>{Err()}<button disabled={cb} className={BTN} onClick={()=>go(()=>ctl.enable(ga.id,ga.name,ef.pass),()=>{})}>Move to the cloud</button></>}</div>}
-   
+   {ga.cloud&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">Sign out</div>
+    <div className="grid grid-cols-2 gap-2"><button className={SB} aria-label="Sign out of this account" title="Sign out of this account" onClick={()=>askOut(false,ga)}>Sign Out</button><button className={SBX} aria-label="Sign out of all accounts" title="Sign out of all accounts" onClick={()=>askOut(true,ga)}>Sign Out All</button></div>
+    <p className="text-xs text-muted">Removes the account from this device only. Your grades stay in the cloud.</p></div>}
 <div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+ga.name+'” from this device?',msg:ga.cloud?'The cloud copy is kept, so you can unlock the account again from its group.':'This older account is not in the cloud, so it cannot be recovered once it is removed. Move it to the cloud first to keep it.',yes:'Remove account',onYes:()=>{ctl.del(ga.id,false);setSh(null)}})}>Remove from this device</button>
     {ga.cloud&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+ga.name+'” from the cloud too?',msg:'The account and all of its grades are erased from the cloud as well as this device.',next:'Continue',final:'This cannot be undone. The grades cannot be recovered on any device. Delete the account anyway?',yes:'Yes, delete everywhere',onYes:()=>{ctl.del(ga.id,true);setSh(null)}})}>Delete from the cloud too</button>}
     <p className="text-xs text-muted">{ga.cloud?'Removing from this device keeps the cloud copy, so you can unlock it again from its group.':'An account that is not in the cloud cannot be recovered after it is removed.'}</p></div></>}</Sheet>
@@ -1962,7 +1963,7 @@ function Root(){
  
  /* ---- sign out: takes the account(s) off this device only (cloud data is never deleted). Groups that only those accounts linked leave with them; signing in again restores everything ---- */
  const activeAcct=()=>bk.current.list.filter(a=>a.cloud).sort((x,y)=>(y.last||0)-(x.last||0))[0]||null;
- const signOut=async all=>{const cl=bk.current.list.filter(a=>a.cloud),a0=activeAcct(),ts=all?cl:(a0?[a0]:[]);if(!ts.length)return'You are not signed in.';
+ const signOut=async(all,id)=>{const cl=bk.current.list.filter(a=>a.cloud),a0=id?acc(id):activeAcct(),ts=all?cl:(a0&&a0.cloud?[a0]:[]);if(!ts.length)return'You are not signed in.';
   for(const a of ts){clearTimeout(tm.current[a.id]);clearTimeout(pm.current[a.id]);if(a.sy&&a.sy.dirty){if(!navigator.onLine)return'Some changes are not synced yet. Connect to the internet first so nothing is lost.';try{await push(a.id)}catch(e){}}}
   if(ts.some(a=>{const b=acc(a.id);return b&&b.sy&&b.sy.dirty}))return'Some changes could not be saved to the cloud yet. Try again in a moment.';
   const ids=new Set(ts.map(a=>a.id)),linked=new Set(ts.flatMap(a=>gidsOf(a)));

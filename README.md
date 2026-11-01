@@ -2,6 +2,14 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
+## v37 step 2 UI fixes
+- **Card depth.** Profile, group and locked cards (`.pcard` in `index.html`) have a layered soft shadow in every theme: ink-tinted in Light, deeper black in Dark (`--cshd`, `--cshdh` for hover).
+- **Lock badge.** The solid white circle is gone. The lock is drawn directly over the avatar with a surface-colored fill, a halo and a soft drop shadow.
+- **Bios.** One line only, with an ellipsis. Every card now has the same four rows (avatar, name, status, bio) at fixed heights, so bios line up across a row. Locked cards show "Locked" as their status so they match.
+- **Sign Out moved.** Home no longer has Sign Out buttons. Open **Edit** on an account card: the **Sign out** box has **Sign Out** (this account) and **Sign Out All**. When signed in, Sign In and Create Account stay folded inside Profiles > View more.
+- **Compact section headers.** The Profiles and Your groups icons now sit in one row beside their titles (smaller badge), with much less padding in the header, View more toggle, panel body and divider.
+- Service worker cache is `gradely-v37-step2-uifixes`.
+
 ## v37 step 2 fix: theme colors
 - **Restored:** Blue, Green and Monochrome were still defined but missing from the Color row; they are back. **Classic** returns as a new ivory-and-navy look (burgundy accent glow, gold accent in Dark).
 - **New:** Teal, Sky, Indigo, Rose, Orange, Peach, Lime and Slate. The picker now has 18 colors, and every one has a Light and a Dark version (`*dk` ids), so Color and Mode stay independent.
