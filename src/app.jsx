@@ -367,7 +367,7 @@ const TabBody=({f})=>f();
 
 /* ---- PWA auto-update: detect a waiting service worker, show a banner, activate it on tap and reload once ---- */
 function useSwUpdate(){
- const [waiting,setWaiting]=useState(null),rl=useRef(false);
+ const [waiting,setWaiting]=useState(null),rl=useRef(false),regR=useRef(null);
  useEffect(()=>{
   if(!('serviceWorker' in navigator))return;
   let reg=null,dead=false,hadCtl=!!navigator.serviceWorker.controller;
@@ -375,14 +375,22 @@ function useSwUpdate(){
   // the first install also fires controllerchange (clients.claim): only reload when an older version was already running
   const onCtl=()=>{if(!hadCtl){hadCtl=true;return}if(rl.current)return;rl.current=true;window.location.reload()};
   navigator.serviceWorker.addEventListener('controllerchange',onCtl);
-  navigator.serviceWorker.register('./sw.js').then(r=>{if(dead)return;reg=r;if(r.waiting&&navigator.serviceWorker.controller)setWaiting(r.waiting);track(r.installing);r.addEventListener('updatefound',()=>track(r.installing));r.update().catch(()=>{})}).catch(()=>{});
+  navigator.serviceWorker.register('./sw.js').then(r=>{if(dead)return;reg=r;regR.current=r;if(r.waiting&&navigator.serviceWorker.controller)setWaiting(r.waiting);track(r.installing);r.addEventListener('updatefound',()=>track(r.installing));r.update().catch(()=>{})}).catch(()=>{});
   const ck=()=>{if(!document.hidden&&reg)reg.update().catch(()=>{})},iv=setInterval(ck,20*60*1000);
   document.addEventListener('visibilitychange',ck);window.addEventListener('online',ck);
   return()=>{dead=true;clearInterval(iv);navigator.serviceWorker.removeEventListener('controllerchange',onCtl);document.removeEventListener('visibilitychange',ck);window.removeEventListener('online',ck)}},[]);
  const apply=()=>{if(!waiting)return;try{waiting.postMessage({type:'SKIP_WAITING'})}catch(e){}
   // safety net: if controllerchange never arrives, reload anyway
   setTimeout(()=>{if(!rl.current){rl.current=true;window.location.reload()}},4000)};
- return{on:!!waiting,apply,dismiss:()=>setWaiting(null)};
+ // manual check (Home > Quick actions): resolves 'update' | 'latest' | 'offline' | 'unsupported' | 'error'. A found update shows the usual Update Available banner.
+ const check=async()=>{if(!('serviceWorker' in navigator))return'unsupported';if(!navigator.onLine)return'offline';
+  let r=regR.current;if(!r){try{r=await navigator.serviceWorker.getRegistration()}catch(e){}}if(!r)return'unsupported';
+  if(r.waiting&&navigator.serviceWorker.controller){setWaiting(r.waiting);return'update'}
+  try{await r.update()}catch(e){return navigator.onLine?'error':'offline'}
+  const w=r.installing||r.waiting;if(!w)return'latest';
+  if(w.state!=='installed'&&w.state!=='activated')await new Promise(res=>{const t=setTimeout(res,15000),f=()=>{if(['installed','activated','redundant'].includes(w.state)){clearTimeout(t);w.removeEventListener('statechange',f);res()}};w.addEventListener('statechange',f)});
+  if(r.waiting&&navigator.serviceWorker.controller){setWaiting(r.waiting);return'update'}return'latest'};
+ return{on:!!waiting,apply,dismiss:()=>setWaiting(null),check};
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
@@ -394,7 +402,8 @@ const RELEASE_NOTES=[
  'Home now adapts to you: once you are signed in, Profiles shows Sign Out and Sign Out All in one row, and Sign In and Create Account tuck behind View more',
  'Once you have a group, Join Group and Create Group move behind View more, and a group joined while signed in is linked to your profile so it follows you to every device',
  'A single profile or group card is now centered instead of sitting on the left',
- 'Profile and group cards now have a soft shadow in Light and Dark, bios stay on one line and line up across a row, Profiles and Your groups headers are more compact with the icon beside the title, the lock icon no longer sits on a white circle, and Sign Out moved into Edit account',
+ 'New Check for updates button in Home > Quick actions: it looks for a newer version right away and shows the Update Available banner if one is ready',
+ 'Profile and group cards now have a soft shadow in Light and Dark, bios stay on one line and line up across a row, Profiles and Your groups headers are icon-free with larger, centered titles and tight spacing, the lock icon no longer sits on a white circle, and Sign Out moved into Edit account',
  'Blue, Green, Classic and Monochrome are back in the color picker, joined by Teal, Sky, Indigo, Rose, Orange, Peach, Lime and Slate, each with a Light and a Dark version']},
  {v:'v36',notes:[
  'New interactive Tracker tutorial with sample subjects: switch subjects, add scores, open Options and try the Reverse Calculator. It opens the first time you visit the Tracker',
@@ -1483,7 +1492,7 @@ function DevDashboard({onExit}){
    ===================================================================== */
 /* ---- home header: a flush, full-width Material-style app bar. Large while the page is at the top, condenses once you scroll ---- */
 const HIc=({d,cls='h-[18px] w-[18px]'})=><svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>;
-const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_TUT='M4 5.5A1.5 1.5 0 0 1 5.5 4H11v15H5.5A1.5 1.5 0 0 0 4 20.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v15h5.5a1.5 1.5 0 0 1 1.5 1.5z',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',HI_USER='M19 21v-1.5a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4V21M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',HI_GROUP='M17 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h4a3.5 3.5 0 0 1 3.5 3.5V20M8.5 11a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5zM15.5 4.8a3.25 3.25 0 0 1 0 6.3',HI_DOWN='M12 5v14M6 13l6 6 6-6';
+const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_TUT='M4 5.5A1.5 1.5 0 0 1 5.5 4H11v15H5.5A1.5 1.5 0 0 0 4 20.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v15h5.5a1.5 1.5 0 0 1 1.5 1.5z',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',HI_USER='M19 21v-1.5a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4V21M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',HI_GROUP='M17 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h4a3.5 3.5 0 0 1 3.5 3.5V20M8.5 11a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5zM15.5 4.8a3.25 3.25 0 0 1 0 6.3',HI_DOWN='M12 5v14M6 13l6 6 6-6',HI_UPD='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16V8M8.5 11.5 12 8l3.5 3.5';
 const HOME_INTRO='Track, forecast, and ace your grades effortlessly. Welcome to your new academic hub! Gradely is designed to help you monitor your progress, predict your final scores, and stay fully organized throughout the semester.';
 const HI_SUN=MODE_SUN,HI_MOON=MODE_MOON,HI_RESET='M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5';
 // Cartoon tiger head, drawn as a white translucent outline. It is a decoration behind the title card text (see .tiger-wm in index.html).
@@ -1529,15 +1538,17 @@ function QuickCarousel({items}){
   {multi&&Arrow(1,'Next quick actions')}
   <div ref={meas} className="qa-meas" aria-hidden="true" inert>{items.map(x=>Chip(x,false))}</div></nav>;
 }
-function HomeHeader({busy,at,cloud,dark,onMode,onRefresh,onTheme,onTour,onJoin,onReset,onReport,onA2hs,showA2hs}){
- const status=!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
- // order of importance: mode, tutorial, join, themes, sync, reset, report (install only appears when the app is not installed yet)
+function HomeHeader({busy,at,cloud,dark,onMode,onRefresh,onTheme,onTour,onJoin,onReset,onReport,onA2hs,showA2hs,onUpdate,uc}){
+ const UCT={checking:'Checking for updates…',latest:'You are up to date',update:'Update ready. Tap the banner to install',offline:'Offline. Connect to check for updates',error:'Could not check for updates',unsupported:'Updates are handled by your browser'};
+ const status=uc?UCT[uc]:!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=uc==='checking'?'bg-accent animate-pulse':uc==='latest'||uc==='update'?'bg-good':uc?'bg-muted':!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
+ // order of importance: mode, tutorial, join, themes, sync, check for updates, reset, report (install only appears when the app is not installed yet)
  const items=[
   {k:'mode',label:'Dark mode',icon:dark?HI_MOON:HI_SUN,sw:dark,onClick:onMode},
   {k:'tour',label:'How it works',icon:HI_TOUR,cls:'pri',onClick:onTour},
   {k:'join',label:'Join with code',icon:HI_JOIN,disabled:!cloud,onClick:onJoin},
   {k:'theme',label:'Themes',icon:HI_THEME,onClick:onTheme},
   ...(cloud?[{k:'sync',label:'Sync now',icon:HI_SYNC,spin:busy,onClick:onRefresh}]:[]),
+  {k:'upd',label:'Check for updates',icon:HI_UPD,spin:uc==='checking',disabled:uc==='checking',onClick:onUpdate},
   {k:'reset',label:'Reset Site Data',icon:HI_RESET,cls:'dng',onClick:onReset},
   {k:'report',label:'Report a problem',icon:HI_BUG,onClick:onReport},
   ...(showA2hs?[{k:'install',label:'Install app',icon:HI_INSTALL,onClick:onA2hs}]:[])];
@@ -1571,7 +1582,7 @@ async function resetSiteData(){
  location.replace(location.pathname);
 }
 function Home({book,theme,setTheme,ctl,busy,at}){
- const [gv,setGvS]=useState(()=>{try{const v=localStorage.getItem('gtf-hv');return book.groups.some(g=>g.id===v)?v:null}catch(e){return null}}),setGv=v=>{setGvS(v);try{v?localStorage.setItem('gtf-hv',v):localStorage.removeItem('gtf-hv')}catch(e){}},[sh,setSh]=useState(()=>joinParam()?{t:'joinGroup'}:null),[arm,setArm]=useState(null),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
+ const [gv,setGvS]=useState(()=>{try{const v=localStorage.getItem('gtf-hv');return book.groups.some(g=>g.id===v)?v:null}catch(e){return null}}),setGv=v=>{setGvS(v);try{v?localStorage.setItem('gtf-hv',v):localStorage.removeItem('gtf-hv')}catch(e){}},[sh,setSh]=useState(()=>joinParam()?{t:'joinGroup'}:null),[arm,setArm]=useState(null),[uc,setUc]=useState(''),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
  const [ng,setNg]=useState({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''}),[jf,setJf]=useState({code:joinParam(),name:'',pass:'',adv:false}),[rp,setRp]=useState({c:'bug',m:'',ct:'',done:false}),[dv,setDv]=useState({u:'',p:''}),[cp,setCp]=useState(''),[na,setNa]=useState({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false}),[uf,setUf]=useState({pass:''}),[sf,setSf]=useState({name:'',pass:''}),[ef,setEf]=useState({pass:''}),[gp,setGp]=useState('');
  const grp=book.groups.find(g=>g.id===gv)||null;
  const localsOf=g=>book.list.filter(a=>gidsOf(a).includes(g.id));
@@ -1603,12 +1614,13 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  /* ---- screens ---- */
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
- const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} dark={themeInfo(theme).dark} onMode={()=>setTheme(flipMode(theme))} onReset={()=>ask({title:'Reset site data?',msg:'This clears everything Gradely saved on this device: accounts and groups that are not in the cloud, your sign-in, theme, settings and the offline copy of the app. Cloud accounts stay safe and you can sign in to them again.',yes:'Reset site data',final:'Last check: anything saved only on this device will be gone for good. Reset it now?',next:'Continue',onYes:resetSiteData})} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
+ const checkUp=async()=>{setUc('checking');const r=await ctl.checkUpdate().catch(()=>'error');setUc(r);setTimeout(()=>setUc(x=>x===r?'':x),r==='update'?9000:4500)};
+ const Top=<HomeHeader uc={uc} onUpdate={checkUp} busy={busy} at={at} cloud={CLOUD} dark={themeInfo(theme).dark} onMode={()=>setTheme(flipMode(theme))} onReset={()=>ask({title:'Reset site data?',msg:'This clears everything Gradely saved on this device: accounts and groups that are not in the cloud, your sign-in, theme, settings and the offline copy of the app. Cloud accounts stay safe and you can sign in to them again.',yes:'Reset site data',final:'Last check: anything saved only on this device will be gone for good. Reset it now?',next:'Continue',onYes:resetSiteData})} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
  // signed in = at least one cloud account on this device; hasGroups = at least one group on this device
  const signedIn=book.list.some(a=>a.cloud),hasGroups=book.groups.length>0;
  // actions = the always-visible row (one single row, never scrolls). o.collapsed folds the description behind View more and o.more holds the buttons that move in there.
- const SecHd=(ic,title,sub,actions,o={})=><div className={cx('panel-hd flex flex-col items-center gap-1.5 border-b border-line/70 px-3 py-2 text-center sm:px-5',o.alt&&'alt')}>
-  <div className="flex w-full min-w-0 flex-col items-center"><div className="flex items-center justify-center gap-2"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-accent/20 text-accent-text"><HIc d={ic} cls="h-3.5 w-3.5"/></span><h2 className="text-base font-black leading-tight tracking-tight sm:text-lg">{title}</h2></div><SecDesc text={sub} collapsed={!!o.collapsed} more={o.more}/></div>
+ const SecHd=(ic,title,sub,actions,o={})=><div className={cx('panel-hd flex flex-col items-center gap-1.5 border-b border-line/70 px-3 py-1.5 text-center sm:px-5',o.alt&&'alt')}>
+  <div className="flex w-full min-w-0 flex-col items-center"><h2 className="w-full text-center text-xl font-black leading-tight tracking-tight sm:text-2xl">{title}</h2><SecDesc text={sub} collapsed={!!o.collapsed} more={o.more}/></div>
   {actions&&<div className="grid w-full max-w-xs grid-cols-2 gap-2 sm:flex sm:w-auto sm:max-w-none sm:justify-center">{actions}</div>}</div>;
  const SB=BTN+' w-full !py-1.5 !text-xs sm:w-auto',PB=BTNP+' w-full !py-1.5 !text-xs sm:w-auto',SBX=SB+' whitespace-nowrap !border-bad/30 !text-bad hover:!bg-bad/10';
  const SignInB=<button key="si" className={SB} disabled={!CLOUD} onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign In</button>,
@@ -1976,7 +1988,7 @@ function Root(){
  // a group joined from Home while signed in is linked to the active account right away, so it follows the profile to every device
  const linkActive=gid=>{const a=activeAcct();if(!a||!gid||!grp(gid)||gidsOf(a).includes(gid))return;rename(a.id,{gids:[...gidsOf(a),gid]})};
 
-const ctl={signOut,link:linkActive,activeId:(activeAcct()||{}).id,open,guest,createGroup,joinGroup,joinByCode,newCode,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,del,refresh,canAdmin,submitReport,devLogin,tour:()=>setTour(true),trkTour:()=>setTrk(true),a2hs:()=>setA2(true)};
+const ctl={checkUpdate:upd.check,signOut,link:linkActive,activeId:(activeAcct()||{}).id,open,guest,createGroup,joinGroup,joinByCode,newCode,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,del,refresh,canAdmin,submitReport,devLogin,tour:()=>setTour(true),trkTour:()=>setTrk(true),a2hs:()=>setA2(true)};
 
  if(dev)return <><ErrorBoundary title="Something went wrong"><DevDashboard onExit={()=>setDev(false)}/></ErrorBoundary><ConfirmHost/></>;
  let view;

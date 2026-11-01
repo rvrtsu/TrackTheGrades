@@ -7,8 +7,9 @@ Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**
 - **Lock badge.** The solid white circle is gone. The lock is drawn directly over the avatar with a surface-colored fill, a halo and a soft drop shadow.
 - **Bios.** One line only, with an ellipsis. Every card now has the same four rows (avatar, name, status, bio) at fixed heights, so bios line up across a row. Locked cards show "Locked" as their status so they match.
 - **Sign Out moved.** Home no longer has Sign Out buttons. Open **Edit** on an account card: the **Sign out** box has **Sign Out** (this account) and **Sign Out All**. When signed in, Sign In and Create Account stay folded inside Profiles > View more.
-- **Compact section headers.** The Profiles and Your groups icons now sit in one row beside their titles (smaller badge), with much less padding in the header, View more toggle, panel body and divider.
-- Service worker cache is `gradely-v37-step2-uifixes`.
+- **Compact section headers.** The Profiles and Your groups icons are gone. The titles are larger (`text-xl`, `sm:text-2xl`) and centered, with minimal padding in the header, View more toggle, panel body and divider.
+- **Check for updates.** New Quick actions chip (after Sync now), same `.qa-chip` styling and animations as the others. It asks the service worker to look for a new version (`useSwUpdate().check` in `src/app.jsx`). The Home status chip reports Checking, Up to date, Update ready (the usual Update Available banner then appears), Offline or Error, and the chip is disabled while it checks.
+- Service worker cache is `gradely-v37-step2-final-uifixes`.
 
 ## v37 step 2 fix: theme colors
 - **Restored:** Blue, Green and Monochrome were still defined but missing from the Color row; they are back. **Classic** returns as a new ivory-and-navy look (burgundy accent glow, gold accent in Dark).
