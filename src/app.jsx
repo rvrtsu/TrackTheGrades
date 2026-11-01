@@ -302,6 +302,31 @@ const rvPlan=(s,p,Tstr,mode)=>{const T=+Tstr;if(Tstr===''||Tstr==null||!Number.i
  if(x>100+1e-9)return{ok:false,msg:'Not possible: the missing scores would need '+f2(x)+'%, which is above 100%.'};
  if(x<-1e-9)return{ok:false,msg:'Not possible: the scores you entered already give a higher grade than '+f2(T)+'.'};
  return{ok:true,x:Math.max(0,x),miss,R,B}};
+// Reverse Calculator v2: the target can be typed on the 100% scale or on the grade scale (5-point, GPA). Both become a percentage here.
+const rvTarget=(tstr,scale)=>{if(tstr===''||tstr==null||!Number.isFinite(+tstr))return{ok:false,empty:true,msg:'Enter your target grade to see the scores you need.'};
+ const v=+tstr;
+ if(scale==='g'&&CUR.table){const gs=CUR.table.map(r=>r[1]).concat(CUR.fail),lo=Math.min(...gs),hi=Math.max(...gs);
+  if(v<lo-1e-9||v>hi+1e-9)return{ok:false,msg:'Enter a grade between '+f2(lo)+' and '+f2(hi)+'.'};
+  const fails=CUR.dir<0?v>=CUR.fail-1e-9:v<=CUR.fail+1e-9,pct=fails?0:CUR.pctFor(v);
+  if(pct>100)return{ok:false,msg:'No score reaches a grade of '+fg(v)+'. Try a lower grade.'};
+  return{ok:true,pct,label:fg(v),sub:pct>0?'A grade of '+fg(v)+' needs at least '+f2(pct)+'%.':''}}
+ if(v>100)return{ok:false,msg:'A grade above 100 is not possible.'};
+ if(v<0)return{ok:false,msg:'A grade below 0 is not possible.'};
+ return{ok:true,pct:v,label:f2(v)+'%',sub:CUR.table?'That equals a grade of '+fg(CUR.toG(v))+'.':''}};
+// per: a period id, or 'sem' (Semestral = every period together). Every blank activity gets the same needed percentage.
+const rvSolve=(s,P,per,tstr,scale,mode)=>{const tg=rvTarget(tstr,scale);if(!tg.ok)return tg;
+ const sem=per==='sem',ps=sem?P:[P.find(q=>q.id===per)||P[0]],B=sbaseOf(s),no=m=>({...tg,ok:false,msg:m});
+ if(!ps.some(q=>pcalc(s,q).live.length))return no('Add at least one activity with a weight first.');
+ const slots=[];ps.forEach(q=>pcalc(s,q).live.forEach(a=>{if(ap(a)==null)slots.push({a,p:q})}));
+ if(!slots.length)return no('Every activity already has a score, so there is nothing left to solve for.');
+ let x;
+ if(sem){const o=needX(linSub(s,P),tg.pct);if(!o||o.done)return no('There are no blank activities to solve for.');x=o.x}
+ else{const c=pcalc(s,ps[0]);if(mode==='b'&&tg.pct<B-1e-9)return no('With Base '+f2(B)+' the lowest possible grade is '+f2(B)+'.');
+  const R=mode==='b'?untrans(tg.pct,B):tg.pct,Wm=slots.reduce((a,q)=>a+wgt(q.a),0);x=(R*c.W-c.K)/Wm}
+ if(x>100+1e-9)return no('Out of reach: the blank activities would need '+f2(x)+'%, which is above 100%. Try a lower target.');
+ const secured=x<=1e-9;x=Math.max(0,x);
+ const items=slots.map(q=>{const m=mxs(q.a);return{...q,m,x,pts:Math.min(m,Math.ceil(x/100*m*100-1e-9)/100)}});
+ return{...tg,ok:true,sem,items,x,secured}};
 const need=v=>v==null?['—',false]:v<=0?['Secured ✓',false]:v>100?['Out of reach ('+f2(v)+'%)',true]:[f2(v)+'%',false];
 const ng=v=>v==null?'—':v<=0?'Secured ✓':v>100?'Out of reach':f2(v);
 
@@ -754,6 +779,8 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false}),nav=useRef({busy:false,target:-1,enter:0}),flip=useRef({}),flipEl=useRef(null),genTok=useRef(0);
  const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({un:'',up:'',gnm:'',gnp:'',o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState(''),[ydel,setYdel]=useState(null),[jgO,setJgO]=useState(false),[jf,setJf]=useState({name:'',pass:''}),[jm,setJm]=useState(''),[jb,setJb]=useState(false);
  const setRcf=(k,v)=>{const n={...rcf,[k]:v};setRcfS(n);try{localStorage.setItem('gtf-rcf',JSON.stringify(n))}catch(e){}};
+ const [rvPer,setRvPer]=useState(null),[pO,setPO]=useState({}),[rvSc,setRvScS]=useState(()=>{try{const j=JSON.parse(localStorage.getItem('gtf-rvsc')||'{}');return j&&typeof j==='object'?j:{}}catch(e){return{}}});
+ const setRvSc=(per,v)=>{const n={...rvSc,[per]:v};setRvScS(n);try{localStorage.setItem('gtf-rvsc',JSON.stringify(n))}catch(e){}};
  const togFx=k=>{const v=!fxs[k];FX.set(k,v);setFxs({...fxs,[k]:v})};
  const commit=n=>{ref.current=n;setSt(n);onSave(n)};
  useEffect(()=>{if(ext&&ext.data&&ext.n!==e0.current){e0.current=ext.n;const d=mig(ext.data);ref.current=d;setSt(d);past.current=[];fut.current=[];last.current={k:'',t:0}}},[ext&&ext.n]);
@@ -779,12 +806,16 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const resetPW=id=>updSub(id,s=>{const n={...s};delete n.pw;return n});
  const setWi=(id,aid,v)=>updSub(id,s=>({...s,wi:{...(s.wi||{}),[aid]:v}}),'w'+aid);
  const setRel=(id,p,v)=>updSub(id,s=>({...s,rel:{...(s.rel||{}),[p]:v}}),'rel'+p);
- const rvFill=(s,p)=>{const k=s.id+p.id,plan=rvPlan(s,p,(s.rel&&s.rel[p.id])??'',rvMode[s.id+p.id]||'r');if(!plan.ok){FX.low();setRvMsg({k,msg:plan.msg,bad:true});return}
-  const fill=a=>plan.miss.some(m=>m.id===a.id)?{...a,s:String(+(plan.x/100*mxs(a)).toFixed(2)),est:true}:a;
-  updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(fill)}}));
-  const ns={...s,acts:{...s.acts,[p.id]:actsOf(s,p).map(fill)}};
-  setRvMsg({k,msg:`Filled ${plan.miss.length} possible score${plan.miss.length>1?'s':''} at about ${f2(plan.x)}% each. ${p.name} grade is now ${f2(pcalc(ns,p).grade)}.`,bad:false});FX.done()};
- const rvClear=(s,p)=>{updSub(s.id,x=>({...x,acts:{...x.acts,[p.id]:actsOf(x,p).map(a=>a.est?{...a,s:'',est:false}:a)}}));setRvMsg(null)};
+ const rvPerId=()=>rvPer==='sem'&&P.length>1?'sem':P.some(q=>q.id===rvPer)?rvPer:pcur.id;
+ const rvScOf=per=>C.table&&rvSc[per]==='g'?'g':'p';
+ const relKey=(per,sc)=>per+(sc==='g'?':g':'');
+ const relVal=(s,per,sc)=>{const v=s.rel&&s.rel[relKey(per,sc)];return v==null?'':v};
+ const rvFill=s=>{const per=rvPerId(),k=s.id+per,sc=rvScOf(per),sol=rvSolve(s,P,per,relVal(s,per,sc),sc,rvMode[k]||'r');
+  if(!sol.ok||sol.secured){FX.low();setRvMsg({k,msg:sol.ok?'Already secured: any score keeps this target, so nothing was filled.':sol.msg,bad:true});return}
+  const mp={};sol.items.forEach(q=>{mp[q.a.id]=q.pts});
+  updSub(s.id,x=>({...x,acts:Object.fromEntries(Object.entries(x.acts||{}).map(([pk,l])=>[pk,(l||[]).map(a=>a&&mp[a.id]!==undefined?{...a,s:String(mp[a.id]),est:true}:a)]))}));
+  setRvMsg({k,msg:'Filled '+sol.items.length+' possible score'+(sol.items.length>1?'s':'')+' into the table. They are marked as Possible scores.',bad:false});FX.done()};
+ const rvClear=s=>{updSub(s.id,x=>({...x,acts:Object.fromEntries(Object.entries(x.acts||{}).map(([pk,l])=>[pk,(l||[]).map(a=>a&&a.est?{...a,s:'',est:false}:a)]))}));setRvMsg(null)};
  const setTg=(k,v)=>set(c=>({...c,tg:{...(c.tg||{}),[k]:v}}),'tg'+k);
  const setHist=(k,v)=>set(c=>({...c,hist:{...(c.hist||{}),[k]:v}}),'hist'+k);
  const setAyt=(k,v)=>set(c=>({...c,ayt:{...(c.ayt||{}),[k]:v}}),'ayt'+k);
@@ -808,6 +839,7 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const delYear=id=>{set(c=>{if(c.years.length<=1)return c;const i=c.years.findIndex(y=>y.id===id),a=c.years.filter(y=>y.id!==id);if(c.y!==id&&a.some(y=>y.id===c.y))return{...c,years:a};const nx=a[Math.min(i,a.length-1)];return{...c,y:nx.id,s:nx.sems[0].id,years:a}});setYdel(null)};
  const delSem=(yid,id)=>{set(c=>{const yr=c.years.find(y=>y.id===yid);if(!yr||yr.sems.length<=1)return c;const i=yr.sems.findIndex(x=>x.id===id),a=yr.sems.filter(x=>x.id!==id),years=c.years.map(y=>y.id!==yid?y:{...y,sems:a});if(c.y===yid&&c.s===id)return{...c,s:a[Math.min(i,a.length-1)].id,years};return{...c,years}});setYdel(null)};
  const addSub=()=>{if(!nf.code.trim())return;const m={...mk(nf.code.trim().toUpperCase(),nf.name.trim(),nf.units||'3','',P),ret:nf.ret||'',kind:nf.kind||'major'};upd(x=>({...x,subs:[...x.subs,m]}));setSid(m.id);setNf({code:'',name:'',units:'3',ret:'',kind:'major'});setAdding(false)};
+ const mvSub=(id,d)=>{upd(x=>{const i=x.subs.findIndex(s=>s.id===id);return{...x,subs:swapAt(x.subs,i,i+d)}});setTimeout(()=>{const e=document.getElementById('tab-'+id);e&&e.scrollIntoView({inline:'nearest',block:'nearest',behavior:REDUCED()?'auto':'smooth'})},60)};
  const delSub=id=>upd(x=>({...x,subs:x.subs.filter(s=>s.id!==id)}));
  const clearScores=ids=>upd(x=>({...x,subs:x.subs.map(s=>!ids||ids.includes(s.id)?{...s,rel:{},acts:Object.fromEntries(Object.entries(s.acts||{}).map(([k,l])=>[k,l.map(a=>({...a,s:'',m:'',est:false}))]))}:s)}));
  const addGen=()=>{if(!gf.name.trim())return;upd(x=>({...x,gens:[...(x.gens||[]),{id:uid(),name:gf.name.trim(),units:gf.units||'3',pre:gf.pre,fin:'85'}]}));setGf({name:'',units:'3',pre:''});setGadd(false)};
@@ -1123,7 +1155,7 @@ const ReportPage=()=>{
      {!single&&GC(P[0].name+' GWA',fw(aPre),preSub+(aPreM!=null?' · Majors '+fw(aPreM):''),'Only recorded '+P[0].name+' grades, weighted by units.')}
      {GC(single?'Semestral GWA':P[last0].name+' GWA',fw(aFin),finSub+(aFinM!=null?' · Majors '+fw(aFinM):'')+(single?'':' · cumulative'),single?'Recorded grades only.':'Cumulative: '+P.map(p=>p.name).join(' + ')+', after Base.')}</div></section>
 
-   <section><h2 className="mb-2.5 px-1 text-lg font-black tracking-tight sm:text-2xl">Subjects<Tip t="For subjects with no known breakdown, simply add the subject and enter the released Prelim Grade directly in Options, under Reverse calculator."/></h2>
+   <section><h2 className="mb-2.5 px-1 text-lg font-black tracking-tight sm:text-2xl">Subjects<Tip t="For subjects with no known breakdown, simply add the subject and enter the released Prelim Grade directly in Options, under Forecasting › Reverse Calculator."/></h2>
     {subs.length?<div className="stagger grid gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">{subs.map(s=>{const pe=preEq(s),fe=finEq(s);return <button key={s.id} onClick={()=>{setSid(s.id);setTab('t')}} className={cx(CARD,'lift flex items-center gap-3 !rounded-[1.4rem] px-3.5 py-3 text-left hover:!border-accent/60')}>
       <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><span className="truncate text-[15px] font-extrabold">{s.code||'Subject'}</span><span className={cx('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold leading-none',s.kind==='gen'?'bg-ink/[.06] text-muted':'bg-accent/15 text-accent-text')}>{s.kind==='gen'?'Gen Ed':'Major'}</span></div><div className="truncate text-xs text-muted">{s.name||'No name'}</div></div>
       <div className="flex shrink-0 items-end gap-4 text-right"><div><div className="text-[10px] font-semibold leading-tight text-muted">{single?'Semestral':P[0].name}</div><div className="text-xl font-black leading-tight tabular-nums">{fg(single?fe:pe)}</div></div>{!single&&<div><div className="text-[10px] font-semibold leading-tight text-muted">{P[last0].name}</div><div className="text-xl font-black leading-tight tabular-nums">{fg(fe)}</div></div>}</div></button>})}</div>
@@ -1166,22 +1198,46 @@ const [tip,setTip]=useState(null);
 useEffect(()=>{if(tab==='t'&&trkSeen()&&!tipSeen('t')){const i=setTimeout(()=>setTip('t'),450);return()=>clearTimeout(i)}},[tab]);
 useEffect(()=>{if(tab==='t'&&!trkSeen()&&prof&&prof.trkTour){const i=setTimeout(()=>{if(!trkSeen())prof.trkTour()},500);return()=>clearTimeout(i)}},[tab]); // first visit to the Tracker opens the interactive tutorial
 useEffect(()=>{if(tab==='t'&&!tip&&trkSeen()&&tipSeen('t')&&!tipSeen('rev')&&Object.values(opt).some(Boolean)){const i=setTimeout(()=>setTip('rev'),500);return()=>clearTimeout(i)}},[opt,tab,tip]);
-const closeTip=()=>{const k=tip;tipDone(k);setTip(null);if(k==='rev')setTimeout(()=>{const e=document.querySelector('[data-rev]');e&&e.scrollIntoView({block:'center',behavior:REDUCED()?'auto':'smooth'})},250)};
-const Pill=(t,sub,ic,kids,wide)=><section className="flex flex-col gap-3.5 rounded-[1.75rem] border border-line/60 bg-ink/[.035] p-4 shadow-[0_6px_24px_-16px_rgb(var(--ink)/.25)] sm:p-5"><header className="flex items-center gap-2.5"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent-text" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ic}/></svg></span><div className="min-w-0"><h4 className="text-sm font-extrabold leading-tight">{t}</h4><p className="text-xs leading-snug text-muted">{sub}</p></div></header>{kids}</section>;
-const Options=(s,p,isLast)=>{const o=!!opt[s.id];return <div className="overflow-hidden rounded-3xl border border-line/60 bg-ink/[.06] shadow-[0_8px_30px_-14px_rgb(var(--ink)/.2)]">
+const closeTip=()=>{const k=tip;tipDone(k);setTip(null);if(k==='rev'&&cur)setPO(v=>({...v,[cur.id+':Forecasting']:true}));if(k==='rev')setTimeout(()=>{const e=document.querySelector('[data-rev]');e&&e.scrollIntoView({block:'center',behavior:REDUCED()?'auto':'smooth'})},450)};
+const Pill=(key,t,sub,ic,kids,fold)=>{const o=!fold||!!pO[key],hd=<><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent-text" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ic}/></svg></span><div className="min-w-0 flex-1"><h4 className="text-sm font-extrabold leading-tight">{t}</h4><p className="text-xs leading-snug text-muted">{sub}</p></div></>;
+ return <section className="flex flex-col rounded-[1.75rem] border border-line/60 bg-ink/[.035] p-4 shadow-[0_6px_24px_-16px_rgb(var(--ink)/.25)] sm:p-5">
+  {fold?<button onClick={()=>setPO(v=>({...v,[key]:!v[key]}))} aria-expanded={o} className="flex w-full items-center gap-2.5 text-left">{hd}<Chev open={o}/></button>:<header className="flex items-center gap-2.5">{hd}</header>}
+  {fold?<div className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col gap-3.5 px-1 pb-1 pt-3.5">{kids}</div></div></div>:<div className="mt-3.5 flex flex-col gap-3.5">{kids}</div>}</section>};
+ const MoveBox=s=>{const i=subs.findIndex(x=>x.id===s.id),n=subs.length;if(n<2)return null;return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Reorder subjects</span>
+  <div className="grid grid-cols-2 gap-2"><button className={BTN} disabled={i<=0} onClick={()=>mvSub(s.id,-1)}>↑ Move up</button><button className={BTN} disabled={i>=n-1} onClick={()=>mvSub(s.id,1)}>↓ Move down</button></div>
+  <span className="text-xs text-muted">Position {i+1} of {n}. Moving a subject reorders the tabs above and the Subjects list on the Overview.</span></div>};
+ const Options=(s,p,isLast)=>{const o=!!opt[s.id];return <div className="overflow-hidden rounded-3xl border border-line/60 bg-ink/[.06] shadow-[0_8px_30px_-14px_rgb(var(--ink)/.2)]">
   <button onClick={()=>setOpt({...opt,[s.id]:!o})} aria-expanded={o} className="flex w-full items-center gap-3.5 p-4 text-left transition hover:bg-ink/[.09] sm:p-5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC.s}/></svg></span><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">Options</span><span className="block text-xs text-muted">Details, weights, base, retention, reverse calculator</span></span><Chev open={o}/></button>
   <div className={cx('acc',o&&'open')} inert={!o}><div><div className="grid gap-5 border-t border-line/50 p-4 sm:p-5 md:grid-cols-2 md:gap-x-8 md:gap-y-6">
-   {Pill('Subject','Name, code and units',IC.w,DetailsBox(s))}
-   {Pill('Grading System','Period weights and the lowest grade you must keep',IC.s,<>{WeightsBox(s)}{RetBox(s)}</>)}
-   {Pill('Base Configuration','The curve applied to your grade',IC.f,BaseBox(s))}
-   <div className="md:col-span-2">{Pill('Forecasting','See where the semester is heading and what you still need',IC.f,<>{isLast&&SemMath(s)}<div data-rev className="rounded-2xl ring-2 ring-accent/50 shadow-[0_0_0_4px_rgb(var(--accent)/.12)]"><div className="flex items-center gap-2 px-3 pt-3"><span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-accent-ink">Forecast tool</span></div>{Reverse(s,p)}</div></>,true)}</div>
+   {Pill(s.id+':Subject','Subject','Name, code, units and position',IC.w,<>{DetailsBox(s)}{MoveBox(s)}</>)}
+   {Pill(s.id+':Grading System','Grading System','Period weights and the lowest grade you must keep',IC.s,<>{WeightsBox(s)}{RetBox(s)}</>,true)}
+   {Pill(s.id+':Base Configuration','Base Configuration','The curve applied to your grade',IC.f,BaseBox(s),true)}
+   <div className="md:col-span-2">{Pill(s.id+':Forecasting','Forecasting','See where the semester is heading and what you still need',IC.f,<>{isLast&&SemMath(s)}<div data-rev className="rounded-3xl ring-2 ring-accent/50 shadow-[0_0_0_4px_rgb(var(--accent)/.12)]">{Reverse(s)}</div></>,true)}</div>
    <div className="flex gap-2 md:col-span-2"><button className={BTN+' flex-1'} onClick={()=>ask({title:'Clear scores?',msg:'Every score in '+(s.code||'this subject')+' will be emptied. Blank scores count as 0.',yes:'Clear scores',onYes:()=>clearScores([s.id])})}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>ask({title:'Delete '+(s.code||'this subject')+'?',msg:'The subject, all of its activities and every score will be removed. You can undo this with the Undo button.',yes:'Delete subject',onYes:()=>delSub(s.id)})}>Delete subject</button></div></div></div></div></div>};
 
-const Reverse=(s,p)=>{const k=s.id+p.id,m=rvMsg&&rvMsg.k===k?rvMsg:null,hasEst=actsOf(s,p).some(a=>a.est),md=rvMode[k]||'r',B=sbaseOf(s);return <div className="flex flex-col gap-2 rounded-xl border border-dashed border-line p-3">
-  <div className="text-sm font-bold">Reverse calculator <span className="text-xs font-semibold text-muted">for {p.name}</span></div><p className="text-xs text-muted">Use this to forecast the Finals score you need when only your Prelim grade is available.</p>
-  <p className="text-xs text-muted">Know the released {p.name.toLowerCase()} grade but not the scores? Enter it and the blank scores are worked out. {md==='r'?'The grade is used as a raw period grade (the curve is applied later, on the semestral grade).':'The grade already includes the Base, so raw = (grade − Base) ÷ (100 − Base) × 100.'}</p>
-  <Seg v={md} on={x=>setRvMode({...rvMode,[k]:x})} opts={[['r','Raw grade'],['b','Includes Base '+f2(B)]]} cls="w-full sm:w-auto sm:self-start"/>
-  <div className="flex flex-wrap items-center gap-2"><Num v={s.rel&&s.rel[p.id]} on={v=>setRel(s.id,p.id,v)} ph={'released '+p.name.toLowerCase()+' grade'} w="w-44"/><button className={BTNP} onClick={()=>rvFill(s,p)}>Fill possible scores</button>{hasEst&&<button className={BTN} onClick={()=>rvClear(s,p)}>Clear possible scores</button>}</div>
+
+const Reverse=s=>{const per=rvPerId(),sem=per==='sem',pn=sem?'Semestral':(P.find(q=>q.id===per)||P[0]).name,sc=rvScOf(per),k=s.id+per,md=rvMode[k]||'r',B=sbaseOf(s),m=rvMsg&&rvMsg.k===k?rvMsg:null,val=relVal(s,per,sc),sol=rvSolve(s,P,per,val,sc,md),
+  hasEst=Object.values(s.acts||{}).some(l=>(l||[]).some(a=>a&&a.est)),gl=C.id==='ph'?'5-point scale':'Grade scale',
+  chips=C.table?[...new Set(C.table.map(r=>r[1]))].filter(g=>C.dir<0?g<C.fail-1e-9:g>C.fail+1e-9).sort((a,b)=>C.dir<0?a-b:b-a):[],
+  nm=q=>(q.a.name||'Activity')+(sem?' ('+q.p.name+')':''),
+  Box=(n,l,kids)=><div className="flex flex-col gap-2.5 rounded-2xl border border-line bg-ink/[.05] p-3.5 sm:p-4"><div className="flex items-center gap-2"><span className="grid h-5 w-5 place-items-center rounded-full bg-accent text-[11px] font-black text-accent-ink">{n}</span><span className="text-xs font-extrabold uppercase tracking-[.1em] text-muted">{l}</span></div>{kids}</div>;
+ return <div className="flex flex-col gap-3 rounded-3xl border-2 border-line bg-ink/[.035] p-3.5 sm:p-5">
+  <div><div className="flex items-center gap-2.5"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-ink" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg></span><h3 className="text-lg font-black tracking-tight sm:text-xl">Reverse Calculator</h3></div>
+   <p className="mt-2 text-xs leading-relaxed text-muted sm:text-sm">Use this if some scores aren't released but your period grade was given, or to find out exactly what scores you need to hit your target grade.</p></div>
+  {Box(1,'Period',<><Seg v={per} on={x=>setRvPer(x)} opts={P.map(q=>[q.id,q.name]).concat(P.length>1?[['sem','Semestral']]:[])} cls="w-full"/>{sem&&<span className="text-xs text-muted">Semestral = {P.map(q=>q.name).join(' + ')}. The target is the final grade after Base.</span>}</>)}
+  {Box(2,'Target grade for '+pn,<>
+   {C.table&&<div className="flex flex-col gap-1"><Seg sm v={sc} on={x=>setRvSc(per,x)} opts={[['p','100% scale'],['g',gl]]} cls="w-full"/><span className="text-[11px] text-muted">Your choice is remembered for {pn}.</span></div>}
+   <div className="flex flex-wrap items-center gap-2"><Num v={val} on={v=>setRel(s.id,relKey(per,sc),v)} ph={sc==='g'?'e.g. 1.75':'e.g. 90'} w="w-32"/><span className="text-sm font-bold text-muted">{sc==='g'?'grade':'%'}</span></div>
+   {sc==='g'&&chips.length>0&&chips.length<=14&&<div className="flex flex-wrap gap-1.5">{chips.map(g=><button key={g} onClick={()=>setRel(s.id,relKey(per,sc),String(g))} aria-pressed={val!==''&&+val===g} className={cx('rounded-lg border px-2.5 py-1 text-xs font-extrabold tabular-nums transition',val!==''&&+val===g?'border-accent bg-accent text-accent-ink':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{g.toFixed(2)}</button>)}</div>}
+   {!sem&&<div className="flex flex-col gap-1"><Seg sm v={md} on={x=>setRvMode({...rvMode,[k]:x})} opts={[['r','Raw period grade'],['b','Includes Base '+f2(B)]]} cls="w-full"/><span className="text-[11px] text-muted">{md==='r'?'Used as a raw period grade (the Base is applied later, on the semestral grade).':'The grade already includes the Base, so raw = (grade − Base) ÷ (100 − Base) × 100.'}</span></div>}</>)}
+  {Box(3,'What you need',!sol.ok?<p className={cx('text-sm font-semibold',sol.empty?'text-muted':'text-bad')} role="status">{sol.msg}</p>
+   :sol.secured?<div className="rounded-xl border border-accent/40 bg-accent/15 p-3.5 text-sm font-semibold" role="status">To attain the grade of <b>{sol.label}</b>, you are already secured ✓. {sem?'Every blank activity':'The blank activities'} can be as low as 0.</div>
+   :<div className="flex flex-col gap-2.5" role="status">
+    <div className="rounded-xl border-2 border-accent/50 bg-accent/15 p-3.5"><div className="text-[11px] font-black uppercase tracking-wider text-accent-text">{pn} target</div>
+     <p className="mt-1 text-[15px] font-semibold leading-relaxed">To attain the grade of <b>{sol.label}</b>, {sol.items.map((q,i)=><span key={q.a.id}>{i>0&&', '}<b>{nm(q)}</b> must be <b className="tabular-nums">{f2(q.pts)}/{f2(q.m)}</b></span>)}.</p>{sol.sub&&<p className="mt-1.5 text-xs text-muted">{sol.sub}</p>}</div>
+    <div className="grid gap-2 sm:grid-cols-2">{sol.items.map(q=><div key={q.a.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-ink/[.06] px-3 py-2.5"><div className="min-w-0"><div className="truncate text-sm font-bold">{q.a.name||'Activity'}</div><div className="text-[11px] text-muted">{sem?q.p.name+' · ':''}{f2(wgt(q.a))}% weight</div></div><div className="shrink-0 text-right"><div className="text-lg font-black tabular-nums text-accent-text">{f2(q.pts)}<span className="text-xs font-bold text-muted">/{f2(q.m)}</span></div><div className="text-[11px] font-semibold tabular-nums text-muted">{f2(q.x)}%</div></div></div>)}</div>
+    <p className="text-[11px] text-muted">Every blank activity is given the same percentage. Score higher on one and you can score a little lower on another.</p></div>)}
+  <div className="flex flex-wrap items-center gap-2"><button className={BTNP} disabled={!sol.ok||sol.secured} onClick={()=>rvFill(s)}>Fill scores into table</button>{hasEst&&<button className={BTN} onClick={()=>rvClear(s)}>Clear possible scores</button>}</div>
   {m&&<p className={cx('text-xs font-semibold',m.bad?'text-bad':'text-good')}>{m.msg}</p>}</div>};
  const PeriodBlock=(s,p)=>{const c=pcalc(s,p),acts=c.acts,pi=P.indexOf(p),w=wts(s,P)[pi],R=c.touched?(c.raw!=null?c.raw:c.soFar):null,wsum=acts.reduce((t,a)=>t+wgt(a),0);
   return <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line/60 bg-ink/[.06] p-3 sm:gap-4 sm:p-5">
@@ -1568,8 +1624,8 @@ function SecDesc({text,collapsed,more}){
  useEffect(()=>{setOpen(!collapsed)},[collapsed]);
  if(!collapsed)return <p className="mx-auto mt-0.5 max-w-md text-xs font-medium leading-snug text-muted sm:text-[13px]">{text}</p>;
  return <div className="mt-0.5 flex w-full flex-col items-center">
-  <div className={cx('acc w-full',open&&'open')} inert={!open}><div><div className="flex flex-col items-center gap-1.5 pb-0.5 pt-0.5"><p className="mx-auto max-w-md text-xs leading-snug text-muted">{text}</p>{more&&<div className="grid w-full max-w-xs grid-cols-2 gap-2">{more}</div>}</div></div></div>
-  <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="inline-flex items-center gap-1 rounded-lg px-2 py-0 text-[11px] font-bold leading-5 text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-300 ease-in-out',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3 w-3"/></span></button></div>;
+  <div className={cx('acc acc-fast w-full',open&&'open')} inert={!open}><div><div className="flex flex-col items-center gap-2 pb-3 pt-1.5"><p className="mx-auto max-w-md text-xs leading-snug text-muted">{text}</p>{more&&<div className="grid w-full max-w-xs grid-cols-2 gap-2">{more}</div>}</div></div></div>
+  <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="mb-1.5 mt-1.5 inline-flex items-center gap-1 rounded-lg px-3 py-1 text-[11px] font-bold leading-5 text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-200 ease-in-out',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3 w-3"/></span></button></div>;
 }
 
 // Wipes everything this site stored on the device (settings, session, local-only data, offline cache and service worker), then reloads fresh.

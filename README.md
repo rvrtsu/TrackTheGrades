@@ -2,6 +2,14 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
+## v37 final (Phase 3)
+- Tracker: subjects can be moved up or down (Options > Subject > Reorder subjects). The tab bar and the Overview list follow the new order.
+- Tracker: Grading System, Base Configuration and Forecasting inside Options each open and close on their own.
+- Reverse Calculator redesigned into boxes: Period (Prelims / Finals / Semestral), Target grade (100% scale or 5-point scale, remembered per period) and What you need.
+- The result names every blank activity: "To attain the grade of [Target], [Activity] must be [Score], ...". Semestral = Prelims + Finals and uses the final grade after Base.
+- "Fill scores into table" writes the needed scores as Possible scores; "Clear possible scores" removes them.
+- Service worker cache is `gradely-v37-final-fixed` (Home View more / View less spacing and a faster 0.2s collapse).
+
 ## v37 step 2 UI fixes
 - **Card depth.** Profile, group and locked cards (`.pcard` in `index.html`) have a layered soft shadow in every theme: ink-tinted in Light, deeper black in Dark (`--cshd`, `--cshdh` for hover).
 - **Lock badge.** The solid white circle is gone. The lock is drawn directly over the avatar with a surface-colored fill, a halo and a soft drop shadow.

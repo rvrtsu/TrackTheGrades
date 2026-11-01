@@ -1,5 +1,7 @@
 // Service worker: caches the app for offline use.
-// When you change any app file, bump CACHE (next: gradely-v37-step2-fixed) so devices pick up the update.
+// When you change any app file, bump CACHE (next: gradely-v37-final-2) so devices pick up the update.
+// v37 final fixed (Home View more / View less spacing, faster 0.2s collapse): CACHE = gradely-v37-final-fixed.
+// v37 final (Tracker: move subjects up/down, collapsible Options categories; Reverse Calculator redesign with Prelims/Finals/Semestral toggle, 100% or 5-point target per period, named target output boxes): CACHE = gradely-v37-final.
 // v37 step 2 uifixes (card shadows, lock badge, one-line aligned bios, Sign Out moved into Edit account): CACHE = gradely-v37-step2-final-uifixes.
 // v37 step 2 fixed (Blue, Green, Classic and Monochrome restored; Teal, Sky, Indigo, Rose, Orange, Peach, Lime, Slate added): CACHE = gradely-v37-step2-fixed.
 // v37 step 2 (Home auth states: Sign Out row, Profiles/Groups actions fold into View more, groups auto-link to the signed-in profile, centred orphan cards): CACHE = gradely-v37-step2.
@@ -7,7 +9,7 @@
 // v36 final (compact Home, 2-column cards, slim Quick actions row, Creators pop-up, tutorial button fix): CACHE = gradely-v36-final.
 // Update flow: a new version installs quietly and WAITS. The app shows "Update Available! Tap to refresh";
 // tapping it sends SKIP_WAITING, the new worker activates, and the page reloads once on controllerchange.
-const CACHE = 'gradely-v37-step2-final-uifixes';
+const CACHE = 'gradely-v37-final-fixed';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/tiger.svg', './icons/icon-maskable-512.png', './icons/creator-joshua.jpg', './icons/creator-jhon.jpg'];
 // Third-party files the page needs (cached too, so it works with no internet)
 const CDN = [
