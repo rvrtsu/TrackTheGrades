@@ -2,7 +2,13 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
-## What's new in this version (v37, step 1: themes, Quick actions, tiger watermark)
+## v37 step 2 fix: theme colors
+- **Restored:** Blue, Green and Monochrome were still defined but missing from the Color row; they are back. **Classic** returns as a new ivory-and-navy look (burgundy accent glow, gold accent in Dark).
+- **New:** Teal, Sky, Indigo, Rose, Orange, Peach, Lime and Slate. The picker now has 18 colors, and every one has a Light and a Dark version (`*dk` ids), so Color and Mode stay independent.
+- **Off-white Light mode** applies to all of them: page, card and tint tokens are faint tints of each color (none is pure white). Tokens live in `index.html`, the list in `THEMES` and `COLORS` in `src/app.jsx`. Dark ids are also in the glass and `--warn` lists.
+- Service worker cache is `gradely-v37-step2-fixed`.
+
+## Earlier in v37 (step 1: themes, Quick actions, tiger watermark)
 - **Color and Mode are separate.** The theme picker (Home > Themes, and Profile > Settings > Appearance) now has a **Color** row (Yellow, Maroon, Pink, Lavender, Mint and the new **Brown**) and a **Light / Dark** switch. Every color has a light and a dark version, so changing one never changes the other. The saved value is still a single theme id (`gtf-theme`), so existing installs keep their look. Devices that had the older Blue, Green or Classic themes keep them until a new color is picked.
 - **Off-white Light mode.** No light theme uses pure white for the page or the cards any more. Each one is a very faint tint of its own accent (warm for Yellow and Brown, cool for Lavender and Mint, rosy for Pink and Maroon). All tokens live at the top of `index.html`.
 - **Quick actions carousel.** Order: Dark/Light toggle, How it works, Join with code, Themes, Sync now, Reset Site Data, Report a problem (Install app is added last when the app is not installed). It no longer scrolls natively: the chips are measured, grouped into pages that fit, and the **left / right arrows** (or a swipe) fade and slide between pages. If everything fits, the arrows disappear. The arrows are flush with the card edges and the card clips its content, so hover states follow its curve. Styles are the `.qa-*` classes in `index.html`; the logic is `QuickCarousel` in `src/app.jsx`.
@@ -10,6 +16,14 @@ Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**
 - **Tiger watermark.** A cartoon tiger head, drawn as a white translucent outline, peeks from the top-right corner of the Gradely title card (`TigerWatermark`, `.tiger-wm`). It sits behind the text and the title row is sized so it never meets the intro text, from 320px wide up.
 - **Meet the creators** at the bottom of Home is now a quiet text link (no photos). It opens the same pop-up.
 - Service worker cache is `gradely-v37-step1`. Open the app twice on each device so the update loads. The Tracker and sign-in logic are unchanged in this step.
+
+## What's new in this version (v37, step 2: Home auth states, Sign Out, centered cards)
+- **Profiles when signed in.** "Signed in" means at least one cloud account is on this device. The heading row then shows **Sign Out** (the active account) and **Sign Out All** in the same single, non-scrolling two-button row, in the slot where Sign In used to be. **Sign In** and **Create Account** move inside the **View more** fold (use them to add another account). Signed out, the heading shows Sign In and Create Account as before.
+- **Sign out.** Each option asks first. It removes the account(s) from this device only; nothing is deleted from the cloud. Groups that only the signed-out account(s) linked leave the device with them, and signing in again brings everything back. The active account is the most recently opened cloud account (a small **Active** tag shows on its card when several accounts are signed in). If an account has unsynced changes, Gradely pushes them first and refuses to sign out while offline so nothing is lost.
+- **Groups when you have one.** As soon as a group is on the device, **Join Group** and **Create Group** move inside the Your groups **View more** fold to save space; with no groups they stay in the heading.
+- **Auto-linking.** Sign-in (and every sync) still pulls each group listed on the account's cloud document onto Home and links it to the profile; the sign-in message now counts groups that were already on the device but newly linked. A group joined from Home with a code or name and passcode while signed in is now linked to the active account straight away, so it follows the profile to other devices.
+- **Orphan cards.** In the two-column `.g2` grid (`index.html`), a card that is alone in its last row (1 profile, 1 group, 3, 5...) spans the grid and is centered at exactly one column's width.
+- The Tracker is unchanged in this step. Service worker cache is `gradely-v37-step2`. Open the app twice on each device so the update loads.
 
 ## Previous version
 ### Earlier (v36 final: compact Home and tutorial fix)

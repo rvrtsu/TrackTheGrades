@@ -42,7 +42,7 @@ const FX=(()=>{
 })();
 // theme-aware extras (traffic lights, insight banners, confetti), injected so this file stays self-contained
 (function(){try{if(document.getElementById('gtf-x'))return;const el=document.createElement('style');el.id='gtf-x';el.textContent=[
- ':root,[data-theme=sun],[data-theme=lav],[data-theme=pink],[data-theme=maroon],[data-theme=brown]{--warn:202 138 4}[data-theme=dark],[data-theme=bluedk],[data-theme=maroondk],[data-theme=greendk],[data-theme=pinkdk],[data-theme=lavdk],[data-theme=mintdk],[data-theme=browndk]{--warn:250 204 21}[data-theme=mono]{--warn:85 85 85}',
+ ':root,[data-theme=sun],[data-theme=lav],[data-theme=pink],[data-theme=maroon],[data-theme=brown]{--warn:202 138 4}[data-theme=dark],[data-theme=bluedk],[data-theme=maroondk],[data-theme=greendk],[data-theme=pinkdk],[data-theme=lavdk],[data-theme=mintdk],[data-theme=browndk],[data-theme=tealdk],[data-theme=indigodk],[data-theme=orangedk],[data-theme=peachdk],[data-theme=skydk],[data-theme=slatedk],[data-theme=rosedk],[data-theme=limedk],[data-theme=classicdk],[data-theme=monodk]{--warn:250 204 21}[data-theme=mono]{--warn:85 85 85}[data-theme=classic]{--warn:161 98 7}',
  '.tl-g{color:rgb(var(--good))}.tl-y{color:rgb(var(--warn))}.tl-r{color:rgb(var(--bad))}',
  '.tlb-g{background:rgb(var(--good)/.15);color:rgb(var(--good))}.tlb-y{background:rgb(var(--warn)/.16);color:rgb(var(--warn))}.tlb-r{background:rgb(var(--bad)/.15);color:rgb(var(--bad))}',
  '.ins-good{border-color:rgb(var(--good)/.45);background:rgb(var(--good)/.1)}.ins-warn{border-color:rgb(var(--warn)/.5);background:rgb(var(--warn)/.12)}.ins-bad{border-color:rgb(var(--bad)/.5);background:rgb(var(--bad)/.1)}.ins-idle{border-color:rgb(var(--line));background:rgb(var(--surface2)/.7)}',
@@ -158,12 +158,31 @@ const THEMES=[
  {id:'mintdk',fam:'Mint',mode:'Dark',name:'Mint Dark',bar:'#071311',sw:['#0E211D','#6EE7C3','#E8FDF6']},
  {id:'brown',fam:'Brown',mode:'Light',name:'Brown Light',bar:'#F6F0E8',sw:['#FDF9F3','#8B5A35','#2C1D14']},
  {id:'browndk',fam:'Brown',mode:'Dark',name:'Brown Dark',bar:'#140F0C',sw:['#231C17','#C9905C','#FAF3EB']},
- {id:'mono',fam:'Monochrome',mode:'Light',name:'Monochrome',bar:'#F6F6F4',sw:['#FFFFFF','#111111','#737373']}];
+ {id:'teal',fam:'Teal',mode:'Light',name:'Teal Light',bar:'#EEF7F6',sw:['#FAFEFD','#0D9488','#0A2624']},
+ {id:'tealdk',fam:'Teal',mode:'Dark',name:'Teal Dark',bar:'#071212',sw:['#0E2020','#2DD4BF','#E8FCFA']},
+ {id:'indigo',fam:'Indigo',mode:'Light',name:'Indigo Light',bar:'#F0F1FC',sw:['#FBFBFF','#4F46E5','#191B42']},
+ {id:'indigodk',fam:'Indigo',mode:'Dark',name:'Indigo Dark',bar:'#0A0A18',sw:['#13132C','#818CF8','#F0F1FF']},
+ {id:'orange',fam:'Orange',mode:'Light',name:'Orange Light',bar:'#FDF4EB',sw:['#FFFBF6','#EA580C','#381C08']},
+ {id:'orangedk',fam:'Orange',mode:'Dark',name:'Orange Dark',bar:'#140C07',sw:['#24170E','#FB923C','#FFF3E8']},
+ {id:'peach',fam:'Peach',mode:'Light',name:'Peach Light',bar:'#FDF2ED',sw:['#FFFAF7','#FB9278','#3D1C16']},
+ {id:'peachdk',fam:'Peach',mode:'Dark',name:'Peach Dark',bar:'#160C0A',sw:['#271713','#FDA48C','#FFF2EC']},
+ {id:'sky',fam:'Sky',mode:'Light',name:'Sky Light',bar:'#EDF7FD',sw:['#FAFDFF','#0EA5E9','#08283E']},
+ {id:'skydk',fam:'Sky',mode:'Dark',name:'Sky Dark',bar:'#061018',sw:['#0D1D2A','#38BDF8','#E8F6FF']},
+ {id:'slate',fam:'Slate',mode:'Light',name:'Slate Light',bar:'#F1F4F7',sw:['#FBFCFD','#475569','#161E2A']},
+ {id:'slatedk',fam:'Slate',mode:'Dark',name:'Slate Dark',bar:'#0B0E13',sw:['#151A22','#94A3B8','#F1F5F9']},
+ {id:'rose',fam:'Rose',mode:'Light',name:'Rose Light',bar:'#FDF1F3',sw:['#FFFAFB','#E11D48','#400C1C']},
+ {id:'rosedk',fam:'Rose',mode:'Dark',name:'Rose Dark',bar:'#15080B',sw:['#261016','#FB7185','#FFF0F3']},
+ {id:'lime',fam:'Lime',mode:'Light',name:'Lime Light',bar:'#F5F9E8',sw:['#FCFEF6','#84CC16','#1E2C08']},
+ {id:'limedk',fam:'Lime',mode:'Dark',name:'Lime Dark',bar:'#0C1106',sw:['#17200C','#A3E635','#F5FCE6']},
+ {id:'classic',fam:'Classic',mode:'Light',name:'Classic Light',bar:'#F8F4E8',sw:['#FDFBF4','#1B2A4A','#1B2A4A']},
+ {id:'classicdk',fam:'Classic',mode:'Dark',name:'Classic Dark',bar:'#0C0F18',sw:['#161B29','#D6BE82','#F4EEDE']},
+ {id:'monodk',fam:'Monochrome',mode:'Dark',name:'Monochrome Dark',bar:'#0C0C0C',sw:['#181818','#F4F4F4','#F4F4F4']},
+ {id:'mono',fam:'Monochrome',mode:'Light',name:'Monochrome Light',bar:'#F6F6F4',sw:['#FFFFFF','#111111','#737373']}];
 const THEME_DEFAULT='dark',THEME_ALIAS={red:'maroon',reddk:'maroondk'};
 const THEME_FAMS=[...new Set(THEMES.map(t=>t.fam))];
 const themeOk=t=>{t=THEME_ALIAS[t]||t;return THEMES.some(x=>x.id===t)?t:THEME_DEFAULT};
 // Color and mode are separate choices. Every color has a light id and a dark id; the saved value is still one theme id, so older installs keep working.
-const COLORS=[{fam:'Yellow',l:'sun',d:'dark'},{fam:'Maroon',l:'maroon',d:'maroondk'},{fam:'Pink',l:'pink',d:'pinkdk'},{fam:'Lavender',l:'lav',d:'lavdk'},{fam:'Mint',l:'mint',d:'mintdk'},{fam:'Brown',l:'brown',d:'browndk'}];
+const COLORS=[{fam:'Yellow',l:'sun',d:'dark'},{fam:'Blue',l:'blue',d:'bluedk'},{fam:'Green',l:'green',d:'greendk'},{fam:'Teal',l:'teal',d:'tealdk'},{fam:'Sky',l:'sky',d:'skydk'},{fam:'Indigo',l:'indigo',d:'indigodk'},{fam:'Lavender',l:'lav',d:'lavdk'},{fam:'Pink',l:'pink',d:'pinkdk'},{fam:'Rose',l:'rose',d:'rosedk'},{fam:'Maroon',l:'maroon',d:'maroondk'},{fam:'Orange',l:'orange',d:'orangedk'},{fam:'Peach',l:'peach',d:'peachdk'},{fam:'Brown',l:'brown',d:'browndk'},{fam:'Lime',l:'lime',d:'limedk'},{fam:'Mint',l:'mint',d:'mintdk'},{fam:'Slate',l:'slate',d:'slatedk'},{fam:'Classic',l:'classic',d:'classicdk'},{fam:'Monochrome',l:'mono',d:'monodk'}];
 const themeInfo=id=>{id=themeOk(id);const t=THEMES.find(x=>x.id===id);return{id,fam:t.fam,dark:t.mode==='Dark'}};
 const flipMode=id=>{const i=themeInfo(id),c=COLORS.find(x=>x.fam===i.fam);if(c)return i.dark?c.l:c.d;const alt=i.dark?i.id.replace(/dk$/,''):i.id+'dk';return THEMES.some(x=>x.id===alt)?alt:(i.dark?'sun':'dark')};
 // Report card export looks (the canvas is drawn in buildStory)
@@ -371,7 +390,11 @@ const RELEASE_NOTES=[
  'Theme picker split in two: choose a Color (Yellow, Maroon, Pink, Lavender, Mint or the new Brown) and switch Light or Dark mode on its own',
  'Light mode now uses a soft off-white tinted by your color instead of pure white',
  'Quick actions are now a paged carousel with arrow buttons, and gain a Dark/Light toggle and Reset Site Data',
- 'The Gradely title card has a tiger watermark, and Meet the creators is now a quiet text link at the bottom of Home']},
+ 'The Gradely title card has a tiger watermark, and Meet the creators is now a quiet text link at the bottom of Home',
+ 'Home now adapts to you: once you are signed in, Profiles shows Sign Out and Sign Out All in one row, and Sign In and Create Account tuck behind View more',
+ 'Once you have a group, Join Group and Create Group move behind View more, and a group joined while signed in is linked to your profile so it follows you to every device',
+ 'A single profile or group card is now centered instead of sitting on the left',
+ 'Blue, Green, Classic and Monochrome are back in the color picker, joined by Teal, Sky, Indigo, Rose, Orange, Peach, Lime and Slate, each with a Light and a Dark version']},
  {v:'v36',notes:[
  'New interactive Tracker tutorial with sample subjects: switch subjects, add scores, open Options and try the Reverse Calculator. It opens the first time you visit the Tracker',
  'Replay it any time from Profile › Settings › Tutorial or the Replay Tutorial button inside the Tracker. Home › How it works opens the original welcome tour',
@@ -1527,13 +1550,13 @@ function HomeHeader({busy,at,cloud,dark,onMode,onRefresh,onTheme,onTour,onJoin,o
   <QuickCarousel items={items}/></>;
 }
 
-// Section description for Profiles / Your groups: shown in full when signed out, collapsed behind "View more" once signed in
-function SecDesc({text,loggedIn}){
- const [open,setOpen]=useState(!loggedIn);
- useEffect(()=>{setOpen(!loggedIn)},[loggedIn]);
- if(!loggedIn)return <p className="mx-auto mt-1 max-w-md text-xs font-medium leading-snug text-muted sm:text-[13px]">{text}</p>;
- return <div className="mt-0.5 flex flex-col items-center">
-  <div className={cx('acc',open&&'open')} inert={!open}><div><p className="mx-auto max-w-md pb-0.5 pt-1 text-xs leading-snug text-muted">{text}</p></div></div>
+// Section description for Profiles / Your groups. While `collapsed` it folds behind a "View more" toggle; the secondary actions (`more`) live inside that same collapse.
+function SecDesc({text,collapsed,more}){
+ const [open,setOpen]=useState(!collapsed);
+ useEffect(()=>{setOpen(!collapsed)},[collapsed]);
+ if(!collapsed)return <p className="mx-auto mt-1 max-w-md text-xs font-medium leading-snug text-muted sm:text-[13px]">{text}</p>;
+ return <div className="mt-0.5 flex w-full flex-col items-center">
+  <div className={cx('acc w-full',open&&'open')} inert={!open}><div><div className="flex flex-col items-center gap-2 pb-1 pt-1"><p className="mx-auto max-w-md text-xs leading-snug text-muted">{text}</p>{more&&<div className="grid w-full max-w-xs grid-cols-2 gap-2">{more}</div>}</div></div></div>
   <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="mt-0.5 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-300 ease-in-out',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3 w-3"/></span></button></div>;
 }
 
@@ -1570,7 +1593,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const AcctCard=(a,i)=><div key={a.id} role="button" tabIndex={0} onClick={()=>ctl.open(a.id,gv)} onKeyDown={e=>e.key==='Enter'&&ctl.open(a.id,gv)} style={{animationDelay:i*40+'ms'}} className={cx(CARD,'lift anim-rise relative flex w-full min-w-0 cursor-pointer flex-col items-center gap-1 !rounded-2xl p-2.5 pt-3.5 text-center hover:border-accent/60 hover:shadow-md')}>
   {EditBtn(e=>{e.stopPropagation();setSh({t:'editAcct',id:a.id});setArm(null);setCm('');setEf({pass:''})},'Edit account')}
   <Avatar a={a} s="h-12 w-12" t="text-2xl"/>
-  <div className="min-w-0 max-w-full"><div className="truncate text-sm font-extrabold">{a.name||'Untitled'}</div><div className="text-[10px] font-semibold text-muted" title={a.cloud?'Cloud account':'Not in the cloud yet'}>{a.cloud?'Cloud':'Not in the cloud'}{gidsOf(a).length?'':' · Individual'}</div></div>
+  <div className="min-w-0 max-w-full"><div className="truncate text-sm font-extrabold">{a.name||'Untitled'}</div><div className="text-[10px] font-semibold text-muted" title={a.cloud?'Cloud account':'Not in the cloud yet'}>{a.cloud?'Cloud':'Not in the cloud'}{gidsOf(a).length?'':' · Individual'}{a.id===ctl.activeId&&cloudAccts.length>1&&<span className="ml-1 rounded-full bg-accent/20 px-1.5 py-px text-[9px] font-bold text-accent-text">Active</span>}</div></div>
   <div className="line-clamp-2 text-[11px] leading-snug text-muted">{a.bio||'No bio yet'}</div></div>;
  const LockedCard=(m,i)=><div key={m.mid} role="button" tabIndex={0} onClick={()=>{setUf({pass:''});setCm('');setSh({t:'unlock',mid:m.mid})}} className={cx(CARD,'lift anim-rise flex w-full min-w-0 cursor-pointer flex-col items-center gap-1 !rounded-2xl border-dashed p-2.5 pt-3.5 text-center hover:border-accent/60')} style={{animationDelay:i*40+'ms'}}>
   <div className="relative"><Avatar a={{pic:m.p,name:m.n}} s="h-12 w-12" t="text-2xl"/><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow ring-1 ring-line"><svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
@@ -1580,17 +1603,28 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
  const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} dark={themeInfo(theme).dark} onMode={()=>setTheme(flipMode(theme))} onReset={()=>ask({title:'Reset site data?',msg:'This clears everything Gradely saved on this device: accounts and groups that are not in the cloud, your sign-in, theme, settings and the offline copy of the app. Cloud accounts stay safe and you can sign in to them again.',yes:'Reset site data',final:'Last check: anything saved only on this device will be gone for good. Reset it now?',next:'Continue',onYes:resetSiteData})} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
- const loggedIn=book.list.length>0;
- const SecHd=(ic,title,sub,actions,alt)=><div className={cx('panel-hd flex flex-col items-center gap-2.5 border-b border-line/70 px-3.5 py-3.5 text-center sm:px-6',alt&&'alt')}>
-  <div className="flex min-w-0 flex-col items-center"><span className="mb-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-4 w-4"/></span><h2 className="text-base font-black leading-tight tracking-tight sm:text-lg">{title}</h2><SecDesc text={sub} loggedIn={loggedIn}/></div>
-  <div className="grid w-full max-w-xs grid-cols-2 gap-2 sm:flex sm:w-auto sm:max-w-none sm:justify-center">{actions}</div></div>;
- const SB=BTN+' w-full !py-1.5 !text-xs sm:w-auto',PB=BTNP+' w-full !py-1.5 !text-xs sm:w-auto';
+ // signed in = at least one cloud account on this device; hasGroups = at least one group on this device
+ const signedIn=book.list.some(a=>a.cloud),hasGroups=book.groups.length>0,act=ctl.activeId?book.list.find(a=>a.id===ctl.activeId):null;
+ // actions = the always-visible row (one single row, never scrolls). o.collapsed folds the description behind View more and o.more holds the buttons that move in there.
+ const SecHd=(ic,title,sub,actions,o={})=><div className={cx('panel-hd flex flex-col items-center gap-2.5 border-b border-line/70 px-3.5 py-3.5 text-center sm:px-6',o.alt&&'alt')}>
+  <div className="flex w-full min-w-0 flex-col items-center"><span className="mb-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-4 w-4"/></span><h2 className="text-base font-black leading-tight tracking-tight sm:text-lg">{title}</h2><SecDesc text={sub} collapsed={!!o.collapsed} more={o.more}/></div>
+  {actions&&<div className="grid w-full max-w-xs grid-cols-2 gap-2 sm:flex sm:w-auto sm:max-w-none sm:justify-center">{actions}</div>}</div>;
+ const SB=BTN+' w-full !py-1.5 !text-xs sm:w-auto',PB=BTNP+' w-full !py-1.5 !text-xs sm:w-auto',SBX=SB+' whitespace-nowrap !border-bad/30 !text-bad hover:!bg-bad/10';
+ const SignInB=<button key="si" className={SB} disabled={!CLOUD} onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign In</button>,
+  CreateAcB=<button key="ca" className={PB} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>Create Account</button>,
+  JoinB=<button key="jg" className={SB} disabled={!CLOUD} onClick={JoinG}>Join Group</button>,
+  CreateGB=<button key="cg" className={PB} disabled={!CLOUD} onClick={NewG}>Create Group</button>;
+ // Sign out: removes the account(s) from this device only. Cloud data is never deleted, and signing in again brings the groups back.
+ const doSignOut=async all=>{const r=await ctl.signOut(all);if(String(r).startsWith('ok')){setGv(null);setMsg(all?'Signed out of all accounts.':'Signed out of the active account.');setTimeout(()=>setMsg(''),7000)}else{setMsg(r);setTimeout(()=>setMsg(''),9000)}};
+ const askOut=all=>ask({title:all?'Sign out of all accounts?':'Sign out of '+((act&&act.name)||'the active account')+'?',msg:(all?'Every signed-in account':'This account')+' and the groups linked to '+(all?'them':'it')+' are removed from this device. Your grades stay safe in the cloud, and signing in again brings everything back.',yes:all?'Sign out of all':'Sign out',onYes:()=>doSignOut(all)});
+ const SignOutRow=<><button key="so" className={SB} aria-label="Sign out of active account" title={'Sign out of active account'+(act&&act.name?' ('+act.name+')':'')} onClick={()=>askOut(false)}>Sign Out</button>
+  <button key="sa" className={SBX} aria-label="Sign out of all accounts" title="Sign out of all accounts" onClick={()=>askOut(true)}>Sign Out All</button></>;
  const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <div className="mt-3 sm:mt-4">
   {!CLOUD&&<p className="mb-3 rounded-xl border border-bad/30 bg-bad/10 px-3 py-2 text-center text-xs font-semibold text-bad">Gradely stores everything in the cloud. Add your database URL in config.js to sign in, create or join a group.</p>}
   <section className="panel anim-rise !rounded-2xl" aria-label="Profiles">
-   {SecHd(HI_USER,'Profiles','Accounts on this device. Sign in and every group you have joined is added automatically.',<>
-    <button className={SB} disabled={!CLOUD} onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign In</button>
-    <button className={PB} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>Create Account</button></>)}
+   {signedIn
+    ?SecHd(HI_USER,'Profiles','Accounts on this device. Your joined groups are linked to your profile and appear below automatically. Need another account? Sign in or create one here.',SignOutRow,{collapsed:true,more:<>{SignInB}{CreateAcB}</>})
+    :SecHd(HI_USER,'Profiles','Accounts on this device. Sign in and every group you have joined is added automatically.',<>{SignInB}{CreateAcB}</>)}
    <div className="p-3 sm:p-4">
     {msg&&<p role="status" className="mx-auto mb-3 max-w-md rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-center text-xs font-semibold">{msg}</p>}
     {people.length?<div className="g2">{people.map(AcctCard)}</div>
@@ -1599,9 +1633,9 @@ function Home({book,theme,setTheme,ctl,busy,at}){
   </section>
   <div className="my-3.5 flex items-center gap-3 sm:my-4" aria-hidden="true"><span className="h-px flex-1 bg-line/70"/><span className="grid h-6 w-6 place-items-center rounded-full border border-line bg-surface/80 text-muted"><HIc d={HI_DOWN} cls="h-3 w-3"/></span><span className="h-px flex-1 bg-line/70"/></div>
   <section className="panel anim-rise !rounded-2xl" style={{animationDelay:'80ms'}} aria-label="Your groups">
-   {SecHd(HI_GROUP,'Your groups','Groups you created or joined. Open one, then pick your account.',<>
-    <button className={SB} disabled={!CLOUD} onClick={JoinG}>Join Group</button>
-    <button className={PB} disabled={!CLOUD} onClick={NewG}>Create Group</button></>,true)}
+   {hasGroups
+    ?SecHd(HI_GROUP,'Your groups','Groups you created or joined. Open one, then pick your account. Want another? Join or create one here.',null,{alt:true,collapsed:true,more:<>{JoinB}{CreateGB}</>})
+    :SecHd(HI_GROUP,'Your groups','Groups you created or joined. Open one, then pick your account.',<>{JoinB}{CreateGB}</>,{alt:true})}
    <div className="p-3 sm:p-4">
     {book.groups.length?<div className="g2">{book.groups.map(GroupCard)}</div>
      :<div className="rounded-xl border border-dashed border-line px-3 py-4 text-center"><p className="text-sm font-bold">No groups yet</p><p className="mx-auto mt-0.5 max-w-sm text-xs text-muted">Join one with its code, create your own, or sign in to a profile and its groups appear here.</p></div>}
@@ -1643,10 +1677,10 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
   <Sheet open={!!sh&&sh.t==='joinGroup'} onClose={()=>setSh(null)} title="Join a group">
    <p className="text-sm text-muted">Enter the 6-character join code from the group’s admin. You join instantly and its accounts load every time you open the app.</p>
    <TextIn v={jf.code} on={v=>setJf({...jf,code:normCode(v).slice(0,6)})} ph="ABC123" cls="!text-center !text-2xl font-black uppercase tracking-[.3em]"/>
-   {!jf.adv&&Err()}{!jf.adv&&<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.joinByCode(jf.code),r=>setGv(r.slice(3)))}>{cb?'Working…':'Join group'}</button>}
+   {!jf.adv&&Err()}{!jf.adv&&<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.joinByCode(jf.code),r=>{ctl.link(r.slice(3));setGv(r.slice(3))})}>{cb?'Working…':'Join group'}</button>}
    <button className="self-center text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-ink" onClick={()=>{setCm('');setJf({...jf,adv:!jf.adv})}}>{jf.adv?'Use a join code instead':'No code? Use the group name and passcode'}</button>
    {jf.adv&&<><TextIn v={jf.name} on={v=>setJf({...jf,name:v})} ph="Group name"/><TextIn type="password" v={jf.pass} on={v=>setJf({...jf,pass:v})} ph="Group passcode"/>
-    {Err()}<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.joinGroup(jf.name,jf.pass),r=>setGv(r.slice(3)))}>{cb?'Working…':'Join group'}</button></>}
+    {Err()}<button disabled={cb||!CLOUD} className={BTNP} onClick={()=>go(()=>ctl.joinGroup(jf.name,jf.pass),r=>{ctl.link(r.slice(3));setGv(r.slice(3))})}>{cb?'Working…':'Join group'}</button></>}
    <p className="text-center text-xs text-muted">Ask the person who created the group for its code.</p></Sheet>
 
   
@@ -1744,10 +1778,10 @@ function Root(){
  const pubGs=async id=>{const a=acc(id);if(!CLOUD||!a||!a.cloud||!navigator.onLine)return;const g=refsOf(a);try{await fetch(curl(a.cloud.k),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({g:g.length?g:null})})}catch(e){}};
  const hyd=async(a,refs,pw)=>{if(!CLOUD||!a||!a.cloud||!navigator.onLine)return 0;let added=0,ch=false;
   for(const f of listOf(refs)){if(!f||typeof f.k!=='string'||!f.k)continue;
-   try{let g=bk.current.groups.find(x=>x.cloud&&x.cloud.k===f.k),r=null;
+   try{let g=bk.current.groups.find(x=>x.cloud&&x.cloud.k===f.k),r=null,fresh=false;
     if(!g||(pw&&!a.mid)){r=await gread(f.k);if(!r||!r.meta)continue}
-    if(!g){g={id:'g'+uid(),name:r.meta.n||f.sn||'Group',icon:r.meta.i||'',rec:r.meta.r||'',code:r.meta.c||'',cloud:{k:f.k,sn:f.sn||r.meta.n||'Group'},members:r.m||{},adm:admKeys(r.admins),joined:true,fetched:Date.now()};if(r.meta.p)g.pic=r.meta.p;bk.current.groups=[...bk.current.groups,g];added++;ch=true}
-    if(!gidsOf(a).includes(g.id)){a.gids=[...gidsOf(a),g.id];a.gid=a.gids[0];ch=true}
+    if(!g){g={id:'g'+uid(),name:r.meta.n||f.sn||'Group',icon:r.meta.i||'',rec:r.meta.r||'',code:r.meta.c||'',cloud:{k:f.k,sn:f.sn||r.meta.n||'Group'},members:r.m||{},adm:admKeys(r.admins),joined:true,fetched:Date.now()};if(r.meta.p)g.pic=r.meta.p;bk.current.groups=[...bk.current.groups,g];added++;fresh=true;ch=true}
+    if(!gidsOf(a).includes(g.id)){a.gids=[...gidsOf(a),g.id];a.gid=a.gids[0];ch=true;if(!fresh)added++}
     // signed in with the passcode: same sync name + passcode means the same account, so its own member card is recognised (not listed twice, admin role kept)
     if(pw&&!a.mid&&r&&r.m){for(const [mid,c] of Object.entries(r.m)){if(c&&c.sn&&await ckey(c.sn,pw)===a.cloud.k){a.mid=mid;ch=true;break}}}
    }catch(e){}}
@@ -1926,7 +1960,22 @@ function Root(){
   try{if(await gkey(g.cloud.sn,o)!==g.cloud.k)return'The current group passcode is wrong.';const k=await gkey(g.cloud.sn,n);if(k===g.cloud.k)return'Choose a different passcode.';const ex=await gread(k);if(ex&&ex.meta)return'A group with that name and passcode already exists. Choose another passcode.';
    const c0=await gread(g.cloud.k);if(!c0||!c0.meta)return'Group not found in the cloud.';const old=g.cloud.k;await gwrite(k,undefined,{...c0,meta:{...c0.meta,t:Date.now()}});g.cloud={...g.cloud,k};save();try{await gremove(old)}catch(x){}if(g.code){try{await dput('codes/'+g.code,{k,sn:g.cloud.sn,t:Date.now()})}catch(x){}}return'ok'}catch(x){return BADNET}};
  
-const ctl={open,guest,createGroup,joinGroup,joinByCode,newCode,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,del,refresh,canAdmin,submitReport,devLogin,tour:()=>setTour(true),trkTour:()=>setTrk(true),a2hs:()=>setA2(true)};
+ /* ---- sign out: takes the account(s) off this device only (cloud data is never deleted). Groups that only those accounts linked leave with them; signing in again restores everything ---- */
+ const activeAcct=()=>bk.current.list.filter(a=>a.cloud).sort((x,y)=>(y.last||0)-(x.last||0))[0]||null;
+ const signOut=async all=>{const cl=bk.current.list.filter(a=>a.cloud),a0=activeAcct(),ts=all?cl:(a0?[a0]:[]);if(!ts.length)return'You are not signed in.';
+  for(const a of ts){clearTimeout(tm.current[a.id]);clearTimeout(pm.current[a.id]);if(a.sy&&a.sy.dirty){if(!navigator.onLine)return'Some changes are not synced yet. Connect to the internet first so nothing is lost.';try{await push(a.id)}catch(e){}}}
+  if(ts.some(a=>{const b=acc(a.id);return b&&b.sy&&b.sy.dirty}))return'Some changes could not be saved to the cloud yet. Try again in a moment.';
+  const ids=new Set(ts.map(a=>a.id)),linked=new Set(ts.flatMap(a=>gidsOf(a)));
+  bk.current.list=bk.current.list.filter(a=>!ids.has(a.id));ids.forEach(id=>{delete bk.current.data[id]});
+  const still=new Set(bk.current.list.flatMap(a=>gidsOf(a)));
+  bk.current.groups=bk.current.groups.filter(g=>!(linked.has(g.id)&&g.cloud&&!still.has(g.id)));
+  if(cur&&ids.has(cur.id)){clearSession();setCur(null)}
+  try{localStorage.removeItem('gtf-hv')}catch(e){}
+  save();return'ok:'+ts.length};
+ // a group joined from Home while signed in is linked to the active account right away, so it follows the profile to every device
+ const linkActive=gid=>{const a=activeAcct();if(!a||!gid||!grp(gid)||gidsOf(a).includes(gid))return;rename(a.id,{gids:[...gidsOf(a),gid]})};
+
+const ctl={signOut,link:linkActive,activeId:(activeAcct()||{}).id,open,guest,createGroup,joinGroup,joinByCode,newCode,editGroup,enableGroupCloud,deleteGroup,createAccount,unlock,signIn,rename,enable,del,refresh,canAdmin,submitReport,devLogin,tour:()=>setTour(true),trkTour:()=>setTrk(true),a2hs:()=>setA2(true)};
 
  if(dev)return <><ErrorBoundary title="Something went wrong"><DevDashboard onExit={()=>setDev(false)}/></ErrorBoundary><ConfirmHost/></>;
  let view;
