@@ -1,5 +1,7 @@
 // Service worker: caches the app for offline use.
 // When you change any app file, bump CACHE (next: gradely-v37-final-2) so devices pick up the update.
+// v39 header fix (top header pill no longer overlaps on phones: icons shrink under 420px, the year and semester label truncates): CACHE = gradely-v39-headerfix.
+// v39 (sign-out clears groups, Home groups listed per account owner, no duplicate member cards on re-login, 50/50 default weights, Reorder subjects modal opened from the 1/9 counter): CACHE = gradely-v39.
 // v38 step 1 wider (Tracker Options and Reverse Calculator use the full screen width on phones, controls stretch): CACHE = gradely-v38-step1-wider.
 // v38 step 1 fixed (Reverse Calculator frame/spacing, aligned Grading System weights, centered Tracker Options): CACHE = gradely-v38-step1-fixed.
 // v38 final (Tracker: drag-and-drop subject reordering with mouse, touch and keyboard; Duplicate Subject button): CACHE = gradely-v38-final.
@@ -13,7 +15,7 @@
 // v36 final (compact Home, 2-column cards, slim Quick actions row, Creators pop-up, tutorial button fix): CACHE = gradely-v36-final.
 // Update flow: a new version installs quietly and WAITS. The app shows "Update Available! Tap to refresh";
 // tapping it sends SKIP_WAITING, the new worker activates, and the page reloads once on controllerchange.
-const CACHE = 'gradely-v38-step1-wider';
+const CACHE = 'gradely-v39-headerfix';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/tiger.svg', './icons/icon-maskable-512.png', './icons/creator-joshua.jpg', './icons/creator-jhon.jpg'];
 // Third-party files the page needs (cached too, so it works with no internet)
 const CDN = [

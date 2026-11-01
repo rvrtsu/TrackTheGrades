@@ -1,5 +1,18 @@
 # Gradely (PWA)
 
+## v39 header fix (top header pill on phones)
+- The undo/redo icons, the "2nd Year - 1st Sem" button and the right-side icons no longer collide on phones. Under 420px the round icon buttons are 32px with tighter gaps, the year-and-semester button is allowed to shrink (`min-w-0`, `max-w-full`) with smaller text, and its label truncates with an ellipsis only if there is truly no room (very narrow screens or long names). The full names are still in the dropdown. Wider screens are unchanged.
+- Service worker cache is `gradely-v39-headerfix`. Open the app twice on each device so the update loads.
+
+## v39 (state and UI fixes)
+- **Sign out clears the groups.** Signing out now removes the account and every group that no other account on this device uses (cloud groups you joined from Home without linking them included), and clears the pending sync and admin-claim state tied to it. A background sync that was still running can no longer put a signed-out account's groups back (`hyd` and `signOut` in `src/app.jsx`). Device-only groups that the signed-out account never used are kept. Your grades stay in the cloud, and signing in again restores your groups.
+- **Groups are listed per account owner.** Home > Your groups shows one section per account on the device, headed "Roever’s Groups", "Josh’s Groups" and so on. A group used by two accounts appears under both. Groups that no account here is linked to sit under "Other groups".
+- **No duplicate member after signing in again.** Each account keeps one stable member id, now also stored in its cloud document (`mid`), so signing in again re-uses the same member card instead of making a second one. If an older version already left a duplicate card, signing in verifies it with your sync name and passcode, removes the stale card and keeps its id as an alias so your admin role is not lost. Joining or hydrating a group re-checks the device's group list after every network wait, so the same group can no longer be added twice.
+- **Default weights are 50/50.** New accounts start with Prelims 50% and Finals 50% (`DEFP`). Every weight is still editable in Options > Grading System and in Settings. Accounts that already saved their weights keep them.
+- **Reorder subjects is now a pop-up.** The reorder list is gone from Options > Subject. The "1/9" counter on the subject card is now a button: tap it to open the **Reorder subjects** window with the same drag handles (mouse, touch, keyboard arrows), then tap Done. The drag now also works inside a scrolling pop-up (auto-scroll follows the pop-up) and can reach the first and last positions.
+- Service worker cache is `gradely-v39`. Open the app twice on each device so the update loads.
+
+
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
 ## v38 step 1 wider (full-width Tracker Options)
