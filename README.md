@@ -2,6 +2,20 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
+## v38 final (drag-and-drop reordering, Duplicate Subject)
+- **Drag to reorder.** The Move up / Move down buttons are gone. Tracker > Options > Subject > Reorder subjects is now a list of every subject in the semester (`ReorderList` in `src/app.jsx`). **Mouse:** drag anywhere on a row. **Touch and pen:** drag by the grip on the left; only the grip blocks page scrolling, so the page still scrolls normally everywhere else. The other rows slide out of the way, the dragged row lifts, and the page auto-scrolls when you drag near the top or bottom edge. **Keyboard:** focus the grip and use the arrow keys (Home / End jump to the ends); Escape cancels a drag. One move is one Undo step, and the tabs and the Overview list follow the new order.
+- **Duplicate Subject.** A button under the reorder list copies the current subject (code gets "(copy)", units, kind, Grading System weights, Base and its mode, retention, every activity with its scores and what-if values) with fresh ids and appends it to the end of the current semester. The copy becomes the current subject with its Options open. One Undo removes it.
+- Service worker cache is `gradely-v38-final`. Open the app twice on each device so the update loads.
+
+## v38 step 1 (layout fixes, Settings auto-scroll, side navigation)
+- **Reverse Calculator on phones.** Period, Target scale and Raw/Base toggles use a wrapping control (`SegW` in `src/app.jsx`): the buttons share a row when they fit and wrap onto a second row when they do not, so "Prelims | Finals | Semestral" can never overflow or overlap. The calculator no longer draws a second bordered card inside the Forecasting card on phones, and each of its three boxes has more padding.
+- **Tracker Options.** Subject, Grading System, Base Configuration and Forecasting now sit in a single centered column of equal width (no more half-empty second column), with `min-w-0` and wrapping on their text and inputs so nothing overflows. Padding between the nested cards was trimmed on phones to give the controls more room.
+- **Bottom of the Tracker.** An extra spacer (plus the safe-area inset) sits below the last card so the navigation bar never covers **Delete subject**.
+- **Replay tutorial.** The pill button at the top of the Tracker is gone. A faint "Replay tutorial" text link is at the very bottom of the Tracker page. Profile > Settings > Tutorial is unchanged.
+- **Settings auto-scroll.** In Profile > Settings > Years and semesters, **+ Year** and **+ Semester** glide (smooth `scrollIntoView`) to the new year or semester row, and deleting one glides back to the Years and semesters section. Devices set to "reduce motion" jump instead of gliding.
+- **Side navigation.** The bottom bar is still the default. On screens 768px wide and up, a round button beside the bottom bar (and a **Navigation layout** switch in Settings > Appearance) moves the navigation to a floating side bar: icons only on iPad widths, icons with labels from 1024px. The page leaves room for it (`.snav` and `.snav-shell` in `index.html`). The choice is saved on the device (`gtf-nav`). Phones always use the bottom bar, even if the side bar was chosen on a larger screen.
+- Service worker cache is `gradely-v38-step1`. Open the app twice on each device so the update loads.
+
 ## v37 final (Phase 3)
 - Tracker: subjects can be moved up or down (Options > Subject > Reorder subjects). The tab bar and the Overview list follow the new order.
 - Tracker: Grading System, Base Configuration and Forecasting inside Options each open and close on their own.

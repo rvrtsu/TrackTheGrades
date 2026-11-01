@@ -179,6 +179,11 @@ input{font-variant-numeric:tabular-nums}
 .lift:active{transform:translateY(-1px) scale(.99)}
 .stagger>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) backwards}
 .stagger>*:nth-child(2){animation-delay:.05s}.stagger>*:nth-child(3){animation-delay:.1s}.stagger>*:nth-child(4){animation-delay:.15s}.stagger>*:nth-child(5){animation-delay:.2s}.stagger>*:nth-child(6){animation-delay:.25s}.stagger>*:nth-child(n+7){animation-delay:.3s}
+/* v38: side navigation (iPad and computer widths only; phones always use the bottom bar) */
+.snav{left:calc(.75rem + env(safe-area-inset-left,0px));top:var(--tp);bottom:calc(env(safe-area-inset-bottom,0px) + .75rem);width:4.75rem;padding:.8rem .4rem;gap:.8rem;border-radius:1.75rem;overflow:hidden}
+@media (min-width:1024px){.snav{width:14rem;padding:.9rem .7rem}}
+@media (min-width:768px){.snav-shell{padding-left:calc(5.5rem + env(safe-area-inset-left,0px))}}
+@media (min-width:1024px){.snav-shell{padding-left:calc(14.75rem + env(safe-area-inset-left,0px))}}
 .acc{display:grid;grid-template-rows:0fr;opacity:0;transition:all .3s ease-in-out}
 .acc.open{grid-template-rows:1fr;opacity:1}
 .acc>div{overflow:hidden;min-height:0}

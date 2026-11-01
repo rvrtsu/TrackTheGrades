@@ -362,12 +362,63 @@ const BTNX='inline-flex items-center justify-center gap-1.5 rounded-xl border bo
 const INP='rounded-2xl border border-line/60 bg-ink/[.06] text-center text-base font-semibold text-ink transition placeholder:font-normal placeholder:text-muted/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40';
 const SEL='rounded-xl border border-line bg-ink/[.06] px-3 py-2 text-base font-semibold text-ink max-w-full focus:outline-none focus:ring-2 focus:ring-accent/40';
 const LBL='text-xs font-bold uppercase tracking-[.12em] text-muted';
+// Drag-and-drop list for Options > Subject (one Pointer Events code path covers mouse, touch and pen).
+// Mouse: drag anywhere on a row. Touch and pen: drag by the grip (only the grip blocks page scrolling, so the page still scrolls normally).
+// Keyboard: focus the grip, then use the arrow keys (Home / End jump to the ends). The page auto-scrolls when a row is dragged near an edge.
+function ReorderList({items,currentId,onMove}){
+ const [dr,setDr]=useState(null),g=useRef(null),els=useRef({}),kb=useRef(null);
+ const n=items.length,rd=REDUCED();
+ useEffect(()=>()=>{if(g.current&&g.current.stop)g.current.stop()},[]);
+ const upd=()=>{const s=g.current;if(!s||!s.on)return;
+  const R=s.rects,f=s.from,py=s.cy+window.scrollY,lo=R[0].top-R[f].top,hi=R[n-1].top+R[n-1].h-(R[f].top+R[f].h),dy=Math.max(lo,Math.min(hi,py-s.y0)),mid=R[f].top+dy+R[f].h/2;
+  let to=0;for(let i=0;i<n;i++){if(i!==f&&R[i].top+R[i].h/2<mid)to++}
+  s.to=to;setDr(p=>p&&p.dy===dy&&p.to===to?p:{id:s.id,from:f,to,dy,sh:R[f].h+s.gap})};
+ const begin=()=>{const s=g.current;if(!s||s.on)return;
+  s.rects=items.map(it=>{const e=els.current[it.id],r=e?e.getBoundingClientRect():{top:0,height:0};return{top:r.top+window.scrollY,h:r.height}});
+  s.gap=n>1?Math.max(0,s.rects[1].top-s.rects[0].top-s.rects[0].h):0;s.y0=s.sy+window.scrollY;s.on=true;
+  const b=document.body;s.bs=b.style.userSelect;s.bw=b.style.webkitUserSelect;b.style.userSelect='none';b.style.webkitUserSelect='none';
+  const loop=()=>{const q=g.current;if(!q||!q.on)return;const H=window.innerHeight,z=70;let v=0;
+   if(q.cy<z)v=-Math.ceil((z-Math.max(q.cy,0))/z*16);else if(q.cy>H-z)v=Math.ceil((Math.min(q.cy,H)-(H-z))/z*16);
+   if(v){const y=window.scrollY;window.scrollBy(0,v);if(window.scrollY!==y)upd()}q.raf=requestAnimationFrame(loop)};
+  s.raf=requestAnimationFrame(loop);upd()};
+ const cleanup=()=>{const s=g.current;if(!s)return;g.current=null;
+  window.removeEventListener('pointermove',s.mv);window.removeEventListener('pointerup',s.up);window.removeEventListener('pointercancel',s.cn);window.removeEventListener('touchmove',s.tm);window.removeEventListener('keydown',s.kd);
+  if(s.raf)cancelAnimationFrame(s.raf);if(s.on){document.body.style.userSelect=s.bs||'';document.body.style.webkitUserSelect=s.bw||''}return s};
+ const down=(e,i)=>{if(g.current||(e.pointerType==='mouse'&&e.button!==0))return;
+  const grip=!!(e.target.closest&&e.target.closest('[data-grip]'));if(!grip&&e.pointerType!=='mouse')return;
+  const s={id:items[i].id,from:i,to:i,pid:e.pointerId,sx:e.clientX,sy:e.clientY,cx:e.clientX,cy:e.clientY,on:false,t:e.pointerType};g.current=s;
+  s.mv=ev=>{if(ev.pointerId!==s.pid)return;s.cy=ev.clientY;
+   if(!s.on){if(Math.abs(ev.clientX-s.sx)+Math.abs(ev.clientY-s.sy)<5)return;begin()}else upd()};
+  s.up=ev=>{if(ev.pointerId!==s.pid)return;const q=cleanup();setDr(null);if(q&&q.on){FX.done();if(q.to!==q.from)onMove(q.id,q.to)}};
+  s.cn=ev=>{if(ev.pointerId!==s.pid)return;cleanup();setDr(null)};
+  s.tm=ev=>{if(s.on&&ev.cancelable)ev.preventDefault()};
+  s.kd=ev=>{if(ev.key==='Escape'){cleanup();setDr(null)}};
+  s.stop=()=>{cleanup()};
+  window.addEventListener('pointermove',s.mv);window.addEventListener('pointerup',s.up);window.addEventListener('pointercancel',s.cn);window.addEventListener('touchmove',s.tm,{passive:false});window.addEventListener('keydown',s.kd);
+  if(grip&&e.pointerType!=='mouse')begin()};
+ const key=(e,i)=>{const d=e.key==='ArrowUp'||e.key==='ArrowLeft'?-1:e.key==='ArrowDown'||e.key==='ArrowRight'?1:e.key==='Home'?-n:e.key==='End'?n:0;if(!d)return;
+  e.preventDefault();const j=Math.max(0,Math.min(n-1,i+d));if(j===i)return;kb.current=items[i].id;onMove(items[i].id,j)};
+ useLayoutEffect(()=>{if(kb.current){const b=els.current[kb.current]&&els.current[kb.current].querySelector('[data-grip]');kb.current=null;if(b)b.focus({preventScroll:true})}},[items.map(x=>x.id).join()]);
+ return <div data-noswipe="1" role="list" className="flex flex-col gap-2" aria-label="Subjects, drag to reorder">
+  {items.map((it,i)=>{const up=dr&&dr.id===it.id,live=!!dr;let ty=0;
+   if(dr&&!up){if(dr.from<dr.to&&i>dr.from&&i<=dr.to)ty=-dr.sh;else if(dr.from>dr.to&&i>=dr.to&&i<dr.from)ty=dr.sh}
+   const cur=it.id===currentId;
+   return <div key={it.id} ref={e=>{if(e)els.current[it.id]=e;else delete els.current[it.id]}} role="listitem" data-reorder-row={it.id} onPointerDown={e=>down(e,i)}
+    className={cx('relative flex select-none items-center gap-2 rounded-2xl border py-1 pl-1 pr-3',up?'border-accent bg-surface shadow-[0_14px_34px_-10px_rgb(var(--ink)/.45)]':cur?'border-accent/50 bg-accent/10':'border-line/60 bg-ink/[.06]')}
+    style={{cursor:up?'grabbing':'grab',zIndex:up?20:1,WebkitTouchCallout:'none',transform:up?'translate3d(0,'+dr.dy+'px,0) scale(1.02)':ty?'translate3d(0,'+ty+'px,0)':'translate3d(0,0,0)',transition:!live||up||rd?'none':'transform 190ms cubic-bezier(.2,.8,.2,1)',willChange:live?'transform':'auto'}}>
+    <button type="button" data-grip="1" aria-label={'Reorder '+(it.code||'subject')+'. Position '+(i+1)+' of '+n+'. Drag, or use the arrow keys.'} onKeyDown={e=>key(e,i)}
+     style={{touchAction:'none',WebkitTouchCallout:'none',cursor:up?'grabbing':'grab'}} className="grid h-11 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-ink/[.08] hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+     <svg viewBox="0 0 20 20" className="h-5 w-5" fill="currentColor" aria-hidden="true">{[5,10,15].map(y=>[7,13].map(x=><circle key={x+'-'+y} cx={x} cy={y} r="1.35"/>))}</svg></button>
+    <div className="min-w-0 flex-1 py-1"><div className="truncate text-sm font-extrabold">{it.code||'Untitled subject'}</div>{it.name?<div className="truncate text-xs text-muted">{it.name}</div>:null}</div>
+    {cur&&!up?<span className="shrink-0 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-accent-text">Current</span>:null}
+    <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted">{up?dr.to+1:i+1}</span></div>})}</div>}
 const LBL2='text-[10px] font-bold uppercase leading-tight tracking-[.08em] text-muted sm:text-xs sm:tracking-[.12em]';
 
 const Num=({v,on,ph,w='w-20',nav,bad,clk})=><input inputMode="decimal" enterKeyHint="next" data-n={nav?1:undefined} onKeyDown={nav?e=>{if(e.key==='Enter'){e.preventDefault();const a=[...document.querySelectorAll('input[data-n]')],i=a.indexOf(e.target),n=a[i+1];n?n.focus():e.target.blur()}}:undefined} value={v??''} placeholder={ph} onChange={e=>{const x=e.target.value;if(/^\d*\.?\d*$/.test(x)){on(x)}}} className={cx(INP,'h-11 min-w-0 sm:h-12',w,bad&&'!border-bad ring-2 ring-bad/40')}/>;
 const TextIn=({v,on,ph,cls='',type='text'})=><input type={type} value={v} placeholder={ph} autoComplete="off" onChange={e=>on(e.target.value)} className={cx(INP,'h-11 w-full !text-left px-3.5 sm:h-12',cls)}/>;
 const Txt=({v,on,cls=''})=><input value={v} onChange={e=>on(e.target.value)} className={cx('min-w-0 rounded-xl bg-transparent px-2 py-1 text-base text-ink transition hover:bg-ink/[.09] focus:outline-none focus:ring-2 focus:ring-accent/40',cls)}/>;
-const Seg=({v,on,opts,cls='',sm})=><div role="group" className={cx('inline-grid grid-flow-col auto-cols-fr gap-0.5 rounded-xl border border-line/70 bg-ink/[.06] p-0.5',!sm&&'!gap-1 !rounded-2xl !p-1',cls)}>{opts.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-pressed={v===k} className={cx('min-w-0 text-center font-bold leading-tight transition-all duration-300',sm?'rounded-[.6rem] px-2.5 py-1.5 text-xs':'rounded-xl px-3 py-2 text-sm',v===k?'bg-accent text-accent-ink shadow':'text-muted hover:text-ink')}>{l}</button>)}</div>;
+const Seg=({v,on,opts,cls='',sm})=><div role="group" className={cx('inline-grid min-w-0 max-w-full grid-flow-col auto-cols-fr gap-0.5 rounded-xl border border-line/70 bg-ink/[.06] p-0.5',!sm&&'!gap-1 !rounded-2xl !p-1',cls)}>{opts.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-pressed={v===k} className={cx('min-w-0 text-center font-bold leading-tight transition-all duration-300',sm?'rounded-[.6rem] px-2.5 py-1.5 text-xs':'rounded-xl px-3 py-2 text-sm',v===k?'bg-accent text-accent-ink shadow':'text-muted hover:text-ink')}>{l}</button>)}</div>;
+const SegW=({v,on,opts,cls=''})=><div role="group" className={cx('flex w-full min-w-0 max-w-full flex-wrap gap-1 rounded-2xl border border-line/70 bg-ink/[.06] p-1',cls)}>{opts.map(([k,l])=><button key={k} type="button" onClick={()=>on(k)} aria-pressed={v===k} className={cx('max-w-full flex-auto overflow-hidden text-ellipsis whitespace-nowrap rounded-xl px-2 py-2 text-center text-xs font-bold leading-tight transition-all duration-300 sm:px-3 sm:text-sm',v===k?'bg-accent text-accent-ink shadow':'text-muted hover:text-ink')}>{l}</button>)}</div>;
 const Chev=({open})=><svg viewBox="0 0 20 20" className={cx('h-5 w-5 shrink-0 text-muted transition-transform duration-300',open&&'rotate-180')} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5"/></svg>;
 const Tile=({l,v,sub,bad,vc})=><div className="rounded-2xl border border-line/60 bg-ink/[.06] p-3"><div className="text-xs font-semibold text-muted">{l}</div><div className={cx('text-xl font-extrabold tabular-nums',vc||(bad?'text-bad':'text-ink'))}>{v}</div>{sub&&<div className="mt-0.5 text-xs text-muted">{sub}</div>}</div>;
 const Switch=({on,onChange,label,sub})=><button role="switch" aria-checked={on} onClick={onChange} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line/60 bg-ink/[.06] p-3 text-left transition hover:bg-ink/[.09]"><span className="min-w-0"><span className="block text-sm font-bold">{label}</span>{sub&&<span className="block text-xs text-muted">{sub}</span>}</span><span className={cx('relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300',on?'bg-accent':'bg-line')}><span className={cx('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300',on?'left-[1.4rem]':'left-0.5')}/></span></button>;
@@ -419,6 +470,15 @@ function useSwUpdate(){
 }
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
+ {v:'v38',notes:[
+ 'Reorder subjects by dragging: grab a subject by its grip (or anywhere on the row with a mouse) in Tracker > Options > Subject and drop it in a new spot; the tabs and the Overview follow. Works with touch and keyboard arrows too',
+ 'New Duplicate Subject button in Tracker Options: adds an exact copy of the subject, with its grading system, Base and activities, to the end of the semester',
+ 'Reverse Calculator is roomier on phones: the Prelims, Finals and Semestral toggles wrap instead of overflowing, and the boxes have more padding',
+ 'Tracker Options (Subject, Grading System, Base Configuration, Forecasting) now sit in one centered column with matching widths and no overflowing text',
+ 'More room at the bottom of the Tracker so the navigation never covers Delete subject',
+ 'Replay Tutorial is now a quiet text link at the very bottom of the Tracker',
+ 'Adding or deleting a year or semester in Settings scrolls smoothly to the section that changed',
+ 'On iPad and computer screens you can move the navigation to a side bar (button beside the bottom bar, or Settings > Appearance); the page makes room for it']},
  {v:'v37',notes:[
  'Theme picker split in two: choose a Color (Yellow, Maroon, Pink, Lavender, Mint or the new Brown) and switch Light or Dark mode on its own',
  'Light mode now uses a soft off-white tinted by your color instead of pure white',
@@ -479,7 +539,7 @@ const RELEASE_NOTES=[
  'Fixed Base grade calculation: Per term now shows each period grade after Base',
  'Removed the lock screen media controls (the app no longer uses any audio)',
  'Added a Home button to the Tracker header']}];
-const APP_VER='v37';
+const APP_VER='v38';
 /* Release notes are filtered before anyone sees them: a note (or a whole version) that mentions developer sign-in, accounts, keys or other
    internal wording is dropped, so future entries can never leak developer details into the update dialog. */
 const DEV_TRACE=/@gradely|\bdev_[a-z0-9_]+|developer|\bapi[\s_-]?key|firebase\s*auth|\bcredentials?\b|\bsecret\b|\bid[\s_-]?token\b|tombstone|admin(?:istrator)?\s*(?:sign|log)[\s-]?in|(?:sign|log)[\s-]?in\s+(?:as\s+)?(?:an?\s+)?admin|admin\s+(?:panel|console|password|email)/i;
@@ -561,11 +621,22 @@ const Tip=({t})=>{const [o,setO]=useState(false),[ps,setPs]=useState(null),b=use
   {o&&createPortal(<div ref={p} role="tooltip" style={ps?{left:ps.left,top:ps.top,width:ps.w}:{left:0,top:0,width:Math.min(280,window.innerWidth-32),visibility:'hidden'}} className="anim-fade fixed z-[90] gcs rounded-2xl p-4 text-left text-sm font-medium normal-case leading-relaxed tracking-normal text-ink shadow-2xl">{t}</div>,document.body)}</>};
 const IC={o:'M4 11l8-6.5 8 6.5M6 9.5V19h4v-5h4v5h4V9.5',t:'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',f:'M3 20h18M6 20v-8M11 20V5M16 20v-5M21 20v-9',p:'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20c.7-3.5 3.5-5.5 7-5.5s6.3 2 7 5.5',s:'M4 7h9M17 7h3M4 17h3M11 17h9M15 4v6M9 14v6',w:'M2 9l10-5 10 5-10 5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5M22 9v5',g:'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19c.5-3 3-4.5 6-4.5s5.5 1.5 6 4.5M17 11a2.6 2.6 0 1 0 0-5.2M17.5 14.6c2 .4 3.3 1.8 3.7 4.4'};
 const NAV=[['o','Overview'],['t','Tracker'],['w','Report'],['p','Profile']];
-const BottomNav=({tab,on})=>{const i=NAV.findIndex(x=>x[0]===tab),N=NAV.length;return <nav aria-label="Main" className="fixed inset-x-0 z-40 flex justify-center px-2 sm:px-3" style={{bottom:'calc(env(safe-area-inset-bottom,0px) + .75rem)'}}>
- <div className="glass relative grid w-full max-w-lg grid-cols-4 rounded-[1.75rem] p-1.5 md:max-w-2xl">
+const NAV_SIDE_IC='M4 5.5h16v13H4zM9.5 5.5v13',NAV_BOT_IC='M4 5.5h16v13H4zM4 14h16';
+const NavToggleIc=({d})=><svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>;
+// Bottom bar (default). On wide screens (md and up) a small round button next to it moves the navigation to the side bar.
+const BottomNav=({tab,on,side,onSide})=>{const i=NAV.findIndex(x=>x[0]===tab),N=NAV.length;return <nav aria-label="Main" className={cx('pointer-events-none fixed inset-x-0 z-40 items-center justify-center gap-2 px-2 sm:px-3',side?'flex md:hidden':'flex')} style={{bottom:'calc(env(safe-area-inset-bottom,0px) + .75rem)'}}>
+ <span aria-hidden="true" className="hidden h-11 w-11 shrink-0 md:block"/>
+ <div className="glass pointer-events-auto relative grid w-full min-w-0 max-w-lg grid-cols-4 rounded-[1.75rem] p-1.5 md:max-w-2xl">
   {i>=0&&<span aria-hidden="true" className="absolute bottom-1.5 top-1.5 rounded-[1.3rem] bg-accent shadow-sm transition-all duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{left:'calc(.375rem + '+i+' * (100% - .75rem) / '+N+')',width:'calc((100% - .75rem) / '+N+')'}}/>}
   {NAV.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-current={tab===k?'page':undefined} className={cx('relative z-10 flex min-w-0 flex-col items-center gap-0.5 rounded-[1.3rem] py-2 text-[9px] font-bold tracking-tight transition-colors duration-300 sm:text-[10px] md:text-xs',tab===k?'text-accent-ink':'text-muted hover:text-ink')}>
-   <svg viewBox="0 0 24 24" className="h-[21px] w-[21px] md:h-[22px] md:w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={IC[k]}/></svg><span className="max-w-full truncate">{l}</span></button>)}</div></nav>};
+   <svg viewBox="0 0 24 24" className="h-[21px] w-[21px] md:h-[22px] md:w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={IC[k]}/></svg><span className="max-w-full truncate">{l}</span></button>)}</div>
+ <button type="button" onClick={()=>onSide(true)} aria-label="Move navigation to the side bar" title="Move navigation to the side bar" className="glass pointer-events-auto hidden h-11 w-11 shrink-0 place-items-center rounded-full text-muted transition hover:text-ink active:scale-95 md:grid"><NavToggleIc d={NAV_SIDE_IC}/></button></nav>};
+// Side bar (wide screens only, chosen by the person): icons only on iPad widths, icons with labels on desktop widths.
+const SideNav=({tab,on,onSide})=><nav aria-label="Main" className="snav glass fixed z-40 hidden flex-col md:flex">
+ <div className="flex shrink-0 items-center justify-center gap-3 lg:justify-start lg:px-2"><TigerLogo className="h-10 w-10 shrink-0"/><span className="hidden text-lg font-black tracking-tight lg:block">Gradely</span></div>
+ <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">{NAV.map(([k,l])=><button key={k} onClick={()=>on(k)} aria-current={tab===k?'page':undefined} title={l} className={cx('flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-[10px] font-bold tracking-tight transition-colors duration-300 lg:flex-row lg:gap-3 lg:px-4 lg:py-3 lg:text-sm',tab===k?'bg-accent text-accent-ink shadow-sm':'text-muted hover:bg-ink/[.07] hover:text-ink')}>
+  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px] shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC[k]}/></svg><span className="max-w-full truncate">{l}</span></button>)}</div>
+ <button type="button" onClick={()=>onSide(false)} aria-label="Move navigation to the bottom bar" title="Move navigation to the bottom bar" className="flex shrink-0 flex-col items-center gap-1 rounded-2xl border border-line/60 px-1 py-2 text-[10px] font-bold text-muted transition hover:bg-ink/[.07] hover:text-ink lg:flex-row lg:justify-center lg:gap-2.5 lg:text-xs"><NavToggleIc d={NAV_BOT_IC}/><span className="lg:hidden">Bottom</span><span className="hidden lg:inline">Bottom bar</span></button></nav>;
 const MODE_SUN='M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',MODE_MOON='M20 14.2A8 8 0 1 1 9.8 4a6.4 6.4 0 0 0 10.2 10.2z';
 const ModeToggle=({theme,setTheme})=>{const i=themeInfo(theme);return <div className="seg" role="group" aria-label="Light or dark mode">{[['Light',false,MODE_SUN],['Dark',true,MODE_MOON]].map(([l,dk,d])=><button key={l} type="button" aria-pressed={i.dark===dk} onClick={()=>{if(i.dark!==dk)setTheme(flipMode(theme))}}>
  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>{l}</button>)}</div>};
@@ -759,7 +830,7 @@ function TrackerTutorial({open,onClose}){
    <div className="mt-3 text-xs font-bold text-muted">I am aiming for a semestral grade of</div>
    <div className="mt-1.5 flex flex-wrap gap-1.5">{tgts.map((g,k)=><button key={g} onClick={()=>setTg(k)} aria-pressed={k===tg} className={cx('rounded-xl border px-3 py-1.5 text-sm font-extrabold tabular-nums transition',k===tg?'border-accent bg-accent text-accent-ink':'border-line bg-ink/[.05]')}>{g.toFixed(2)}</button>)}</div>
    <div className="mt-3 rounded-2xl bg-accent/15 p-3 text-center" role="status">{need>100?<><div className="text-sm font-black">Out of reach this time</div><div className="text-xs text-muted">Even a perfect Finals will not get {tgts[tg].toFixed(2)}. Try a higher grade.</div></>:need<=0?<><div className="text-sm font-black">Already secured</div><div className="text-xs text-muted">Your Prelim alone gets you {tgts[tg].toFixed(2)}.</div></>:<><div className="text-xs font-bold text-muted">You need about</div><div className="text-3xl font-black tabular-nums text-accent-text">{f2(need)}%</div><div className="text-xs text-muted">on your Finals</div></>}</div></div></div>;
-  return <ul className="flex w-full max-w-sm flex-col gap-2 text-left">{['Tracker tab › Replay Tutorial','Profile › Settings › Tutorial'].map(x=><li key={x} className="flex items-center gap-3 rounded-2xl border border-line/60 bg-ink/[.04] px-4 py-3 text-sm font-bold"><svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-accent-text" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{x}</li>)}</ul>};
+  return <ul className="flex w-full max-w-sm flex-col gap-2 text-left">{['Tracker tab › Replay tutorial (bottom of the page)','Profile › Settings › Tutorial'].map(x=><li key={x} className="flex items-center gap-3 rounded-2xl border border-line/60 bg-ink/[.04] px-4 py-3 text-sm font-bold"><svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-accent-text" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{x}</li>)}</ul>};
  return createPortal(<div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Tracker tutorial">
   <div className="anim-fade absolute inset-0 bg-black/45 backdrop-blur-md"/>
   <div className="anim-sheet gcs relative flex max-h-[100dvh] w-full max-w-md select-none flex-col overflow-hidden rounded-t-[2rem] sm:rounded-[2rem]" style={{paddingBottom:'env(safe-area-inset-bottom,0px)',touchAction:'pan-y'}}
@@ -776,6 +847,7 @@ function TrackerTutorial({open,onClose}){
 function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,theme,setTheme,prof,swc}){
  const [st,setSt]=useState(()=>mig(init)),[tab,setTab]=useState(()=>{try{const t=localStorage.getItem('gtf-tab');return['o','t','w','p'].includes(t)?t:'o'}catch(e){return'o'}}),[swO,setSwO]=useState(false),[sub,setSub]=useState(null),[gv,setGv]=useState('grades'),[sx,setSx]=useState(false),[gadd,setGadd]=useState(false),[gf,setGf]=useState({name:'',units:'3',pre:''}),[adding,setAdding]=useState(false),[nf,setNf]=useState({code:'',name:'',units:'3',ret:'',kind:'major'}),[msg,setMsg]=useState(''),[kn,setKn]=useState(''),[sid,setSid]=useState(null),[dir,setDir]=useState(1),[pid,setPid]=useState(null),[edit,setEdit]=useState(false),[rvMsg,setRvMsg]=useState(null),[rvMode,setRvMode]=useState({}),[,setNow]=useState(0),[pill,setPill]=useState(false),[accO,setAccO]=useState({a:false,g:false}),[rcf,setRcfS]=useState(()=>{try{const j=JSON.parse(localStorage.getItem('gtf-rcf')||'{}');return{a:j.a==='p'?'p':'g',b:j.b==='p'?'p':'g',hp:!!j.hp}}catch(e){return{a:'g',b:'g',hp:false}}}),[exT,setExT]=useState(()=>{try{const t=localStorage.getItem('gtf-ext');return RTHEMES.some(x=>x.id===t)?t:'light'}catch(e){return'light'}});
  useEffect(()=>{try{localStorage.setItem('gtf-tab',tab)}catch(e){}},[tab]);
+ const [side,setSideS]=useState(()=>{try{return localStorage.getItem('gtf-nav')==='side'}catch(e){return false}}),setSide=v=>{setSideS(!!v);try{localStorage.setItem('gtf-nav',v?'side':'bottom')}catch(e){}};
  const ref=useRef(st),past=useRef([]),fut=useRef([]),last=useRef({k:'',t:0}),e0=useRef(ext&&ext.n),swRef=useRef(null),sw=useRef({on:false}),nav=useRef({busy:false,target:-1,enter:0}),flip=useRef({}),flipEl=useRef(null),genTok=useRef(0);
  const [fxs,setFxs]=useState(()=>({snd:FX.S.snd,hap:FX.S.hap})),[ox,setOx]=useState({}),[shr,setShr]=useState(null),[opt,setOpt]=useState({}),[pf,setPf]=useState({un:'',up:'',gnm:'',gnp:'',o:'',n:'',n2:'',go:'',gn:'',gn2:''}),[pm,setPm]=useState(''),[ydel,setYdel]=useState(null),[jgO,setJgO]=useState(false),[jf,setJf]=useState({name:'',pass:''}),[jm,setJm]=useState(''),[jb,setJb]=useState(false);
  const setRcf=(k,v)=>{const n={...rcf,[k]:v};setRcfS(n);try{localStorage.setItem('gtf-rcf',JSON.stringify(n))}catch(e){}};
@@ -831,6 +903,9 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const ords=['1st','2nd','3rd','4th','5th','6th'];
  const addYear=()=>set(c=>{const y=uid(),s=uid();return{...c,y,s,years:[...c.years,{id:y,name:(ords[c.years.length]||(c.years.length+1)+'th')+' Year',sems:[{id:s,name:'1st Semester',subs:[]}]}]}});
  const addSem=()=>set(c=>{const s=uid(),n=Y.sems.length;return{...c,s,years:c.years.map(y=>y.id!==Y.id?y:{...y,sems:[...y.sems,{id:s,name:(ords[n]||(n+1)+'th')+' Semester',subs:[]}]})}});
+ // after adding or deleting a year or semester in Settings, glide to the section that changed
+ const ysGo=w=>{setTimeout(()=>{try{const q=w==='year'?'[data-ys-yr][data-cur="1"]':w==='sem'?'[data-ys-sem][data-cur="1"]':'#ys-section',e=document.querySelector(q)||document.getElementById('ys-section');if(e)e.scrollIntoView({behavior:REDUCED()?'auto':'smooth',block:w==='del'?'start':'center'})}catch(x){}},180)};
+ const addYearS=()=>{addYear();ysGo('year')},addSemS=()=>{addSem();ysGo('sem')};
  const rename=(f,v)=>set(c=>({...c,years:c.years.map(y=>y.id!==Y.id?y:f==='y'?{...y,name:v}:{...y,sems:y.sems.map(x=>x.id!==S.id?x:{...x,name:v})})}),'rn'+f);
  // reorder and delete academic years and semesters (every change can be undone with Undo)
  const swapAt=(a,i,j)=>{if(i<0||j<0||i>=a.length||j>=a.length)return a;const b=[...a];[b[i],b[j]]=[b[j],b[i]];return b};
@@ -839,7 +914,13 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
  const delYear=id=>{set(c=>{if(c.years.length<=1)return c;const i=c.years.findIndex(y=>y.id===id),a=c.years.filter(y=>y.id!==id);if(c.y!==id&&a.some(y=>y.id===c.y))return{...c,years:a};const nx=a[Math.min(i,a.length-1)];return{...c,y:nx.id,s:nx.sems[0].id,years:a}});setYdel(null)};
  const delSem=(yid,id)=>{set(c=>{const yr=c.years.find(y=>y.id===yid);if(!yr||yr.sems.length<=1)return c;const i=yr.sems.findIndex(x=>x.id===id),a=yr.sems.filter(x=>x.id!==id),years=c.years.map(y=>y.id!==yid?y:{...y,sems:a});if(c.y===yid&&c.s===id)return{...c,s:a[Math.min(i,a.length-1)].id,years};return{...c,years}});setYdel(null)};
  const addSub=()=>{if(!nf.code.trim())return;const m={...mk(nf.code.trim().toUpperCase(),nf.name.trim(),nf.units||'3','',P),ret:nf.ret||'',kind:nf.kind||'major'};upd(x=>({...x,subs:[...x.subs,m]}));setSid(m.id);setNf({code:'',name:'',units:'3',ret:'',kind:'major'});setAdding(false)};
- const mvSub=(id,d)=>{upd(x=>{const i=x.subs.findIndex(s=>s.id===id);return{...x,subs:swapAt(x.subs,i,i+d)}});setTimeout(()=>{const e=document.getElementById('tab-'+id);e&&e.scrollIntoView({inline:'nearest',block:'nearest',behavior:REDUCED()?'auto':'smooth'})},60)};
+ const reorderSub=(id,to)=>{upd(x=>{const i=x.subs.findIndex(s=>s.id===id);if(i<0||to<0||to>=x.subs.length||i===to)return x;const a=[...x.subs],[m]=a.splice(i,1);a.splice(to,0,m);return{...x,subs:a}});setTimeout(()=>{const e=document.getElementById('tab-'+id);e&&e.scrollIntoView({inline:'nearest',block:'nearest',behavior:REDUCED()?'auto':'smooth'})},60)};
+ // Duplicate: a deep copy of the subject (units, kind, Grading System weights, Base, retention, activities, scores, what-ifs) with fresh ids, added at the end of this semester
+ const dupSub=id=>{const src=subs.find(s=>s.id===id);if(!src)return;const nid=uid(),cp=JSON.parse(JSON.stringify(src)),map={};
+  cp.id=nid;cp.acts=Object.fromEntries(Object.entries(cp.acts||{}).map(([k,l])=>[k,(l||[]).map(a=>{const b=uid();map[a.id]=b;return{...a,id:b}})]));
+  if(cp.wi)cp.wi=Object.fromEntries(Object.entries(cp.wi).map(([k,v])=>[map[k]||k,v]));
+  cp.code=(src.code?src.code+' ':'')+'(copy)';
+  upd(x=>({...x,subs:[...x.subs,cp]}));setSid(nid);setOpt(o=>({...o,[nid]:true}));setEdit(false);setRvMsg(null);setMsg('Duplicated '+(src.code||'subject')+' ✓ It is the last subject in this semester.')};
  const delSub=id=>upd(x=>({...x,subs:x.subs.filter(s=>s.id!==id)}));
  const clearScores=ids=>upd(x=>({...x,subs:x.subs.map(s=>!ids||ids.includes(s.id)?{...s,rel:{},acts:Object.fromEntries(Object.entries(s.acts||{}).map(([k,l])=>[k,l.map(a=>({...a,s:'',m:'',est:false}))]))}:s)}));
  const addGen=()=>{if(!gf.name.trim())return;upd(x=>({...x,gens:[...(x.gens||[]),{id:uid(),name:gf.name.trim(),units:gf.units||'3',pre:gf.pre,fin:'85'}]}));setGf({name:'',units:'3',pre:''});setGadd(false)};
@@ -1076,10 +1157,10 @@ function App({init,acct,guest,onSave,onSwitch,onKeep,cloud,ext,loser,onLoser,the
    </div>};
  const YearMgr=()=>{const yrs=st.years;return <div className="flex flex-col gap-3 border-t border-line/50 pt-4">
    <div><div className="text-sm font-extrabold">Order and removal</div><p className="mt-0.5 text-xs text-muted">Use the arrows to change the order of your years and semesters. The bin removes one together with its subjects. The app always keeps at least one year, and each year keeps at least one semester.</p></div>
-   <div ref={flipEl} className="relative flex flex-col gap-3">{yrs.map((y,yi)=>{const nY=y.sems.reduce((n,x)=>n+cntX(x),0);return <div key={y.id} data-flip={'y'+y.id} className="relative flex flex-col gap-2">
-     {mgRow('y'+y.id,y.name,plu(y.sems.length,'semester')+' · '+plu(nY,'subject'),yi,yrs.length,()=>mvYear(y.id,-1),()=>mvYear(y.id,1),()=>delYear(y.id),y.id===Y.id,yrs.length>1,'Delete '+y.name+' with '+plu(y.sems.length,'semester')+' and '+plu(nY,'subject')+'?','year')}
-     <div className="ml-3 flex flex-col gap-2 border-l-2 border-line/60 pl-3">{y.sems.map((x,xi)=><div key={x.id} data-flip={'s'+x.id} className="relative">
-      {mgRow('s'+x.id,x.name,plu(cntX(x),'subject'),xi,y.sems.length,()=>mvSem(y.id,x.id,-1),()=>mvSem(y.id,x.id,1),()=>delSem(y.id,x.id),y.id===Y.id&&x.id===S.id,y.sems.length>1,'Delete '+x.name+' of '+y.name+' with '+plu(cntX(x),'subject')+'?','semester')}</div>)}</div></div>})}</div></div>};
+   <div ref={flipEl} className="relative flex flex-col gap-3">{yrs.map((y,yi)=>{const nY=y.sems.reduce((n,x)=>n+cntX(x),0);return <div key={y.id} data-flip={'y'+y.id} data-ys-yr="1" data-cur={y.id===Y.id?'1':'0'} className="relative flex flex-col gap-2">
+     {mgRow('y'+y.id,y.name,plu(y.sems.length,'semester')+' · '+plu(nY,'subject'),yi,yrs.length,()=>mvYear(y.id,-1),()=>mvYear(y.id,1),()=>{delYear(y.id);ysGo('del')},y.id===Y.id,yrs.length>1,'Delete '+y.name+' with '+plu(y.sems.length,'semester')+' and '+plu(nY,'subject')+'?','year')}
+     <div className="ml-3 flex flex-col gap-2 border-l-2 border-line/60 pl-3">{y.sems.map((x,xi)=><div key={x.id} data-flip={'s'+x.id} data-ys-sem="1" data-cur={y.id===Y.id&&x.id===S.id?'1':'0'} className="relative">
+      {mgRow('s'+x.id,x.name,plu(cntX(x),'subject'),xi,y.sems.length,()=>mvSem(y.id,x.id,-1),()=>mvSem(y.id,x.id,1),()=>{delSem(y.id,x.id);ysGo('del')},y.id===Y.id&&x.id===S.id,y.sems.length>1,'Delete '+x.name+' of '+y.name+' with '+plu(cntX(x),'subject')+'?','semester')}</div>)}</div></div>})}</div></div>};
 
  /* ---- accordion helpers (Settings, Overview target) ---- */
  const tog=k=>setAccO(o=>({...o,[k]:!o[k]}));
@@ -1176,14 +1257,14 @@ const Banners=()=><>
  const Shell=body=><div onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} onTouchCancel={onTE} style={{touchAction:'pan-y'}} className="pb-3">
   <section className={cx(CARD,'sa-'+(idx%6),'overflow-hidden')}>{CardTabs()}
    <div ref={swRef} className="min-w-0" style={{willChange:'transform,opacity',backfaceVisibility:'hidden',WebkitBackfaceVisibility:'hidden'}}>
-    <div key={cur.id} className="flex min-w-0 flex-col gap-3.5 p-3.5 sm:gap-6 sm:p-7">{body}</div></div></section>
+    <div key={cur.id} className="flex min-w-0 flex-col gap-3.5 p-3 sm:gap-6 sm:p-7">{body}</div></div></section>
   {subs.length>1&&<p className="mt-3 text-center text-[11px] text-muted sm:hidden">Swipe the card left or right to change subject</p>}</div>;
 
  /* ---- tracker body ---- */
   const BaseBox=s=>{const o=s.sbase,has=o!==undefined&&o!=='',bm=bmodeOf(s);return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Base<Tip t="The curve. At the end (default): combine the period grades first, then Final = (Raw ÷ 100) × (100 − Base) + Base. Per term: apply that formula to each period grade first, then combine them with the period weights. Leave the box blank to use the default Base."/></span><div className="flex flex-wrap items-center gap-2"><Num v={has?o:''} on={v=>setSBase(s.id,v)} ph={f2(C.base)} w="w-24"/><Seg sm v={bm} on={m=>setBMode(s.id,m)} opts={[['end','At the end'],['term','Per term']]}/></div><span className="text-xs text-muted">Blank uses the default ({f2(C.base)}). {bm==='term'?'The Base is applied to each period grade, then the periods are combined.':'The periods are combined first, then the Base is applied once.'}</span></div>};
- const RetBox=s=>{const o=s.ret,has=o!==undefined&&o!==null&&o!=='',rt=retOf(s);return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Retention grade<Tip t="The lowest grade you must keep in this subject. Blank uses the default passing mark from Settings."/></span><div className="flex items-center gap-2"><Num v={has?o:''} on={v=>setRet(s.id,v)} ph={fg(retOf(null).g)} w="w-24"/><span className="text-xs text-muted">needs about {rt.pct>100?'more than 100':f2(rt.pct)}% semestral</span></div></div>};
+ const RetBox=s=>{const o=s.ret,has=o!==undefined&&o!==null&&o!=='',rt=retOf(s);return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Retention grade<Tip t="The lowest grade you must keep in this subject. Blank uses the default passing mark from Settings."/></span><div className="flex flex-wrap items-center gap-2"><Num v={has?o:''} on={v=>setRet(s.id,v)} ph={fg(retOf(null).g)} w="w-24"/><span className="min-w-0 text-xs text-muted">needs about {rt.pct>100?'more than 100':f2(rt.pct)}% semestral</span></div></div>};
  const DetailsBox=s=><div className="flex flex-col gap-3"><span className="text-sm font-bold">Subject details</span>
-  <div className="grid grid-cols-[1fr_5.5rem] gap-3"><label className="text-xs font-semibold text-muted">Code<TextIn v={s.code} on={v=>setF(s.id,'code',v.toUpperCase())} cls="mt-1"/></label><label className="text-xs font-semibold text-muted">Units<Num v={s.units} on={v=>setF(s.id,'units',v)} w="mt-1 w-full"/></label></div>
+  <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-3"><label className="min-w-0 text-xs font-semibold text-muted">Code<TextIn v={s.code} on={v=>setF(s.id,'code',v.toUpperCase())} cls="mt-1"/></label><label className="text-xs font-semibold text-muted">Units<Num v={s.units} on={v=>setF(s.id,'units',v)} w="mt-1 w-full"/></label></div>
   <label className="text-xs font-semibold text-muted">Name<TextIn v={s.name} on={v=>setF(s.id,'name',v)} cls="mt-1"/></label>
   <label className="text-xs font-semibold text-muted">Classification<select value={s.kind==='gen'?'gen':'major'} onChange={e=>setF(s.id,'kind',e.target.value)} className={SEL+' selc mt-1 block w-full'}><option value="major">Major</option><option value="gen">Gen Ed</option></select><span className="mt-1 block font-normal">Major subjects feed the Majors GWA.</span></label></div>;
  const WeightsBox=s=>{const W=wts(s,P),tot=W.reduce((a,b)=>a+b,0),has=!!(s.pw&&Object.values(s.pw).some(v=>v!==''&&v!=null));return <div className="flex flex-col gap-2">
@@ -1199,37 +1280,39 @@ useEffect(()=>{if(tab==='t'&&trkSeen()&&!tipSeen('t')){const i=setTimeout(()=>se
 useEffect(()=>{if(tab==='t'&&!trkSeen()&&prof&&prof.trkTour){const i=setTimeout(()=>{if(!trkSeen())prof.trkTour()},500);return()=>clearTimeout(i)}},[tab]); // first visit to the Tracker opens the interactive tutorial
 useEffect(()=>{if(tab==='t'&&!tip&&trkSeen()&&tipSeen('t')&&!tipSeen('rev')&&Object.values(opt).some(Boolean)){const i=setTimeout(()=>setTip('rev'),500);return()=>clearTimeout(i)}},[opt,tab,tip]);
 const closeTip=()=>{const k=tip;tipDone(k);setTip(null);if(k==='rev'&&cur)setPO(v=>({...v,[cur.id+':Forecasting']:true}));if(k==='rev')setTimeout(()=>{const e=document.querySelector('[data-rev]');e&&e.scrollIntoView({block:'center',behavior:REDUCED()?'auto':'smooth'})},450)};
-const Pill=(key,t,sub,ic,kids,fold)=>{const o=!fold||!!pO[key],hd=<><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent-text" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ic}/></svg></span><div className="min-w-0 flex-1"><h4 className="text-sm font-extrabold leading-tight">{t}</h4><p className="text-xs leading-snug text-muted">{sub}</p></div></>;
- return <section className="flex flex-col rounded-[1.75rem] border border-line/60 bg-ink/[.035] p-4 shadow-[0_6px_24px_-16px_rgb(var(--ink)/.25)] sm:p-5">
+const Pill=(key,t,sub,ic,kids,fold)=>{const o=!fold||!!pO[key],hd=<><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent/15 text-accent-text" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ic}/></svg></span><div className="min-w-0 flex-1"><h4 className="break-words text-sm font-extrabold leading-tight">{t}</h4><p className="break-words text-xs leading-snug text-muted">{sub}</p></div></>;
+ return <section className="flex w-full min-w-0 flex-col rounded-[1.75rem] border border-line/60 bg-ink/[.035] p-3 shadow-[0_6px_24px_-16px_rgb(var(--ink)/.25)] sm:p-5">
   {fold?<button onClick={()=>setPO(v=>({...v,[key]:!v[key]}))} aria-expanded={o} className="flex w-full items-center gap-2.5 text-left">{hd}<Chev open={o}/></button>:<header className="flex items-center gap-2.5">{hd}</header>}
   {fold?<div className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col gap-3.5 px-1 pb-1 pt-3.5">{kids}</div></div></div>:<div className="mt-3.5 flex flex-col gap-3.5">{kids}</div>}</section>};
- const MoveBox=s=>{const i=subs.findIndex(x=>x.id===s.id),n=subs.length;if(n<2)return null;return <div className="flex flex-col gap-1.5"><span className="text-sm font-bold">Reorder subjects</span>
-  <div className="grid grid-cols-2 gap-2"><button className={BTN} disabled={i<=0} onClick={()=>mvSub(s.id,-1)}>↑ Move up</button><button className={BTN} disabled={i>=n-1} onClick={()=>mvSub(s.id,1)}>↓ Move down</button></div>
-  <span className="text-xs text-muted">Position {i+1} of {n}. Moving a subject reorders the tabs above and the Subjects list on the Overview.</span></div>};
+ const MoveBox=s=>{const n=subs.length;if(n<2)return null;return <div className="flex min-w-0 flex-col gap-2"><span className="text-sm font-bold">Reorder subjects</span>
+  <ReorderList items={subs} currentId={s.id} onMove={reorderSub}/>
+  <span className="text-xs text-muted">Drag a subject by its grip (anywhere on the row with a mouse) to a new spot. Arrow keys work too. The tabs above and the Subjects list on the Overview follow this order.</span></div>};
+ const DupBox=s=><div className="flex min-w-0 flex-col gap-1.5"><button className={BTN+' w-full'} onClick={()=>dupSub(s.id)}><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>Duplicate Subject</button>
+  <span className="text-xs text-muted">Adds an exact copy (grading system, Base, retention, activities and scores) to the end of this semester.</span></div>;
  const Options=(s,p,isLast)=>{const o=!!opt[s.id];return <div className="overflow-hidden rounded-3xl border border-line/60 bg-ink/[.06] shadow-[0_8px_30px_-14px_rgb(var(--ink)/.2)]">
   <button onClick={()=>setOpt({...opt,[s.id]:!o})} aria-expanded={o} className="flex w-full items-center gap-3.5 p-4 text-left transition hover:bg-ink/[.09] sm:p-5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent-text"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={IC.s}/></svg></span><span className="min-w-0 flex-1"><span className="block text-base font-extrabold">Options</span><span className="block text-xs text-muted">Details, weights, base, retention, reverse calculator</span></span><Chev open={o}/></button>
-  <div className={cx('acc',o&&'open')} inert={!o}><div><div className="grid gap-5 border-t border-line/50 p-4 sm:p-5 md:grid-cols-2 md:gap-x-8 md:gap-y-6">
-   {Pill(s.id+':Subject','Subject','Name, code, units and position',IC.w,<>{DetailsBox(s)}{MoveBox(s)}</>)}
+  <div className={cx('acc',o&&'open')} inert={!o}><div><div className="mx-auto flex w-full min-w-0 flex-col gap-3.5 border-t border-line/50 p-2.5 sm:gap-4 sm:p-5">
+   {Pill(s.id+':Subject','Subject','Name, code, units and position',IC.w,<>{DetailsBox(s)}{MoveBox(s)}{DupBox(s)}</>)}
    {Pill(s.id+':Grading System','Grading System','Period weights and the lowest grade you must keep',IC.s,<>{WeightsBox(s)}{RetBox(s)}</>,true)}
    {Pill(s.id+':Base Configuration','Base Configuration','The curve applied to your grade',IC.f,BaseBox(s),true)}
-   <div className="md:col-span-2">{Pill(s.id+':Forecasting','Forecasting','See where the semester is heading and what you still need',IC.f,<>{isLast&&SemMath(s)}<div data-rev className="rounded-3xl ring-2 ring-accent/50 shadow-[0_0_0_4px_rgb(var(--accent)/.12)]">{Reverse(s)}</div></>,true)}</div>
-   <div className="flex gap-2 md:col-span-2"><button className={BTN+' flex-1'} onClick={()=>ask({title:'Clear scores?',msg:'Every score in '+(s.code||'this subject')+' will be emptied. Blank scores count as 0.',yes:'Clear scores',onYes:()=>clearScores([s.id])})}>Clear scores</button><button className={BTNX+' flex-1'} onClick={()=>ask({title:'Delete '+(s.code||'this subject')+'?',msg:'The subject, all of its activities and every score will be removed. You can undo this with the Undo button.',yes:'Delete subject',onYes:()=>delSub(s.id)})}>Delete subject</button></div></div></div></div></div>};
+   <div className="min-w-0">{Pill(s.id+':Forecasting','Forecasting','See where the semester is heading and what you still need',IC.f,<>{isLast&&SemMath(s)}<div data-rev className="rounded-3xl ring-1 ring-accent/60 sm:ring-2 sm:ring-accent/50 sm:shadow-[0_0_0_4px_rgb(var(--accent)/.12)]">{Reverse(s)}</div></>,true)}</div>
+   <div className="flex min-w-0 gap-2"><button className={BTN+' min-w-0 flex-1'} onClick={()=>ask({title:'Clear scores?',msg:'Every score in '+(s.code||'this subject')+' will be emptied. Blank scores count as 0.',yes:'Clear scores',onYes:()=>clearScores([s.id])})}>Clear scores</button><button className={BTNX+' min-w-0 flex-1'} onClick={()=>ask({title:'Delete '+(s.code||'this subject')+'?',msg:'The subject, all of its activities and every score will be removed. You can undo this with the Undo button.',yes:'Delete subject',onYes:()=>delSub(s.id)})}>Delete subject</button></div></div></div></div></div>};
 
 
 const Reverse=s=>{const per=rvPerId(),sem=per==='sem',pn=sem?'Semestral':(P.find(q=>q.id===per)||P[0]).name,sc=rvScOf(per),k=s.id+per,md=rvMode[k]||'r',B=sbaseOf(s),m=rvMsg&&rvMsg.k===k?rvMsg:null,val=relVal(s,per,sc),sol=rvSolve(s,P,per,val,sc,md),
   hasEst=Object.values(s.acts||{}).some(l=>(l||[]).some(a=>a&&a.est)),gl=C.id==='ph'?'5-point scale':'Grade scale',
   chips=C.table?[...new Set(C.table.map(r=>r[1]))].filter(g=>C.dir<0?g<C.fail-1e-9:g>C.fail+1e-9).sort((a,b)=>C.dir<0?a-b:b-a):[],
   nm=q=>(q.a.name||'Activity')+(sem?' ('+q.p.name+')':''),
-  Box=(n,l,kids)=><div className="flex flex-col gap-2.5 rounded-2xl border border-line bg-ink/[.05] p-3.5 sm:p-4"><div className="flex items-center gap-2"><span className="grid h-5 w-5 place-items-center rounded-full bg-accent text-[11px] font-black text-accent-ink">{n}</span><span className="text-xs font-extrabold uppercase tracking-[.1em] text-muted">{l}</span></div>{kids}</div>;
- return <div className="flex flex-col gap-3 rounded-3xl border-2 border-line bg-ink/[.035] p-3.5 sm:p-5">
+  Box=(n,l,kids)=><div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line bg-ink/[.05] p-3.5 sm:p-5"><div className="flex items-center gap-2"><span className="grid h-5 w-5 place-items-center rounded-full bg-accent text-[11px] font-black text-accent-ink">{n}</span><span className="text-xs font-extrabold uppercase tracking-[.1em] text-muted">{l}</span></div>{kids}</div>;
+ return <div className="flex min-w-0 flex-col gap-4 rounded-3xl sm:border-2 sm:border-line sm:bg-ink/[.035] sm:p-5">
   <div><div className="flex items-center gap-2.5"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-ink" aria-hidden="true"><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg></span><h3 className="text-lg font-black tracking-tight sm:text-xl">Reverse Calculator</h3></div>
    <p className="mt-2 text-xs leading-relaxed text-muted sm:text-sm">Use this if some scores aren't released but your period grade was given, or to find out exactly what scores you need to hit your target grade.</p></div>
-  {Box(1,'Period',<><Seg v={per} on={x=>setRvPer(x)} opts={P.map(q=>[q.id,q.name]).concat(P.length>1?[['sem','Semestral']]:[])} cls="w-full"/>{sem&&<span className="text-xs text-muted">Semestral = {P.map(q=>q.name).join(' + ')}. The target is the final grade after Base.</span>}</>)}
+  {Box(1,'Period',<><SegW v={per} on={x=>setRvPer(x)} opts={P.map(q=>[q.id,q.name]).concat(P.length>1?[['sem','Semestral']]:[])}/>{sem&&<span className="text-xs text-muted">Semestral = {P.map(q=>q.name).join(' + ')}. The target is the final grade after Base.</span>}</>)}
   {Box(2,'Target grade for '+pn,<>
-   {C.table&&<div className="flex flex-col gap-1"><Seg sm v={sc} on={x=>setRvSc(per,x)} opts={[['p','100% scale'],['g',gl]]} cls="w-full"/><span className="text-[11px] text-muted">Your choice is remembered for {pn}.</span></div>}
+   {C.table&&<div className="flex flex-col gap-1"><SegW v={sc} on={x=>setRvSc(per,x)} opts={[['p','100% scale'],['g',gl]]}/><span className="text-[11px] text-muted">Your choice is remembered for {pn}.</span></div>}
    <div className="flex flex-wrap items-center gap-2"><Num v={val} on={v=>setRel(s.id,relKey(per,sc),v)} ph={sc==='g'?'e.g. 1.75':'e.g. 90'} w="w-32"/><span className="text-sm font-bold text-muted">{sc==='g'?'grade':'%'}</span></div>
    {sc==='g'&&chips.length>0&&chips.length<=14&&<div className="flex flex-wrap gap-1.5">{chips.map(g=><button key={g} onClick={()=>setRel(s.id,relKey(per,sc),String(g))} aria-pressed={val!==''&&+val===g} className={cx('rounded-lg border px-2.5 py-1 text-xs font-extrabold tabular-nums transition',val!==''&&+val===g?'border-accent bg-accent text-accent-ink':'border-line bg-ink/[.05] text-muted hover:text-ink')}>{g.toFixed(2)}</button>)}</div>}
-   {!sem&&<div className="flex flex-col gap-1"><Seg sm v={md} on={x=>setRvMode({...rvMode,[k]:x})} opts={[['r','Raw period grade'],['b','Includes Base '+f2(B)]]} cls="w-full"/><span className="text-[11px] text-muted">{md==='r'?'Used as a raw period grade (the Base is applied later, on the semestral grade).':'The grade already includes the Base, so raw = (grade − Base) ÷ (100 − Base) × 100.'}</span></div>}</>)}
+   {!sem&&<div className="flex flex-col gap-1"><SegW v={md} on={x=>setRvMode({...rvMode,[k]:x})} opts={[['r','Raw period grade'],['b','Includes Base '+f2(B)]]}/><span className="text-[11px] text-muted">{md==='r'?'Used as a raw period grade (the Base is applied later, on the semestral grade).':'The grade already includes the Base, so raw = (grade − Base) ÷ (100 − Base) × 100.'}</span></div>}</>)}
   {Box(3,'What you need',!sol.ok?<p className={cx('text-sm font-semibold',sol.empty?'text-muted':'text-bad')} role="status">{sol.msg}</p>
    :sol.secured?<div className="rounded-xl border border-accent/40 bg-accent/15 p-3.5 text-sm font-semibold" role="status">To attain the grade of <b>{sol.label}</b>, you are already secured ✓. {sem?'Every blank activity':'The blank activities'} can be as low as 0.</div>
    :<div className="flex flex-col gap-2.5" role="status">
@@ -1268,7 +1351,9 @@ const Reverse=s=>{const per=rvPerId(),sem=per==='sem',pn=sem?'Semestral':(P.find
    <div className="mx-auto w-full max-w-3xl">{Options(s,pcur,isLast)}</div></>};
  
 const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-8 text-center')}><p className="font-bold">No subjects yet</p><button className={BTNP} onClick={()=>setAdding(true)}>＋ Add your first subject</button></div>;
- const TrackerView=()=><div className="flex flex-col gap-6 pb-2">{prof&&prof.trkTour&&<div className="-mb-3 flex justify-end"><button onClick={prof.trkTour} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-ink/[.06] px-3 py-1.5 text-[11px] font-bold text-muted transition hover:bg-ink/[.09] hover:text-ink"><svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>Replay Tutorial</button></div>}{subs.length?Shell(TrackerBody()):EmptyCard()}</div>;
+ const TrackerView=()=><div className="flex flex-col gap-6 pb-2">{subs.length?Shell(TrackerBody()):EmptyCard()}
+  {prof&&prof.trkTour&&<div className="flex justify-center"><button type="button" onClick={prof.trkTour} className="rounded px-2 py-1 text-[11px] font-medium text-muted/60 underline decoration-muted/30 underline-offset-4 transition hover:text-muted focus-visible:text-muted">Replay tutorial</button></div>}
+  <div aria-hidden="true" className={cx('h-24',side&&'md:h-4')} style={{marginBottom:'env(safe-area-inset-bottom,0px)'}}/></div>;
 
  /* ---- settings sheet ---- */
  const Settings=()=>{
@@ -1277,7 +1362,8 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
   const setRow=(i,j,v)=>{const t=str();t[i][j]=v;setCfg({table:t},'tbl'+i+j)};
   const rp=rawP(),tw=P.reduce((a,p)=>a+p.w,0);
   return <>
-   {A('ap','Appearance','Color and light or dark mode',<><ThemePicker theme={theme} setTheme={setTheme}/></>)}
+   {A('ap','Appearance','Color, light or dark mode and navigation',<><ThemePicker theme={theme} setTheme={setTheme}/>
+    <div className="hidden min-w-0 flex-col gap-2 border-t border-line/50 pt-3 md:flex"><div className="text-sm font-bold">Navigation layout</div><SegW v={side?'side':'bottom'} on={v=>setSide(v==='side')} opts={[['bottom','Bottom bar'],['side','Side bar']]}/><p className="text-xs text-muted">For iPad and computer screens. Phones always use the bottom bar. The button beside the navigation switches it too.</p></div></>)}
    {A('gd','GWA decimal places','Showing '+GD+' decimals · e.g. '+fw(ayAll!=null?ayAll:1.66432),<>
     <p className="text-sm text-muted">How many decimals every GWA shows: Overview, Report card, Target GWA and exported images. Subject grades such as 1.75 are not affected.</p>
     <Seg v={GD} on={v=>setCfg({gd:v},'cfggd')} opts={[[2,'2'],[3,'3'],[4,'4']]} cls="w-full"/>
@@ -1301,10 +1387,10 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
     {C.table&&<div className="flex flex-col gap-2"><div className="text-sm font-bold">Grade table <span className="text-xs font-semibold text-muted">(minimum percent → grade)</span></div>
      {raw.map((r,i)=><div key={i} className="flex items-center gap-2"><Num v={String(r[0])} on={v=>setRow(i,0,v)} ph="min %" w="w-24"/><span className="text-muted">→</span><Num v={String(r[1])} on={v=>setRow(i,1,v)} ph="grade" w="w-24"/><button className={BTN+' !px-3'} onClick={()=>ask({title:'Delete this grade row?',msg:'The row will be removed from the grade table.',yes:'Delete row',onYes:()=>setCfg({table:str().filter((_,k)=>k!==i)})})} aria-label="Remove row">✕</button></div>)}
      <div className="flex gap-2"><button className={BTN} onClick={()=>setCfg({table:[...str(),['','']]})}>＋ Add row</button><button className={BTN} onClick={()=>setCfg({table:null})}>Reset to preset</button></div></div>}</>)}
-   {A('ys','Years and semesters','Rename, reorder, add or delete',<>
+   <div id="ys-section" key="ys-wrap" className="min-w-0">{A('ys','Years and semesters','Rename, reorder, add or delete',<>
     <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Academic year<TextIn v={Y.name} on={v=>rename('y',v)} cls="mt-1"/></label><label className="text-sm font-semibold">Semester<TextIn v={S.name} on={v=>rename('s',v)} cls="mt-1"/></label></div>
-    <div className="flex flex-wrap gap-2"><select value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select><select value={S.id} onChange={e=>set(c=>({...c,s:e.target.value}))} className={SEL}>{Y.sems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select><button className={BTN} onClick={addYear}>＋ Year</button><button className={BTN} onClick={addSem}>＋ Semester</button></div>
-    {YearMgr()}</>)}
+    <div className="flex flex-wrap gap-2"><select value={Y.id} onChange={e=>set(c=>({...c,y:e.target.value,s:c.years.find(y=>y.id===e.target.value).sems[0].id}))} className={SEL}>{st.years.map(y=><option key={y.id} value={y.id}>{y.name}</option>)}</select><select value={S.id} onChange={e=>set(c=>({...c,s:e.target.value}))} className={SEL}>{Y.sems.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select><button className={BTN} onClick={addYearS}>＋ Year</button><button className={BTN} onClick={addSemS}>＋ Semester</button></div>
+    {YearMgr()}</>)}</div>
    {A('dt','Data','Backup, import and clearing',<>
     <div className="flex flex-wrap gap-2"><button className={BTN} onClick={()=>ask({title:'Clear all scores here?',msg:'Every score in every subject of this semester will be emptied. Blank scores count as 0. You can undo this with the Undo button.',yes:'Clear all scores',onYes:()=>clearScores()})}>Clear all scores here</button>
      {CAN_FILE&&<><button className={BTN} onClick={exportData}>Export data</button><label className={BTN+' cursor-pointer'}>Import data<input type="file" accept="application/json,.json" onChange={importData} className="hidden"/></label></>}</div>
@@ -1346,11 +1432,12 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
    {pm&&<p className="rounded-2xl border border-line bg-ink/[.06] px-4 py-3 text-sm font-semibold" role="status">{pm}</p>}
    <section className={sec}><h2 className="text-lg font-extrabold">Session</h2><p className="text-sm text-muted">{swc&&swc.cur?<>Active group: <b className="text-ink">{swc.cur.name}</b>. {prof.admin.is?'You are an admin of this group. ':''}Switch groups or accounts without signing out.</>:'Switch to another account or group.'}</p><div className="flex flex-wrap gap-2">{swc&&<button className={BTNP+' !w-auto'} onClick={()=>setSwO(true)}>Switch group or account</button>}<button className={BTN+' self-start'} onClick={onSwitch}>{swc?'All groups and accounts':'Switch account'}</button></div></section>
    <section className={sec}><h2 className="text-lg font-extrabold">Tutorial</h2><p className="text-sm text-muted">New to Gradely, or need a refresher? Replay the interactive Tracker tutorial (sample subjects only, your grades are never touched) or the welcome tour.</p><div className="flex flex-wrap gap-2"><button className={BTNP+' !w-auto'} onClick={prof.trkTour}>Replay Tracker tutorial</button><button className={BTN+' self-start'} onClick={prof.tour}>Replay welcome tour</button><button className={BTN+' self-start'} onClick={()=>{['t','rev'].forEach(k=>{try{localStorage.removeItem('gtf-tip-'+k)}catch(e){}});setPm('Tab tips will show again the next time you visit the Tracker.')}}>Replay tab tips</button></div></section></div>};
-  return <div className="mx-auto w-full max-w-[1240px] overflow-x-clip px-5 pb-44 pt-[var(--tp)] sm:px-8 md:pb-40">
+  return <div className={side?'snav-shell':undefined}><div className={cx('mx-auto w-full max-w-[1240px] overflow-x-clip px-5 pb-44 pt-[var(--tp)] sm:px-8',side?'md:pb-16':'md:pb-40')}>
   <main className="flex flex-col gap-4 sm:gap-7">
    {Top()}{tab!=='o'&&<h1 className="px-1 pt-2 text-[2.1rem] font-black leading-none tracking-tight sm:text-5xl">{TITLES[tab]||'Overview'}</h1>}{Banners()}
    <ErrorBoundary key={tab}><div className="anim-rise flex flex-col gap-5 sm:gap-10"><TabBody f={tab==='o'?Ov:tab==='t'?TrackerView:tab==='w'?ReportPage:ProfileView}/></div></ErrorBoundary></main>
-  <BottomNav tab={tab} on={k=>{setPill(false);setTab(k)}}/>
+  {side&&<SideNav tab={tab} on={k=>{setPill(false);setTab(k)}} onSide={setSide}/>}
+  <BottomNav tab={tab} side={side} onSide={setSide} on={k=>{setPill(false);setTab(k)}}/>
 
   <Sheet open={jgO&&!!swc&&!guest} onClose={()=>setJgO(false)} title="Join a Group">
    <p className="text-sm text-muted">Enter the group’s name and passcode. Your account moves into the group and keeps all of its grades.</p>
@@ -1385,7 +1472,7 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
    {shr.mode==='report'&&!single&&<Switch on={hp0} onChange={()=>{const v=!rcf.hp;setRcf('hp',v);genStory(shr.hide,shr.mode,shr.theme||exT,v)}} label="Hide Prelim Grades" sub="Shows only subjects and the semestral grade."/>}
    <Switch on={shr.hide} onChange={()=>{const h=!shr.hide;setShr({...shr,hide:h});genStory(h,shr.mode,shr.theme||exT)}} label={shr.mode==='report'?'Hide subject grades':'Hide raw scores'} sub={shr.mode==='report'?'Shows only the GWA totals, not each subject.':shr.mode==='actual'?'Shows only your GWAs, not each subject.':'Shows only your GWA and target status.'}/>
    <button className={BTNP} disabled={!shr.blob} onClick={sendStory}>{shr.mode==='report'?'Export as Image':'Share or save image'}</button></>}</Sheet>
- </div>;
+ </div></div>;
 }
 
 
