@@ -2,6 +2,13 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
+## v38 step 1 fixed (mobile layout fixes)
+- **Reverse Calculator frame.** The yellow outline was a ring (box-shadow) that the folding Options panel clipped, so it looked like it spilled out. It is now a real `border-2` with `box-border`, `w-full max-w-full` and its own padding, so it always sits inside the card. The calculator no longer draws a second frame inside it.
+- **Reverse Calculator spacing.** The description has side padding and is centered. The three boxes have more padding and gap, and the Period / Target / Raw-Base toggles are taller with more space between buttons.
+- **Grading System weights.** Prelims / Finals rows are one strict grid (label column, input column, % column), so labels, boxes and % signs line up in straight columns.
+- **Centered Options.** The Subject, Grading System, Base Configuration and Forecasting cards have centered titles (icon and chevron balanced), a centered max-width column, and centered rows inside. The reorder list stays left-aligned.
+- Service worker cache is `gradely-v38-step1-fixed`. Open the app twice on each device.
+
 ## v38 final (drag-and-drop reordering, Duplicate Subject)
 - **Drag to reorder.** The Move up / Move down buttons are gone. Tracker > Options > Subject > Reorder subjects is now a list of every subject in the semester (`ReorderList` in `src/app.jsx`). **Mouse:** drag anywhere on a row. **Touch and pen:** drag by the grip on the left; only the grip blocks page scrolling, so the page still scrolls normally everywhere else. The other rows slide out of the way, the dragged row lifts, and the page auto-scrolls when you drag near the top or bottom edge. **Keyboard:** focus the grip and use the arrow keys (Home / End jump to the ends); Escape cancels a drag. One move is one Undo step, and the tabs and the Overview list follow the new order.
 - **Duplicate Subject.** A button under the reorder list copies the current subject (code gets "(copy)", units, kind, Grading System weights, Base and its mode, retention, every activity with its scores and what-if values) with fresh ids and appends it to the end of the current semester. The copy becomes the current subject with its Options open. One Undo removes it.

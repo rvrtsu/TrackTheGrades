@@ -1,5 +1,6 @@
 // Service worker: caches the app for offline use.
 // When you change any app file, bump CACHE (next: gradely-v37-final-2) so devices pick up the update.
+// v38 step 1 fixed (Reverse Calculator frame/spacing, aligned Grading System weights, centered Tracker Options): CACHE = gradely-v38-step1-fixed.
 // v38 final (Tracker: drag-and-drop subject reordering with mouse, touch and keyboard; Duplicate Subject button): CACHE = gradely-v38-final.
 // v38 step 1 (Reverse Calculator and Tracker Options layout fixes, faint Replay tutorial link, Settings auto-scroll, optional side navigation): CACHE = gradely-v38-step1.
 // v37 final fixed (Home View more / View less spacing, faster 0.2s collapse): CACHE = gradely-v37-final-fixed.
@@ -11,7 +12,7 @@
 // v36 final (compact Home, 2-column cards, slim Quick actions row, Creators pop-up, tutorial button fix): CACHE = gradely-v36-final.
 // Update flow: a new version installs quietly and WAITS. The app shows "Update Available! Tap to refresh";
 // tapping it sends SKIP_WAITING, the new worker activates, and the page reloads once on controllerchange.
-const CACHE = 'gradely-v38-final';
+const CACHE = 'gradely-v38-step1-fixed';
 const SHELL = ['./', './index.html', './app.js', './config.js', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/tiger.svg', './icons/icon-maskable-512.png', './icons/creator-joshua.jpg', './icons/creator-jhon.jpg'];
 // Third-party files the page needs (cached too, so it works with no internet)
 const CDN = [
