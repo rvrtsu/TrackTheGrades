@@ -1,5 +1,10 @@
 # Gradely (PWA)
 
+## v39.3 (simpler Edit account, Danger zone in Settings)
+- **One Sign Out button.** In Edit account, the separate "Remove from this device" button is gone. **Sign Out** now does both: it signs the account out and removes it, with its groups, from this device (the group list on Home clears instantly). Your grades stay in the cloud, so signing in again brings everything back. **Sign Out All** only appears when more than one cloud account is on the device. An older account that is not in the cloud uses the same button, with a warning that it cannot be recovered.
+- **Delete from the cloud moved.** It is no longer in Edit account. It now lives in **Profile > Settings > Account management** (a red "Danger zone" section for the signed-in cloud account), behind the same two-step confirmation. It erases the account and its grades from the cloud and from this device.
+- Service worker cache is `gradely-v39-3`. Open the app twice on each device so this update loads, or wait for the Update Available dialog.
+
 ## v39.2 (duplicates, Remove account, proactive updates)
 - **No duplicate member cards.** Accounts and members are compared by their exact unique ids (account id, member id `mid` plus its aliases, and the cloud key) before they are listed or stored (`uniqBy`, `localAccts`, `remoteCards` and `dedupeBook` in `src/app.jsx`). A cloud member card is also treated as the signed-in account when it has the same sync name and display name, so the same person never shows twice in Home > group, in Manage members or in Profiles. `dedupeBook` also runs every time the book is loaded or saved, so an older duplicate already stored on a device is merged away.
 - **Remove from this device clears the groups.** Sign out, Remove from this device and Delete from the cloud too now all go through one function (`purgeAccts`): it removes the account, its pending sync timers and every group no remaining account uses, resets the group view, and updates the screen immediately (the cloud clean-up of Delete everywhere runs after that, in the background).
