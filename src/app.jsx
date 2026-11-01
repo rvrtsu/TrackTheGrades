@@ -358,7 +358,8 @@ function useSwUpdate(){
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
  {v:'v36',notes:[
- 'Home header redesigned: a full-width Material app bar with a bigger title, the full tagline and tidy quick actions that wrap instead of scrolling',
+ 'Home header redesigned: a curved card with a large centered Gradely title, a short intro and a collapsible Quick actions menu (How it works, Join with code, Report a problem)',
+ 'Profiles and Your groups are centered with more breathing room; their descriptions fold behind View more once you are signed in',
  'Profiles now sit at the top of Home, above Your groups, each in its own panel with Sign In, Create Account, Join Group and Create Group right in the heading',
  'Sign in from Home and every group your account belongs to is added automatically']},
  {v:'v31',notes:[
@@ -1190,9 +1191,9 @@ const EmptyCard=()=><div className={cx(CARD,'flex flex-col items-center gap-3 p-
 function CreatorsCard(){
  const [o,setO]=useState(false);
  return <section className={cx(CARD,'hero mx-auto w-full max-w-2xl overflow-hidden')}>
-  <button onClick={()=>setO(v=>!v)} aria-expanded={o} aria-controls="creators-panel" className="flex w-full items-center gap-4 px-5 py-5 text-left transition hover:bg-ink/[.05] sm:gap-5 sm:px-7 sm:py-6">
+  <button onClick={()=>setO(v=>!v)} aria-expanded={o} aria-controls="creators-panel" className="flex w-full flex-col items-center gap-3.5 px-5 py-7 text-center transition hover:bg-ink/[.05] sm:px-7 sm:py-8">
    <span className="flex shrink-0 -space-x-4">{CREATORS.map(c=><img key={c.n} src={c.src} alt="" width="64" height="80" draggable="false" className="h-14 w-14 rounded-full object-cover shadow-md ring-[3px] ring-surface sm:h-16 sm:w-16"/>)}</span>
-   <span className="min-w-0 flex-1"><span className="block text-xl font-black tracking-tight sm:text-2xl">Meet the Creators</span><span className="mt-0.5 block text-sm text-muted">{o?'Tap to close':'The students behind Gradely · tap to meet them'}</span></span><Chev open={o}/></button>
+   <span className="min-w-0"><span className="block text-xl font-black tracking-tight sm:text-2xl">Meet the Creators</span><span className="mt-0.5 block text-sm text-muted">{o?'Tap to close':'The students behind Gradely · tap to meet them'}</span></span><Chev open={o}/></button>
   <div id="creators-panel" className={cx('acc',o&&'open')} inert={!o}><div><div className="flex flex-col items-center gap-5 border-t border-line/50 px-5 pb-7 pt-6 sm:px-8">
    <div className="grid w-full max-w-md grid-cols-2 gap-4 sm:gap-6">{CREATORS.map(c=><figure key={c.n} className="m-0 flex min-w-0 flex-col items-center gap-3"><img src={c.src} alt={c.n} width="480" height="600" draggable="false" className="aspect-[4/5] w-full rounded-3xl object-cover shadow-lg ring-1 ring-line"/><figcaption className="text-base font-extrabold leading-tight sm:text-lg">{c.n}</figcaption></figure>)}</div>
    <span className="rounded-full bg-accent/20 px-4 py-1.5 text-sm font-bold text-accent-text">UST-AMV Students</span>
@@ -1274,55 +1275,42 @@ function DevDashboard({onExit}){
 /* ---- home header: a flush, full-width Material-style app bar. Large while the page is at the top, condenses once you scroll ---- */
 const HIc=({d,cls='h-[18px] w-[18px]'})=><svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d}/></svg>;
 const HI_TOUR='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10.5 8.8v6.4l5-3.2z',HI_JOIN='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',HI_INSTALL='M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14',HI_BUG='M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',HI_THEME='M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z',HI_SYNC='M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',HI_USER='M19 21v-1.5a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4V21M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',HI_GROUP='M17 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M3 20v-1.5A3.5 3.5 0 0 1 6.5 15h4a3.5 3.5 0 0 1 3.5 3.5V20M8.5 11a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5zM15.5 4.8a3.25 3.25 0 0 1 0 6.3',HI_DOWN='M12 5v14M6 13l6 6 6-6';
+const HOME_INTRO='Track, forecast, and ace your grades effortlessly. Welcome to your new academic hub! Gradely is designed to help you monitor your progress, predict your final scores, and stay fully organized throughout the semester.';
 function HomeHeader({busy,at,cloud,onRefresh,onTheme,onTour,onJoin,onReport,onA2hs,showA2hs}){
- const [col,setCol]=useState(false),[h,setH]=useState(0),ref=useRef(null),colR=useRef(false);
- // collapse after 56px of scroll, expand again only when back near the top (hysteresis stops flicker)
- useEffect(()=>{let raf=0;const f=()=>{raf=0;const y=window.scrollY||document.documentElement.scrollTop||0,n=colR.current?y>6:y>56;if(n!==colR.current){colR.current=n;setCol(n)}};const on=()=>{if(!raf)raf=requestAnimationFrame(f)};f();window.addEventListener('scroll',on,{passive:true});return()=>{window.removeEventListener('scroll',on);if(raf)cancelAnimationFrame(raf)}},[]);
- // the bar is position:fixed, so a spacer keeps the page layout steady (its height is the expanded bar, so collapsing never shifts the content)
- // measured again after fonts and the Tailwind stylesheet have loaded, and whenever the width changes (the tagline may wrap)
- useLayoutEffect(()=>{const m=()=>{if(!colR.current&&ref.current)setH(ref.current.offsetHeight)};m();const t1=setTimeout(m,350),t2=setTimeout(m,1400);window.addEventListener('resize',m);try{document.fonts&&document.fonts.ready.then(m)}catch(e){}return()=>{clearTimeout(t1);clearTimeout(t2);window.removeEventListener('resize',m)}},[showA2hs]);
+ const [open,setOpen]=useState(false);
  const status=!cloud?'Cloud not set up':busy?'Syncing…':at?'Synced '+rel(at):'Ready',dot=!cloud?'bg-muted':busy?'bg-accent animate-pulse':'bg-good';
- const IB='grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink transition hover:bg-ink/[.08] active:scale-95 disabled:opacity-40',
-  CH='inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-lg border border-line/70 bg-ink/[.05] px-2.5 text-xs font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40',
-  GR=' grow basis-[calc(50%_-_.1875rem)] sm:grow-0 sm:basis-auto',IC='h-3.5 w-3.5';
- return <div style={{height:h||undefined}} className="mb-1">
-  <header ref={ref} className="fixed inset-x-0 top-0 z-30">
-   <div className={cx('w-full border-b border-line/70 transition-shadow duration-300',col?'shadow-[0_4px_12px_-3px_rgb(0_0_0/.3)]':'shadow-[0_1px_3px_rgb(0_0_0/.18)]')} style={{paddingTop:col?'calc(var(--tp) - .3rem)':'var(--tp)',paddingBottom:col?'.5rem':'.875rem',backgroundColor:'rgb(var(--surface)/.9)',backgroundImage:'linear-gradient(180deg,rgb(var(--accent)/.09),rgb(var(--accent)/.02) 85%)',WebkitBackdropFilter:'blur(14px) saturate(1.25)',backdropFilter:'blur(14px) saturate(1.25)'}}>
-    <div className="mx-auto max-w-6xl px-4 sm:px-8">
-     <div className="flex items-center gap-3 sm:gap-4">
-      <TigerLogo className={cx('shrink-0 drop-shadow-sm transition-all duration-300',col?'h-9 w-9':'h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem]')}/>
-      <span aria-hidden="true" className={cx('w-px shrink-0 bg-line transition-all duration-300',col?'h-6':'h-12 sm:h-14')}/>
-      <div className="min-w-0 flex-1">
-       <div className={cx('font-black leading-none tracking-tight transition-all duration-300',col?'text-xl':'text-[34px] sm:text-[42px]')}>Gradely</div>
-       <div key={col?'s':'t'} className="anim-fade mt-1.5">{col?<div className="flex items-center gap-1.5 truncate text-xs font-semibold text-muted"><span className={cx('h-1.5 w-1.5 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></div>:<p className="text-[13px] font-semibold leading-snug text-muted sm:text-[15px]">Track, Forecast, and Ace your grades</p>}</div>
-      </div>
-      {col&&<div className="anim-fade flex shrink-0 items-center">
-       {cloud&&<button className={IB} onClick={onRefresh} aria-label="Refresh from cloud"><span className={busy?'animate-spin':''}><HIc d={HI_SYNC}/></span></button>}
-       <button className={IB} onClick={onTheme} aria-label="Change theme"><HIc d={HI_THEME}/></button>
-      </div>}
-     </div>
+ const CH='inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-line/70 bg-ink/[.05] px-4 text-sm font-bold text-ink transition hover:bg-ink/[.09] active:scale-[.97] disabled:pointer-events-none disabled:opacity-40',IC='h-4 w-4';
+ // a standalone, curved card (not a flush bar): big centered title, the intro, then a collapsible Quick actions menu
+ return <header className="gc hdr anim-rise mx-auto w-full overflow-hidden rounded-[1.75rem]" style={{marginTop:'var(--tp)'}}>
+  <div className="flex flex-col items-center px-6 pb-6 pt-10 text-center sm:px-12 sm:pb-8 sm:pt-14">
+   <h1 className="text-[3.5rem] font-black leading-none tracking-tight sm:text-[5.5rem]">Gradely</h1>
+   <p className="mx-auto mt-6 max-w-xl text-[15px] font-medium leading-relaxed text-muted sm:mt-8 sm:text-[17px]">{HOME_INTRO}</p>
+   <div className="mt-6 inline-flex max-w-full items-center gap-2 rounded-full border border-line/70 bg-surface/60 px-3.5 py-1.5 text-xs font-semibold text-muted" role="status"><span className={cx('h-2 w-2 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></div>
+  </div>
+  <div className="border-t border-line/60">
+   <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} aria-controls="home-quick" className="flex w-full items-center justify-center gap-2 px-5 py-4 text-sm font-extrabold transition hover:bg-ink/[.05]">Quick actions<Chev open={open}/></button>
+   <div id="home-quick" className={cx('acc',open&&'open')} inert={!open}><div>
+    <div className="mx-auto flex max-w-xl flex-wrap justify-center gap-2.5 px-5 pb-7 pt-1 sm:px-8" role="toolbar" aria-label="Quick actions">
+     <button className={cx(CH,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls={IC}/>How it works</button>
+     <button className={CH} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls={IC}/>Join with code</button>
+     <button className={CH} onClick={onReport}><HIc d={HI_BUG} cls={IC}/>Report a problem</button>
+     {cloud&&<button className={CH} onClick={onRefresh}><span className={busy?'animate-spin':''}><HIc d={HI_SYNC} cls={IC}/></span>Sync now</button>}
+     <button className={CH} onClick={onTheme}><HIc d={HI_THEME} cls={IC}/>Themes</button>
+     {showA2hs&&<button className={CH} onClick={onA2hs}><HIc d={HI_INSTALL} cls={IC}/>Install app</button>}
     </div>
-    <div className={cx('acc',!col&&'open')} inert={col}><div>
-     <div className="mx-auto max-w-6xl px-4 sm:px-8">
-      <div className="mt-3.5 border-t border-line/60 pt-3 sm:flex sm:items-stretch sm:gap-3" role="toolbar" aria-label="Quick actions">
-       <div className="flex items-center gap-1.5 sm:shrink-0 sm:self-start">
-        <span className="inline-flex h-8 min-w-0 flex-1 items-center gap-2 px-1 text-xs font-semibold text-muted sm:flex-none"><span className={cx('h-2 w-2 shrink-0 rounded-full',dot)}/><span className="truncate">{status}</span></span>
-        {cloud&&<button className={CH} onClick={onRefresh}><span className={busy?'animate-spin':''}><HIc d={HI_SYNC} cls={IC}/></span>Sync now</button>}
-        <button className={CH} onClick={onTheme}><HIc d={HI_THEME} cls={IC}/>Themes</button>
-       </div>
-       <span aria-hidden="true" className="my-2.5 block h-px bg-line/60 sm:my-0 sm:h-auto sm:w-px"/>
-       <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-        <button className={cx(CH,GR,'!border-transparent !bg-accent !text-accent-ink hover:brightness-105')} onClick={onTour}><HIc d={HI_TOUR} cls={IC}/>How it works</button>
-        <button className={CH+GR} onClick={onJoin} disabled={!cloud}><HIc d={HI_JOIN} cls={IC}/>Join with code</button>
-        {showA2hs&&<button className={CH+GR} onClick={onA2hs}><HIc d={HI_INSTALL} cls={IC}/>Install app</button>}
-        <button className={CH+GR} onClick={onReport}><HIc d={HI_BUG} cls={IC}/>Report a problem</button>
-       </div>
-      </div>
-     </div>
-    </div></div>
-   </div>
-  </header>
- </div>;
+   </div></div>
+  </div>
+ </header>;
+}
+
+// Section description for Profiles / Your groups: shown in full when signed out, collapsed behind "View more" once signed in
+function SecDesc({text,loggedIn}){
+ const [open,setOpen]=useState(!loggedIn);
+ useEffect(()=>{setOpen(!loggedIn)},[loggedIn]);
+ if(!loggedIn)return <p className="mx-auto mt-3 max-w-md text-[15px] font-medium leading-relaxed text-ink/80 sm:text-base">{text}</p>;
+ return <div className="mt-1.5 flex flex-col items-center">
+  <div className={cx('acc',open&&'open')} inert={!open}><div><p className="mx-auto max-w-md pb-1 pt-1.5 text-sm leading-relaxed text-muted">{text}</p></div></div>
+  <button onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="mt-1 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-accent-text transition hover:bg-ink/[.06]">{open?'View less':'View more'}<span className={cx('inline-block transition-transform duration-300',open&&'rotate-180')}><HIc d="M6 9l6 6 6-6" cls="h-3.5 w-3.5"/></span></button></div>;
 }
 
 function Home({book,theme,setTheme,ctl,busy,at}){
@@ -1359,29 +1347,30 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const NewG=()=>{setNg({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''});setCm('');setSh({t:'newGroup'})};
  const JoinG=()=>{setJf({code:'',name:'',pass:'',adv:false});setCm('');setSh({t:'joinGroup'})};
  const Top=<HomeHeader busy={busy} at={at} cloud={CLOUD} onRefresh={ctl.refresh} onTheme={()=>setSh({t:'theme'})} onTour={ctl.tour} onJoin={JoinG} onReport={()=>{setRp({c:'bug',m:'',ct:'',done:false});setCm('');setSh({t:'report'})}} onA2hs={ctl.a2hs} showA2hs={!isStandalone()}/>;
- const SecHd=(ic,title,sub,actions,alt)=><div className={cx('panel-hd flex flex-col gap-3.5 border-b border-line/70 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6',alt&&'alt')}>
-  <div className="flex min-w-0 flex-1 items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-5 w-5"/></span><div className="min-w-0"><h2 className="text-xl font-black leading-tight tracking-tight sm:text-2xl">{title}</h2><p className="mt-0.5 text-[13px] leading-snug text-muted">{sub}</p></div></div>
-  <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">{actions}</div></div>;
+ const loggedIn=book.list.length>0;
+ const SecHd=(ic,title,sub,actions,alt)=><div className={cx('panel-hd flex flex-col items-center gap-6 border-b border-line/70 px-5 py-8 text-center sm:px-8 sm:py-10',alt&&'alt')}>
+  <div className="flex min-w-0 flex-col items-center"><span className="mb-4 grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-accent/20 text-accent-text"><HIc d={ic} cls="h-6 w-6"/></span><h2 className="text-2xl font-black leading-tight tracking-tight sm:text-3xl">{title}</h2><SecDesc text={sub} loggedIn={loggedIn}/></div>
+  <div className="grid w-full max-w-xs grid-cols-2 gap-3 sm:flex sm:w-auto sm:max-w-none sm:justify-center">{actions}</div></div>;
  const SB=BTN+' w-full sm:w-auto',PB=BTNP+' w-full sm:w-auto';
- const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <div className="mt-5 sm:mt-6">
+ const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));return <div className="mt-6 sm:mt-8">
   {!CLOUD&&<p className="mb-4 rounded-2xl border border-bad/30 bg-bad/10 px-4 py-3 text-center text-xs font-semibold text-bad">Gradely stores everything in the cloud. Add your database URL in config.js to sign in, create or join a group.</p>}
   <section className="panel anim-rise" aria-label="Profiles">
    {SecHd(HI_USER,'Profiles','Accounts on this device. Sign in and every group you have joined is added automatically.',<>
     <button className={SB} disabled={!CLOUD} onClick={()=>{setSf({name:'',pass:''});setCm('');setSh({t:'signin'})}}>Sign In</button>
     <button className={PB} disabled={!CLOUD} onClick={()=>{setNa({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false});setCm('');setSh({t:'newAcct'})}}>Create Account</button></>)}
-   <div className="p-4 sm:p-6">
-    {msg&&<p role="status" className="mb-4 rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-sm font-semibold">{msg}</p>}
-    {people.length?<div className="flex flex-wrap justify-start gap-3">{people.map(AcctCard)}</div>
+   <div className="p-5 sm:p-8">
+    {msg&&<p role="status" className="mx-auto mb-5 max-w-md rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-center text-sm font-semibold">{msg}</p>}
+    {people.length?<div className="flex flex-wrap justify-center gap-3.5">{people.map(AcctCard)}</div>
      :<div className="rounded-2xl border border-dashed border-line px-4 py-7 text-center"><p className="font-bold">No profiles yet</p><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Tap Sign In to use an account from another device, or Create Account to start a new one.</p></div>}
    </div>
   </section>
-  <div className="my-5 flex items-center gap-3 sm:my-6" aria-hidden="true"><span className="h-px flex-1 bg-line/70"/><span className="grid h-8 w-8 place-items-center rounded-full border border-line bg-surface/80 text-muted"><HIc d={HI_DOWN} cls="h-4 w-4"/></span><span className="h-px flex-1 bg-line/70"/></div>
+  <div className="my-7 flex items-center gap-3 sm:my-9" aria-hidden="true"><span className="h-px flex-1 bg-line/70"/><span className="grid h-8 w-8 place-items-center rounded-full border border-line bg-surface/80 text-muted"><HIc d={HI_DOWN} cls="h-4 w-4"/></span><span className="h-px flex-1 bg-line/70"/></div>
   <section className="panel anim-rise" style={{animationDelay:'80ms'}} aria-label="Your groups">
    {SecHd(HI_GROUP,'Your groups','Groups you created or joined. Open one, then pick your account.',<>
     <button className={SB} disabled={!CLOUD} onClick={JoinG}>Join Group</button>
     <button className={PB} disabled={!CLOUD} onClick={NewG}>Create Group</button></>,true)}
-   <div className="p-4 sm:p-6">
-    {book.groups.length?<div className="flex flex-wrap justify-start gap-3">{book.groups.map(GroupCard)}</div>
+   <div className="p-5 sm:p-8">
+    {book.groups.length?<div className="flex flex-wrap justify-center gap-3.5">{book.groups.map(GroupCard)}</div>
      :<div className="rounded-2xl border border-dashed border-line px-4 py-7 text-center"><p className="font-bold">No groups yet</p><p className="mx-auto mt-1 max-w-sm text-sm text-muted">Join one with its code, create your own, or sign in to a profile and its groups appear here.</p></div>}
    </div>
   </section></div>};
@@ -1403,7 +1392,7 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
  return <div className="mx-auto max-w-6xl px-4 pb-20 pt-0 sm:px-8">
   {Top}
   <div key={gv||'groups'}>{grp?GroupScreen():GroupsScreen()}</div>
-  <div className="mt-10 flex flex-col items-center gap-4"><CreatorsCard/>
+  <div className="mt-12 flex flex-col items-center gap-5"><CreatorsCard/>
    <button onClick={()=>{setDv({u:'',p:''});setCm('');setSh({t:'dev'})}} className="text-[11px] font-semibold text-muted/70 underline decoration-dotted underline-offset-4 transition hover:text-ink">Developer sign-in</button></div>
 
   <Sheet open={!!sh&&sh.t==='newGroup'} onClose={()=>setSh(null)} title="Create New Group">
