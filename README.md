@@ -2,6 +2,12 @@
 
 Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
 
+## v38 step 1 wider (full-width Tracker Options)
+- **Less padding on phones.** Side space between the screen edge and the Reverse Calculator text went from about 78px to about 51px per side: the Options block pulls 8px into the page margin, and the Options panel, setting cards, yellow frame and calculator boxes each lost 4 to 6px of padding. Tablet and desktop spacing is unchanged.
+- **No narrow caps.** The `max-w-md` / `max-w-xl` / 16rem limits added in the last step are gone; every setting card, the yellow-bordered calculator and the weight grid are `w-full`.
+- **Stretching controls.** Period / Target / Raw-Base toggle buttons share each row equally (wrapping only if too narrow), the target input fills its row beside the unit, Fill / Clear buttons are full width, grade chips stretch, and the Base and Retention inputs grow to fill their rows.
+- Service worker cache is `gradely-v38-step1-wider`. Open the app twice on each device.
+
 ## v38 step 1 fixed (mobile layout fixes)
 - **Reverse Calculator frame.** The yellow outline was a ring (box-shadow) that the folding Options panel clipped, so it looked like it spilled out. It is now a real `border-2` with `box-border`, `w-full max-w-full` and its own padding, so it always sits inside the card. The calculator no longer draws a second frame inside it.
 - **Reverse Calculator spacing.** The description has side padding and is centered. The three boxes have more padding and gap, and the Period / Target / Raw-Base toggles are taller with more space between buttons.
