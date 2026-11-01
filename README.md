@@ -1,5 +1,11 @@
 # Gradely (PWA)
 
+## v39.2 (duplicates, Remove account, proactive updates)
+- **No duplicate member cards.** Accounts and members are compared by their exact unique ids (account id, member id `mid` plus its aliases, and the cloud key) before they are listed or stored (`uniqBy`, `localAccts`, `remoteCards` and `dedupeBook` in `src/app.jsx`). A cloud member card is also treated as the signed-in account when it has the same sync name and display name, so the same person never shows twice in Home > group, in Manage members or in Profiles. `dedupeBook` also runs every time the book is loaded or saved, so an older duplicate already stored on a device is merged away.
+- **Remove from this device clears the groups.** Sign out, Remove from this device and Delete from the cloud too now all go through one function (`purgeAccts`): it removes the account, its pending sync timers and every group no remaining account uses, resets the group view, and updates the screen immediately (the cloud clean-up of Delete everywhere runs after that, in the background).
+- **Updates pop up on their own.** The app asks the server for a new `sw.js` every minute while it is open and visible, and again whenever the tab or app comes back, regains focus, reconnects or is restored from the back/forward cache. The service worker is registered with `updateViaCache:'none'` so the browser never reuses an old copy of `sw.js`. As soon as the new version has finished installing, the **Update Available** dialog appears, even if you are idle or in the middle of using the app.
+- Service worker cache is `gradely-v39-2`. Open the app twice on each device so this update loads; later updates then appear by themselves.
+
 ## v39 header fix (top header pill on phones)
 - The undo/redo icons, the "2nd Year - 1st Sem" button and the right-side icons no longer collide on phones. Under 420px the round icon buttons are 32px with tighter gaps, the year-and-semester button is allowed to shrink (`min-w-0`, `max-w-full`) with smaller text, and its label truncates with an ellipsis only if there is truly no room (very narrow screens or long names). The full names are still in the dropdown. Wider screens are unchanged.
 - Service worker cache is `gradely-v39-headerfix`. Open the app twice on each device so the update loads.

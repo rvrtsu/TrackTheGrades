@@ -114,6 +114,27 @@ const defGroup=()=>({id:'g'+uid(),name:'General',icon:''});
 const listOf=v=>Array.isArray(v)?v:v&&typeof v==='object'?Object.values(v):[];
 const gidsOf=a=>a?(Array.isArray(a.gids)&&a.gids.length?a.gids:a.gid?[a.gid]:[]):[];
 // group admins: g.adm is a list of member ids (mid). Cloud groups mirror it at groups/<key>/admins (an object of mid:true).
+// strict uniqueness: members and accounts are compared by their exact unique ids (account id, member id mid and its aliases, cloud key) BEFORE they are listed or stored
+const midsOfA=a=>[a&&a.mid,...((a&&a.alt)||[])].filter(Boolean);
+const sameCard=(a,mid,c)=>midsOfA(a).includes(mid)||!!(a&&a.cloud&&c&&c.sn&&c.sn===a.cloud.sn&&(c.n||'').trim()===(a.name||'').trim());
+const uniqBy=(arr,keys)=>{const seen=new Set(),out=[];for(const x of arr){if(!x)continue;const ks=keys(x).filter(Boolean);if(ks.some(k=>seen.has(k)))continue;ks.forEach(k=>seen.add(k));out.push(x)}return out};
+// accounts of one group: one entry per account id and per cloud key
+const localAccts=(list,gid)=>uniqBy(list.filter(a=>a&&gidsOf(a).includes(gid)),a=>['i:'+a.id,a.cloud&&a.cloud.k?'k:'+a.cloud.k:null]);
+// member cards that are NOT already an account on this device: one card per member id and per identical sync name + name (newest wins)
+const remoteCards=(locals,members)=>uniqBy(Object.entries(members||{}).filter(([mid,c])=>c&&typeof c==='object'&&!locals.some(a=>sameCard(a,mid,c))).sort((x,y)=>(y[1].t||0)-(x[1].t||0)).map(([mid,c])=>({mid,...c})),c=>['m:'+c.mid,c.sn?'s:'+c.sn+'|'+(c.n||'').trim().toLowerCase():null]);
+// forces unique accounts and groups in the saved book: the same account (id or cloud key) or the same cloud group is never kept twice
+const dedupeBook=b=>{if(!b||!Array.isArray(b.list)||!Array.isArray(b.groups))return b;
+ const gOut=[],gMap={};
+ for(const g of b.groups){if(!g||!g.id)continue;const d=gOut.find(x=>x.id===g.id||(g.cloud&&x.cloud&&x.cloud.k===g.cloud.k));if(d){gMap[g.id]=d.id;if(!d.code&&g.code)d.code=g.code;if(g.members&&!d.members)d.members=g.members;if(Array.isArray(g.adm))d.adm=[...new Set([...(Array.isArray(d.adm)?d.adm:[]),...g.adm])]}else gOut.push(g)}
+ const aOut=[];
+ for(const a of b.list){if(!a||!a.id)continue;const d=aOut.find(x=>x.id===a.id||(a.cloud&&x_k(x)===a.cloud.k));
+  if(d){if(d.id!==a.id){if(a.sy&&a.sy.dirty&&!(d.sy&&d.sy.dirty)&&b.data&&b.data[a.id]){b.data[d.id]=b.data[a.id];d.sy=a.sy}if(b.data)delete b.data[a.id]}
+   d.gids=[...new Set([...gidsOf(d),...gidsOf(a)])];if(!d.mid&&a.mid)d.mid=a.mid;const alt=new Set([...(d.alt||[]),...(a.alt||[])]);if(a.mid&&a.mid!==d.mid)alt.add(a.mid);if(alt.size)d.alt=[...alt]}
+  else aOut.push(a)}
+ const gids=new Set(gOut.map(g=>g.id));
+ aOut.forEach(a=>{const nx=[...new Set(gidsOf(a).map(x=>gMap[x]||x).filter(x=>gids.has(x)))];if(Array.isArray(a.gids)||a.gid){const same=nx.length===gidsOf(a).length&&nx.every((x,i)=>x===gidsOf(a)[i]);if(!same){a.gids=nx;a.gid=nx[0]||null}}});
+ if(gOut.length!==b.groups.length)b.groups=gOut;if(aOut.length!==b.list.length)b.list=aOut;return b};
+const x_k=a=>a&&a.cloud?a.cloud.k:null;
 const admKeys=o=>o&&typeof o==='object'?Object.keys(o).filter(k=>o[k]):[];
 const admOf=g=>g&&Array.isArray(g.adm)?g.adm:[];
 const mkBook=d=>{const g=defGroup(),id=uid();return{list:[{id,name:'My Account',bio:'',emoji:'',gid:g.id}],data:{[id]:d},groups:[g]}};
@@ -129,7 +150,7 @@ const normBook=j=>{try{
  if(okState(j))return mkBook(j)}catch(e){}return null};
 const loadRaw=()=>{let b=null;try{b=normBook(JSON.parse(localStorage.getItem(BK)))}catch(e){}if(!b)try{b=normBook(JSON.parse(localStorage.getItem('gtf-v1')))}catch(e){}if(!b)b={list:[],data:{},groups:[]}; // first launch: strictly empty, no groups and no accounts
  return b};
-const loadBook=()=>{const b=loadRaw();Object.keys(b.data).forEach(k=>{b.data[k]=mig(b.data[k])});return b};
+const loadBook=()=>{const b=loadRaw();dedupeBook(b);Object.keys(b.data).forEach(k=>{b.data[k]=mig(b.data[k])});return b};
 const saveBook=b=>{try{localStorage.setItem(BK,JSON.stringify(b))}catch(e){}};
 /* ---- persistent login ----
    This app signs in with account passcodes over the Realtime Database REST API and does not load the Firebase Auth SDK.
@@ -455,10 +476,14 @@ function useSwUpdate(){
   // the first install also fires controllerchange (clients.claim): only reload when an older version was already running
   const onCtl=()=>{if(!hadCtl){hadCtl=true;return}if(rl.current)return;rl.current=true;window.location.reload()};
   navigator.serviceWorker.addEventListener('controllerchange',onCtl);
-  navigator.serviceWorker.register('./sw.js').then(r=>{if(dead)return;reg=r;regR.current=r;if(r.waiting&&navigator.serviceWorker.controller)setWaiting(r.waiting);track(r.installing);r.addEventListener('updatefound',()=>track(r.installing));r.update().catch(()=>{})}).catch(()=>{});
-  const ck=()=>{if(!document.hidden&&reg)reg.update().catch(()=>{})},iv=setInterval(ck,20*60*1000);
-  document.addEventListener('visibilitychange',ck);window.addEventListener('online',ck);
-  return()=>{dead=true;clearInterval(iv);navigator.serviceWorker.removeEventListener('controllerchange',onCtl);document.removeEventListener('visibilitychange',ck);window.removeEventListener('online',ck)}},[]);
+  // look at everything the registration is holding right now: a waiting worker means an update is ready, an installing one is tracked until it is
+  const scan=r=>{if(dead||!r)return;if(r.waiting&&navigator.serviceWorker.controller)setWaiting(r.waiting);track(r.installing)};
+  navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>{if(dead)return;reg=r;regR.current=r;scan(r);r.addEventListener('updatefound',()=>track(r.installing));r.update().then(()=>scan(r)).catch(()=>{})}).catch(()=>{});
+  // proactive checks while the app sits open or is being used: every minute while visible, and again when the tab or app comes back, regains focus or reconnects
+  let last=0;
+  const ck=(force)=>{if(dead||!reg||document.hidden||navigator.onLine===false)return;const n=Date.now();if(!force&&n-last<15000)return;last=n;reg.update().then(()=>scan(reg)).catch(()=>{})},iv=setInterval(ck,60*1000),ev=()=>ck(false),pv=e=>{if(e&&e.persisted)ck(true)};
+  document.addEventListener('visibilitychange',ev);window.addEventListener('focus',ev);window.addEventListener('online',ev);window.addEventListener('pageshow',pv);
+  return()=>{dead=true;clearInterval(iv);navigator.serviceWorker.removeEventListener('controllerchange',onCtl);document.removeEventListener('visibilitychange',ev);window.removeEventListener('focus',ev);window.removeEventListener('online',ev);window.removeEventListener('pageshow',pv)}},[]);
  const apply=()=>{if(!waiting)return;try{waiting.postMessage({type:'SKIP_WAITING'})}catch(e){}
   // safety net: if controllerchange never arrives, reload anyway
   setTimeout(()=>{if(!rl.current){rl.current=true;window.location.reload()}},4000)};
@@ -475,6 +500,9 @@ function useSwUpdate(){
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
  {v:'v39',notes:[
+ 'New updates now pop up on their own while the app is open or idle, without closing or refreshing it',
+ 'Removing an account from this device now clears its groups from Home straight away, the same as signing out',
+ 'Each person now shows once in a group: the same account can no longer appear as two identical cards after signing in',
  'Signing out now clears the signed-out account and its groups from Home completely, so the previous person’s groups no longer linger',
  'Home lists your groups under the account that owns them (for example “Roever’s Groups”, “Josh’s Groups”), so accounts on the same device stay clearly separated',
  'Signing in again no longer adds your account a second time to its groups, and older duplicate cards are tidied up when you sign in',
@@ -1739,8 +1767,8 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  const [gv,setGvS]=useState(()=>{try{const v=localStorage.getItem('gtf-hv');return book.groups.some(g=>g.id===v)?v:null}catch(e){return null}}),setGv=v=>{setGvS(v);try{v?localStorage.setItem('gtf-hv',v):localStorage.removeItem('gtf-hv')}catch(e){}},[sh,setSh]=useState(()=>joinParam()?{t:'joinGroup'}:null),[arm,setArm]=useState(null),[uc,setUc]=useState(''),[cm,setCm]=useState(''),[cb,setCb]=useState(false),[msg,setMsg]=useState('');
  const [ng,setNg]=useState({name:'',icon:'',pic:'',pass:'',rec:'',use:'',an:'',ap:''}),[jf,setJf]=useState({code:joinParam(),name:'',pass:'',adv:false}),[rp,setRp]=useState({c:'bug',m:'',ct:'',done:false}),[dv,setDv]=useState({u:'',p:''}),[cp,setCp]=useState(''),[na,setNa]=useState({name:'',bio:'',emoji:'',pic:'',pass:'',pre:false}),[uf,setUf]=useState({pass:''}),[sf,setSf]=useState({name:'',pass:''}),[ef,setEf]=useState({pass:''}),[gp,setGp]=useState('');
  const grp=book.groups.find(g=>g.id===gv)||null;
- const localsOf=g=>book.list.filter(a=>gidsOf(a).includes(g.id));
- const remotesOf=g=>{const mids=new Set(localsOf(g).flatMap(a=>[a.mid,...(a.alt||[])]).filter(Boolean));return Object.entries(g.members||{}).filter(([mid])=>!mids.has(mid)).map(([mid,m])=>({mid,...m}))};
+ const localsOf=g=>localAccts(book.list,g.id);
+ const remotesOf=g=>remoteCards(localsOf(g),g.members);
  const countOf=g=>localsOf(g).length+remotesOf(g).length;
  const photo=(e,cb2)=>{const fl=e.target.files&&e.target.files[0];e.target.value='';if(!fl)return;resizeImg(fl).then(cb2).catch(()=>setMsg('Could not read that image.'))};
  const go=async(fn,after,keep)=>{setCb(true);setCm('');try{const r=await fn();if(r==='ok'||String(r).startsWith('ok:')){if(!keep)setSh(null);if(after)after(String(r));}else setCm(r)}catch(e){setCm('Something went wrong. Try again.')}setCb(false)};
@@ -1784,7 +1812,7 @@ function Home({book,theme,setTheme,ctl,busy,at}){
  // Sign out lives in the Edit account sheet. It removes the account(s) from this device only; cloud data is never deleted and signing in again restores everything.
  const doSignOut=async(all,id)=>{const r=await ctl.signOut(all,id);if(String(r).startsWith('ok')){setSh(null);setGv(null);setMsg(all?'Signed out of all accounts.':'Signed out.');setTimeout(()=>setMsg(''),7000)}else setCm(r)};
  const askOut=(all,a)=>ask({title:all?'Sign out of all accounts?':'Sign out of '+(a.name||'this account')+'?',msg:(all?'Every signed-in account':'This account')+' and its groups (any group no other account on this device uses) are removed from this device. Your grades stay safe in the cloud, and signing in again brings everything back.',yes:all?'Sign out of all':'Sign out',onYes:()=>doSignOut(all,a.id)});
- const GroupsScreen=()=>{const people=book.list.slice().sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));
+ const GroupsScreen=()=>{const people=uniqBy(book.list,a=>['i:'+a.id,a.cloud&&a.cloud.k?'k:'+a.cloud.k:null]).sort((x,y)=>(y.last||0)-(x.last||0)||(x.name||'').localeCompare(y.name||''));
   // groups are listed strictly per account owner ("Roever’s Groups", "Josh’s Groups"); groups no account on this device is linked to go under Other groups
   const poss=n=>{n=(n||'').trim()||'Account';return/s$/i.test(n)?n+'’ Groups':n+'’s Groups'};
   const sets=people.map(a=>({key:a.id,a,title:poss(a.name),gs:book.groups.filter(g=>gidsOf(a).includes(g.id))})).filter(o=>o.gs.length);
@@ -1904,8 +1932,8 @@ const GroupScreen=()=>{const ls=localsOf(grp).slice().sort((a,b)=>(b.last||0)-(a
    {ga.cloud&&<div className="flex flex-col gap-2 rounded-2xl border border-line bg-ink/[.06] p-3"><div className="text-sm font-bold">Sign out</div>
     <div className="grid grid-cols-2 gap-2"><button className={SB} aria-label="Sign out of this account" title="Sign out of this account" onClick={()=>askOut(false,ga)}>Sign Out</button><button className={SBX} aria-label="Sign out of all accounts" title="Sign out of all accounts" onClick={()=>askOut(true,ga)}>Sign Out All</button></div>
     <p className="text-xs text-muted">Removes the account from this device only. Your grades stay in the cloud.</p></div>}
-<div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+ga.name+'” from this device?',msg:ga.cloud?'The cloud copy is kept, so you can unlock the account again from its group.':'This older account is not in the cloud, so it cannot be recovered once it is removed. Move it to the cloud first to keep it.',yes:'Remove account',onYes:()=>{ctl.del(ga.id,false);setSh(null)}})}>Remove from this device</button>
-    {ga.cloud&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+ga.name+'” from the cloud too?',msg:'The account and all of its grades are erased from the cloud as well as this device.',next:'Continue',final:'This cannot be undone. The grades cannot be recovered on any device. Delete the account anyway?',yes:'Yes, delete everywhere',onYes:()=>{ctl.del(ga.id,true);setSh(null)}})}>Delete from the cloud too</button>}
+<div className="flex flex-col gap-2"><button className={BTNX} onClick={()=>ask({title:'Remove “'+ga.name+'” from this device?',msg:ga.cloud?'The cloud copy is kept, so you can unlock the account again from its group.':'This older account is not in the cloud, so it cannot be recovered once it is removed. Move it to the cloud first to keep it.',yes:'Remove account',onYes:()=>{ctl.del(ga.id,false);setSh(null);setGv(null)}})}>Remove from this device</button>
+    {ga.cloud&&<button className={BTNX} onClick={()=>ask({title:'Delete “'+ga.name+'” from the cloud too?',msg:'The account and all of its grades are erased from the cloud as well as this device.',next:'Continue',final:'This cannot be undone. The grades cannot be recovered on any device. Delete the account anyway?',yes:'Yes, delete everywhere',onYes:()=>{ctl.del(ga.id,true);setSh(null);setGv(null)}})}>Delete from the cloud too</button>}
     <p className="text-xs text-muted">{ga.cloud?'Removing from this device keeps the cloud copy, so you can unlock it again from its group.':'An account that is not in the cloud cannot be recovered after it is removed.'}</p></div></>}</Sheet>
 
   <Sheet open={!!sh&&sh.t==='report'} onClose={()=>setSh(null)} title="Report a Problem">{rp.done?<><p className="text-base font-bold">Thank you! Your report was sent.</p><p className="text-sm text-muted">The developers will take a look. You can send another one any time.</p><button className={BTNP} onClick={()=>setSh(null)}>Done</button></>:<>
@@ -1940,7 +1968,7 @@ function Root(){
  useEffect(()=>{try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}},[]); // ask the browser not to evict saved data and the session
  const setTheme=t=>{setTheme0(t);try{localStorage.setItem('gtf-theme',t)}catch(e){}};
  useEffect(()=>{document.documentElement.dataset.theme=theme;const m=document.querySelector('meta[name=theme-color]'),t=THEMES.find(x=>x.id===theme);if(m&&t)m.setAttribute('content',t.bar)},[theme]);
- const save=()=>{saveBook(bk.current);tick(x=>x+1)};
+ const save=()=>{dedupeBook(bk.current);saveBook(bk.current);tick(x=>x+1)};
  const acc=id=>bk.current.list.find(a=>a.id===id),grp=id=>bk.current.groups.find(g=>g.id===id);
  const fail=e=>setStat(navigator.onLine&&/^(get|put) [45]/.test(String(e&&e.message))?'error':'offline');
  const stamp=id=>{const a=acc(id);if(a){a.sy={...(a.sy||{}),at:Date.now()};saveBook(bk.current)}};
@@ -1969,7 +1997,7 @@ function Root(){
  const push=async id=>{const a=acc(id);if(!a||!a.cloud||bz.current['p'+id])return;bz.current['p'+id]=1;const t=(a.sy&&a.sy.t)||Date.now();let again=false;setStat('syncing');
   try{await cput(a.cloud.k,docOf(a,id,t));const b=acc(id);if(b){b.sy={...b.sy,t:b.sy&&b.sy.t||t,base:t,dirty:!!(b.sy&&b.sy.t!==t),at:Date.now()};again=b.sy.dirty;saveBook(bk.current)}setStat('synced');tick(x=>x+1)}catch(e){fail(e)}
   bz.current['p'+id]=0;if(again)push(id)};
- const dropLocal=id=>{bk.current.list=bk.current.list.filter(x=>x.id!==id);delete bk.current.data[id];if(curR.current&&curR.current.id===id){clearSession();setCur(null)}saveBook(bk.current);tick(x=>x+1)};
+ const dropLocal=id=>{const a=acc(id);if(a)purgeAccts([a]);tick(x=>x+1)};
  const sync=async id=>{const a=acc(id);if(!a||!a.cloud||bz.current['s'+id])return;if(!navigator.onLine){setStat('offline');return}bz.current['s'+id]=1;
   try{const r=await cget(a.cloud.k),sy=a.sy||{t:0,base:0,dirty:false};
    if(validDoc(r)&&r.g)hyd(a,r.g).catch(()=>{});
@@ -2026,9 +2054,9 @@ function Root(){
     const mid=ensureMid(a);await gwrite(g.cloud.k,'admins/'+mid,true);g.adm=[mid];g.first=false;save();pubM(a.id,g.id)}
    else{g.adm=[ensureMid(a)];g.first=false;save()}}catch(e){}
   claimRef.current[key]=0};
- const memRows=g=>{const adm=admOf(g),rows=[],seen=new Set(),me=cur&&cur.id;
-  bk.current.list.filter(a=>gidsOf(a).includes(g.id)).forEach(a=>{const ids=midsOf(a);ids.forEach(i=>seen.add(i));rows.push({key:a.id,aid:a.id,mid:a.mid||null,name:a.name||'Account',bio:a.bio,pic:a.pic,me:a.id===me,admin:ids.some(i=>adm.includes(i)),local:true})});
-  Object.entries(g.members||{}).forEach(([mid,m])=>{if(seen.has(mid))return;seen.add(mid);rows.push({key:mid,mid,name:m.n||'Account',bio:m.b,pic:m.p,admin:adm.includes(mid)})});
+ const memRows=g=>{const adm=admOf(g),rows=[],seen=new Set(),me=cur&&cur.id,locals=localAccts(bk.current.list,g.id);
+  locals.forEach(a=>{const ids=midsOf(a);ids.forEach(i=>seen.add(i));rows.push({key:a.id,aid:a.id,mid:a.mid||null,name:a.name||'Account',bio:a.bio,pic:a.pic,me:a.id===me,admin:ids.some(i=>adm.includes(i)),local:true})});
+  remoteCards(locals,g.members).forEach(m=>{if(seen.has(m.mid))return;seen.add(m.mid);rows.push({key:m.mid,mid:m.mid,name:m.n||'Account',bio:m.b,pic:m.p,admin:adm.includes(m.mid)})});
   adm.forEach(mid=>{if(!seen.has(mid)){seen.add(mid);rows.push({key:mid,mid,name:'Group admin',bio:'Not in the member list',admin:true,ghost:true})}});
   return rows.sort((x,y)=>(y.admin?1:0)-(x.admin?1:0)||(x.name||'').localeCompare(y.name||''))};
  const roleIds=r=>{if(r.aid){const a=acc(r.aid);if(a){ensureMid(a);return midsOf(a)}}return[r.mid].filter(Boolean)};
@@ -2121,8 +2149,21 @@ function Root(){
  const enable=async(id,sn,pw)=>{const a=acc(id);if(!a)return'Account not found.';if(!CLOUD)return NOCLOUD;if(!(sn||'').trim()||(pw||'').length<6)return'Use a passcode of at least 6 characters.';if(!navigator.onLine)return NEEDNET;
   try{const k=await ckey(sn,pw),ex=await cget(k);if(validDoc(ex))return'A cloud account with that name and passcode already exists. Choose a different passcode.';const t=Date.now();await cput(k,docOf(a,id,t));a.cloud={k,sn:sn.trim()};a.sy={t,base:t,dirty:false,at:Date.now()};save();pubLater(id);return'ok'}catch(e){return BADNET}};
  const disable=id=>{const a=acc(id);if(a){delete a.cloud;delete a.sy;delete a.loser;save()}};
- const del=async(id,everywhere)=>{const a=acc(id);if(!a)return;if(everywhere&&a.cloud){try{await premove(a.cloud.k)}catch(e){}for(const gx of gidsOf(a)){const g=grp(gx);if(a.mid&&g&&g.cloud){try{await gremove(g.cloud.k,'m/'+a.mid)}catch(e){}}}}
-  bk.current.list=bk.current.list.filter(x=>x.id!==id);delete bk.current.data[id];save()};
+ /* ---- takes accounts off this device AND clears the group state with them. Shared by Sign out, Remove from this device and Delete everywhere, so the group list on screen empties instantly (a group stays only while an account still on this device is linked to it, or it is a device-only group the removed account(s) never used) ---- */
+ const purgeAccts=ts=>{ts=ts.filter(Boolean);if(!ts.length)return;const ids=new Set(ts.map(a=>a.id)),linked=new Set(ts.flatMap(a=>gidsOf(a)));
+  ids.forEach(id=>{clearTimeout(tm.current[id]);clearTimeout(pm.current[id])});
+  bk.current.list=bk.current.list.filter(a=>!ids.has(a.id));ids.forEach(id=>{delete bk.current.data[id]});
+  const still=new Set(bk.current.list.flatMap(a=>gidsOf(a)));
+  bk.current.groups=bk.current.groups.filter(g=>still.has(g.id)||(!linked.has(g.id)&&!g.cloud));
+  claimRef.current={};
+  if(curR.current&&ids.has(curR.current.id)){clearSession();setCur(null)}
+  try{localStorage.removeItem('gtf-hv')}catch(e){}
+  save()};
+ const del=async(id,everywhere)=>{const a=acc(id);if(!a)return;
+  // remember what the cloud clean-up needs, then clear this device first (synchronously) so nothing lingers on screen while the network calls run
+  const ck=a.cloud&&a.cloud.k,mid=a.mid,gks=gidsOf(a).map(x=>grp(x)).filter(g=>g&&g.cloud).map(g=>g.cloud.k);
+  purgeAccts([a]);
+  if(everywhere&&ck){try{await premove(ck)}catch(e){}for(const k of gks){if(mid){try{await gremove(k,'m/'+mid)}catch(e){}}}}};
  const submitReport=async o=>{if(!CLOUD)return NOCLOUD;const m=(o.m||'').trim();if(m.length<10)return'Please describe the problem in a few words (10+ characters).';if(!navigator.onLine)return NEEDNET;
   try{if(Date.now()-(+localStorage.getItem('gtf-rpt')||0)<30000)return'Please wait a few seconds before sending another report.'}catch(e){}
   try{await dput('reports/r'+Date.now().toString(36)+uid(),{t:Date.now(),c:o.c||'bug',m:m.slice(0,1500),ct:(o.ct||'').trim().slice(0,120),ua:(navigator.userAgent||'').slice(0,160),v:APP_VER,th:theme,s:'open'});try{localStorage.setItem('gtf-rpt',String(Date.now()))}catch(e){}return'ok'}catch(e){return BADNET}};
@@ -2153,15 +2194,8 @@ function Root(){
   for(const a of ts){clearTimeout(tm.current[a.id]);clearTimeout(pm.current[a.id]);if(a.sy&&a.sy.dirty){if(!navigator.onLine)return'Some changes are not synced yet. Connect to the internet first so nothing is lost.';try{await push(a.id)}catch(e){}}}
   if(ts.some(a=>{const b=acc(a.id);return b&&b.sy&&b.sy.dirty}))return'Some changes could not be saved to the cloud yet. Try again in a moment.';
   for(const a of ts)await pubMid(a); // keep the account's member id in the cloud so signing in again re-uses the same member card
-  const ids=new Set(ts.map(a=>a.id)),linked=new Set(ts.flatMap(a=>gidsOf(a)));
-  bk.current.list=bk.current.list.filter(a=>!ids.has(a.id));ids.forEach(id=>{delete bk.current.data[id];clearTimeout(tm.current[id]);clearTimeout(pm.current[id])});
-  const still=new Set(bk.current.list.flatMap(a=>gidsOf(a)));
-  // clear the group state: a group stays only while an account that is still on this device is linked to it, or it is a device-only group the signed-out account(s) never used
-  bk.current.groups=bk.current.groups.filter(g=>still.has(g.id)||(!linked.has(g.id)&&!g.cloud));
-  claimRef.current={};
-  if(cur&&ids.has(cur.id)){clearSession();setCur(null)}
-  try{localStorage.removeItem('gtf-hv')}catch(e){}
-  save();return'ok:'+ts.length};
+  purgeAccts(ts); // same clearing as Remove from this device
+  return'ok:'+ts.length};
  // a group joined from Home while signed in is linked to the active account right away, so it follows the profile to every device
  const linkActive=gid=>{const a=activeAcct();if(!a||!gid||!grp(gid)||gidsOf(a).includes(gid))return;rename(a.id,{gids:[...gidsOf(a),gid]})};
 
