@@ -500,6 +500,7 @@ function useSwUpdate(){
 // shown in the required update dialog (newest first); edit this list for each release
 const RELEASE_NOTES=[
  {v:'v39',notes:[
+ 'Meet the Creators now shows just the names Josh and Jhon, with a short note about them and how Gradely began (the photos are gone)',
  'Edit account now has one Sign Out button that signs you out and removes the account and its groups from this device (the separate Remove from this device button is gone)',
  'Delete from the cloud moved out of Edit account into Profile › Settings › Account management, so it is much harder to tap by accident',
  'New updates now pop up on their own while the app is open or idle, without closing or refreshing it',
@@ -768,12 +769,17 @@ const TSL=[
  {t:'Add subjects and activities',d:'Add each subject in the Tracker, then list its quizzes and exams with their weights. A blank score counts as 0 until you enter it.',ic:IC.t,hint:'Tracker › Add subject'},
  {t:'Track and forecast',d:'Enter scores as they come in. The Overview shows your GWA, and every subject shows the score you still need to hit your target.',ic:IC.f,hint:'Overview, Tracker and Report'},
  {t:'Meet the Creators',creators:true,d:'Built with love (and a lot of caffeine) to help you survive and thrive this semester. Let’s get that GWA!'}];
-const CREATORS=[{n:'Joshua Carli Ipo',src:'icons/creator-joshua.jpg'},{n:'Jhon Roever Robea',src:'icons/creator-jhon.jpg'}];
+const CREATORS=['Josh','Jhon'];
 const CREATORS_MSG='Built with love (and a lot of caffeine) to help you survive and thrive this semester. Let’s get that GWA!';
-function CreatorsBody({d}){return <div className="flex w-full flex-col items-center">
- <div className="grid w-full max-w-xs grid-cols-2 gap-3">{CREATORS.map(c=><figure key={c.n} className="m-0 flex min-w-0 flex-col items-center gap-2"><img src={c.src} alt={c.n} width="480" height="600" draggable="false" className="aspect-[4/5] w-full rounded-2xl object-cover shadow-md ring-1 ring-line"/><figcaption className="text-sm font-extrabold leading-tight">{c.n}</figcaption></figure>)}</div>
- <span className="mt-3 rounded-full bg-accent/20 px-3.5 py-1.5 text-xs font-bold text-accent-text">UST-AMV Students</span>
- <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-muted">{d||CREATORS_MSG}</p></div>}
+const CREATORS_BIO='Josh and Jhon are students at the UST Alfredo M. Velayo College of Accountancy (UST AMV CoA).';
+const CREATORS_STORY='Gradely started out as just a personal project. They decided to release it because they thought it would be useful for everyone else, too.';
+// names only: no photos or avatars. full = the Meet the Creators pop-up (adds the bio and the story); the welcome tour shows the message and signature.
+function CreatorsBody({d,full}){return <div className="flex w-full flex-col items-center">
+ <div className="flex w-full max-w-xs items-center justify-center gap-3">{CREATORS.map(n=><div key={n} className="min-w-0 flex-1 rounded-2xl border border-line bg-ink/[.05] px-3 py-3 text-lg font-black leading-tight">{n}</div>)}</div>
+ <span className="mt-3 rounded-full bg-accent/20 px-3.5 py-1.5 text-xs font-bold text-accent-text">UST AMV CoA Students</span>
+ {full&&<><p className="mt-3 max-w-sm text-[15px] leading-relaxed">{CREATORS_BIO}</p><p className="mt-2 max-w-sm text-[15px] leading-relaxed text-muted">{CREATORS_STORY}</p></>}
+ <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-muted">{d||CREATORS_MSG}</p>
+ <p className="mt-1 text-sm font-extrabold">— Josh and Jhon</p></div>}
 function Onboarding({open,onClose}){
  const [i,setI]=useState(0),[dir,setDir]=useState(1),t0=useRef(null),n=TSL.length;
  useLock(open);
@@ -1536,9 +1542,7 @@ function CreatorsCard(){
    <div className="gcs relative max-h-[90dvh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-3xl p-5 text-center" style={{transition:'all .3s ease-in-out',opacity:v?1:0,transform:v?'translateY(0) scale(1)':'translateY(14px) scale(.95)'}}>
     <button onClick={closeIt} aria-label="Close" className={BTN+' !absolute right-3 top-3 !h-8 !w-8 !rounded-full !p-0 text-xs'}>✕</button>
     <h2 className="text-xl font-black tracking-tight">Meet the Creators</h2>
-    <div className="mx-auto mt-4 grid w-full max-w-xs grid-cols-2 gap-3">{CREATORS.map(c=><figure key={c.n} className="m-0 flex min-w-0 flex-col items-center gap-2"><img src={c.src} alt={c.n} width="480" height="600" draggable="false" className="aspect-[4/5] w-full rounded-2xl object-cover shadow-md ring-1 ring-line"/><figcaption className="text-sm font-extrabold leading-tight">{c.n}</figcaption></figure>)}</div>
-    <span className="mt-4 inline-block rounded-full bg-accent/20 px-3 py-1 text-xs font-bold text-accent-text">UST-AMV Students</span>
-    <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted">{CREATORS_MSG}</p>
+    <div className="mt-4"><CreatorsBody full/></div>
     <button onClick={closeIt} className={BTNP+' mt-4 w-full'}>Close</button></div></div>,document.body)}</>}
 
 /* =====================================================================

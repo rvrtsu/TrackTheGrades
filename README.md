@@ -1,0 +1,323 @@
+# Gradely (PWA)
+
+## v39.4 (creators text)
+- **Welcome message and Meet the Creators** now use only the names **Josh** and **Jhon** (signature "— Josh and Jhon"). All creator photos are removed from the app and from `icons/` and the offline cache.
+- **Meet the Creators** has a new bio: Josh and Jhon are students at the UST Alfredo M. Velayo College of Accountancy (UST AMV CoA), plus a short note that Gradely began as a personal project and was released because it should be useful for everyone else.
+- Service worker cache is `gradely-v39-4`.
+
+## v39.3 (simpler Edit account, Danger zone in Settings)
+- **One Sign Out button.** In Edit account, the separate "Remove from this device" button is gone. **Sign Out** now does both: it signs the account out and removes it, with its groups, from this device (the group list on Home clears instantly). Your grades stay in the cloud, so signing in again brings everything back. **Sign Out All** only appears when more than one cloud account is on the device. An older account that is not in the cloud uses the same button, with a warning that it cannot be recovered.
+- **Delete from the cloud moved.** It is no longer in Edit account. It now lives in **Profile > Settings > Account management** (a red "Danger zone" section for the signed-in cloud account), behind the same two-step confirmation. It erases the account and its grades from the cloud and from this device.
+- Service worker cache is `gradely-v39-3`. Open the app twice on each device so this update loads, or wait for the Update Available dialog.
+
+## v39.2 (duplicates, Remove account, proactive updates)
+- **No duplicate member cards.** Accounts and members are compared by their exact unique ids (account id, member id `mid` plus its aliases, and the cloud key) before they are listed or stored (`uniqBy`, `localAccts`, `remoteCards` and `dedupeBook` in `src/app.jsx`). A cloud member card is also treated as the signed-in account when it has the same sync name and display name, so the same person never shows twice in Home > group, in Manage members or in Profiles. `dedupeBook` also runs every time the book is loaded or saved, so an older duplicate already stored on a device is merged away.
+- **Remove from this device clears the groups.** Sign out, Remove from this device and Delete from the cloud too now all go through one function (`purgeAccts`): it removes the account, its pending sync timers and every group no remaining account uses, resets the group view, and updates the screen immediately (the cloud clean-up of Delete everywhere runs after that, in the background).
+- **Updates pop up on their own.** The app asks the server for a new `sw.js` every minute while it is open and visible, and again whenever the tab or app comes back, regains focus, reconnects or is restored from the back/forward cache. The service worker is registered with `updateViaCache:'none'` so the browser never reuses an old copy of `sw.js`. As soon as the new version has finished installing, the **Update Available** dialog appears, even if you are idle or in the middle of using the app.
+- Service worker cache is `gradely-v39-2`. Open the app twice on each device so this update loads; later updates then appear by themselves.
+
+## v39 header fix (top header pill on phones)
+- The undo/redo icons, the "2nd Year - 1st Sem" button and the right-side icons no longer collide on phones. Under 420px the round icon buttons are 32px with tighter gaps, the year-and-semester button is allowed to shrink (`min-w-0`, `max-w-full`) with smaller text, and its label truncates with an ellipsis only if there is truly no room (very narrow screens or long names). The full names are still in the dropdown. Wider screens are unchanged.
+- Service worker cache is `gradely-v39-headerfix`. Open the app twice on each device so the update loads.
+
+## v39 (state and UI fixes)
+- **Sign out clears the groups.** Signing out now removes the account and every group that no other account on this device uses (cloud groups you joined from Home without linking them included), and clears the pending sync and admin-claim state tied to it. A background sync that was still running can no longer put a signed-out account's groups back (`hyd` and `signOut` in `src/app.jsx`). Device-only groups that the signed-out account never used are kept. Your grades stay in the cloud, and signing in again restores your groups.
+- **Groups are listed per account owner.** Home > Your groups shows one section per account on the device, headed "Roever’s Groups", "Josh’s Groups" and so on. A group used by two accounts appears under both. Groups that no account here is linked to sit under "Other groups".
+- **No duplicate member after signing in again.** Each account keeps one stable member id, now also stored in its cloud document (`mid`), so signing in again re-uses the same member card instead of making a second one. If an older version already left a duplicate card, signing in verifies it with your sync name and passcode, removes the stale card and keeps its id as an alias so your admin role is not lost. Joining or hydrating a group re-checks the device's group list after every network wait, so the same group can no longer be added twice.
+- **Default weights are 50/50.** New accounts start with Prelims 50% and Finals 50% (`DEFP`). Every weight is still editable in Options > Grading System and in Settings. Accounts that already saved their weights keep them.
+- **Reorder subjects is now a pop-up.** The reorder list is gone from Options > Subject. The "1/9" counter on the subject card is now a button: tap it to open the **Reorder subjects** window with the same drag handles (mouse, touch, keyboard arrows), then tap Done. The drag now also works inside a scrolling pop-up (auto-scroll follows the pop-up) and can reach the first and last positions.
+- Service worker cache is `gradely-v39`. Open the app twice on each device so the update loads.
+
+
+Files: `index.html`, `app.js` (compiled app), `config.js` (**your database URL**), `manifest.json`, `sw.js` (offline cache), `icons/` (tiger logo + home-screen icons), `src/app.jsx` (readable source).
+
+## v38 step 1 wider (full-width Tracker Options)
+- **Less padding on phones.** Side space between the screen edge and the Reverse Calculator text went from about 78px to about 51px per side: the Options block pulls 8px into the page margin, and the Options panel, setting cards, yellow frame and calculator boxes each lost 4 to 6px of padding. Tablet and desktop spacing is unchanged.
+- **No narrow caps.** The `max-w-md` / `max-w-xl` / 16rem limits added in the last step are gone; every setting card, the yellow-bordered calculator and the weight grid are `w-full`.
+- **Stretching controls.** Period / Target / Raw-Base toggle buttons share each row equally (wrapping only if too narrow), the target input fills its row beside the unit, Fill / Clear buttons are full width, grade chips stretch, and the Base and Retention inputs grow to fill their rows.
+- Service worker cache is `gradely-v38-step1-wider`. Open the app twice on each device.
+
+## v38 step 1 fixed (mobile layout fixes)
+- **Reverse Calculator frame.** The yellow outline was a ring (box-shadow) that the folding Options panel clipped, so it looked like it spilled out. It is now a real `border-2` with `box-border`, `w-full max-w-full` and its own padding, so it always sits inside the card. The calculator no longer draws a second frame inside it.
+- **Reverse Calculator spacing.** The description has side padding and is centered. The three boxes have more padding and gap, and the Period / Target / Raw-Base toggles are taller with more space between buttons.
+- **Grading System weights.** Prelims / Finals rows are one strict grid (label column, input column, % column), so labels, boxes and % signs line up in straight columns.
+- **Centered Options.** The Subject, Grading System, Base Configuration and Forecasting cards have centered titles (icon and chevron balanced), a centered max-width column, and centered rows inside. The reorder list stays left-aligned.
+- Service worker cache is `gradely-v38-step1-fixed`. Open the app twice on each device.
+
+## v38 final (drag-and-drop reordering, Duplicate Subject)
+- **Drag to reorder.** The Move up / Move down buttons are gone. Tracker > Options > Subject > Reorder subjects is now a list of every subject in the semester (`ReorderList` in `src/app.jsx`). **Mouse:** drag anywhere on a row. **Touch and pen:** drag by the grip on the left; only the grip blocks page scrolling, so the page still scrolls normally everywhere else. The other rows slide out of the way, the dragged row lifts, and the page auto-scrolls when you drag near the top or bottom edge. **Keyboard:** focus the grip and use the arrow keys (Home / End jump to the ends); Escape cancels a drag. One move is one Undo step, and the tabs and the Overview list follow the new order.
+- **Duplicate Subject.** A button under the reorder list copies the current subject (code gets "(copy)", units, kind, Grading System weights, Base and its mode, retention, every activity with its scores and what-if values) with fresh ids and appends it to the end of the current semester. The copy becomes the current subject with its Options open. One Undo removes it.
+- Service worker cache is `gradely-v38-final`. Open the app twice on each device so the update loads.
+
+## v38 step 1 (layout fixes, Settings auto-scroll, side navigation)
+- **Reverse Calculator on phones.** Period, Target scale and Raw/Base toggles use a wrapping control (`SegW` in `src/app.jsx`): the buttons share a row when they fit and wrap onto a second row when they do not, so "Prelims | Finals | Semestral" can never overflow or overlap. The calculator no longer draws a second bordered card inside the Forecasting card on phones, and each of its three boxes has more padding.
+- **Tracker Options.** Subject, Grading System, Base Configuration and Forecasting now sit in a single centered column of equal width (no more half-empty second column), with `min-w-0` and wrapping on their text and inputs so nothing overflows. Padding between the nested cards was trimmed on phones to give the controls more room.
+- **Bottom of the Tracker.** An extra spacer (plus the safe-area inset) sits below the last card so the navigation bar never covers **Delete subject**.
+- **Replay tutorial.** The pill button at the top of the Tracker is gone. A faint "Replay tutorial" text link is at the very bottom of the Tracker page. Profile > Settings > Tutorial is unchanged.
+- **Settings auto-scroll.** In Profile > Settings > Years and semesters, **+ Year** and **+ Semester** glide (smooth `scrollIntoView`) to the new year or semester row, and deleting one glides back to the Years and semesters section. Devices set to "reduce motion" jump instead of gliding.
+- **Side navigation.** The bottom bar is still the default. On screens 768px wide and up, a round button beside the bottom bar (and a **Navigation layout** switch in Settings > Appearance) moves the navigation to a floating side bar: icons only on iPad widths, icons with labels from 1024px. The page leaves room for it (`.snav` and `.snav-shell` in `index.html`). The choice is saved on the device (`gtf-nav`). Phones always use the bottom bar, even if the side bar was chosen on a larger screen.
+- Service worker cache is `gradely-v38-step1`. Open the app twice on each device so the update loads.
+
+## v37 final (Phase 3)
+- Tracker: subjects can be moved up or down (Options > Subject > Reorder subjects). The tab bar and the Overview list follow the new order.
+- Tracker: Grading System, Base Configuration and Forecasting inside Options each open and close on their own.
+- Reverse Calculator redesigned into boxes: Period (Prelims / Finals / Semestral), Target grade (100% scale or 5-point scale, remembered per period) and What you need.
+- The result names every blank activity: "To attain the grade of [Target], [Activity] must be [Score], ...". Semestral = Prelims + Finals and uses the final grade after Base.
+- "Fill scores into table" writes the needed scores as Possible scores; "Clear possible scores" removes them.
+- Service worker cache is `gradely-v37-final-fixed` (Home View more / View less spacing and a faster 0.2s collapse).
+
+## v37 step 2 UI fixes
+- **Card depth.** Profile, group and locked cards (`.pcard` in `index.html`) have a layered soft shadow in every theme: ink-tinted in Light, deeper black in Dark (`--cshd`, `--cshdh` for hover).
+- **Lock badge.** The solid white circle is gone. The lock is drawn directly over the avatar with a surface-colored fill, a halo and a soft drop shadow.
+- **Bios.** One line only, with an ellipsis. Every card now has the same four rows (avatar, name, status, bio) at fixed heights, so bios line up across a row. Locked cards show "Locked" as their status so they match.
+- **Sign Out moved.** Home no longer has Sign Out buttons. Open **Edit** on an account card: the **Sign out** box has **Sign Out** (this account) and **Sign Out All**. When signed in, Sign In and Create Account stay folded inside Profiles > View more.
+- **Compact section headers.** The Profiles and Your groups icons are gone. The titles are larger (`text-xl`, `sm:text-2xl`) and centered, with minimal padding in the header, View more toggle, panel body and divider.
+- **Check for updates.** New Quick actions chip (after Sync now), same `.qa-chip` styling and animations as the others. It asks the service worker to look for a new version (`useSwUpdate().check` in `src/app.jsx`). The Home status chip reports Checking, Up to date, Update ready (the usual Update Available banner then appears), Offline or Error, and the chip is disabled while it checks.
+- Service worker cache is `gradely-v37-step2-final-uifixes`.
+
+## v37 step 2 fix: theme colors
+- **Restored:** Blue, Green and Monochrome were still defined but missing from the Color row; they are back. **Classic** returns as a new ivory-and-navy look (burgundy accent glow, gold accent in Dark).
+- **New:** Teal, Sky, Indigo, Rose, Orange, Peach, Lime and Slate. The picker now has 18 colors, and every one has a Light and a Dark version (`*dk` ids), so Color and Mode stay independent.
+- **Off-white Light mode** applies to all of them: page, card and tint tokens are faint tints of each color (none is pure white). Tokens live in `index.html`, the list in `THEMES` and `COLORS` in `src/app.jsx`. Dark ids are also in the glass and `--warn` lists.
+- Service worker cache is `gradely-v37-step2-fixed`.
+
+## Earlier in v37 (step 1: themes, Quick actions, tiger watermark)
+- **Color and Mode are separate.** The theme picker (Home > Themes, and Profile > Settings > Appearance) now has a **Color** row (Yellow, Maroon, Pink, Lavender, Mint and the new **Brown**) and a **Light / Dark** switch. Every color has a light and a dark version, so changing one never changes the other. The saved value is still a single theme id (`gtf-theme`), so existing installs keep their look. Devices that had the older Blue, Green or Classic themes keep them until a new color is picked.
+- **Off-white Light mode.** No light theme uses pure white for the page or the cards any more. Each one is a very faint tint of its own accent (warm for Yellow and Brown, cool for Lavender and Mint, rosy for Pink and Maroon). All tokens live at the top of `index.html`.
+- **Quick actions carousel.** Order: Dark/Light toggle, How it works, Join with code, Themes, Sync now, Reset Site Data, Report a problem (Install app is added last when the app is not installed). It no longer scrolls natively: the chips are measured, grouped into pages that fit, and the **left / right arrows** (or a swipe) fade and slide between pages. If everything fits, the arrows disappear. The arrows are flush with the card edges and the card clips its content, so hover states follow its curve. Styles are the `.qa-*` classes in `index.html`; the logic is `QuickCarousel` in `src/app.jsx`.
+- **Reset Site Data.** Asks twice, then clears this site's saved data on the device (local storage, session, offline cache, service worker and IndexedDB) and reloads. Cloud accounts are not touched and can be signed in to again; anything saved only on the device is lost.
+- **Tiger watermark.** A cartoon tiger head, drawn as a white translucent outline, peeks from the top-right corner of the Gradely title card (`TigerWatermark`, `.tiger-wm`). It sits behind the text and the title row is sized so it never meets the intro text, from 320px wide up.
+- **Meet the creators** at the bottom of Home is now a quiet text link (no photos). It opens the same pop-up.
+- Service worker cache is `gradely-v37-step1`. Open the app twice on each device so the update loads. The Tracker and sign-in logic are unchanged in this step.
+
+## What's new in this version (v37, step 2: Home auth states, Sign Out, centered cards)
+- **Profiles when signed in.** "Signed in" means at least one cloud account is on this device. The heading row then shows **Sign Out** (the active account) and **Sign Out All** in the same single, non-scrolling two-button row, in the slot where Sign In used to be. **Sign In** and **Create Account** move inside the **View more** fold (use them to add another account). Signed out, the heading shows Sign In and Create Account as before.
+- **Sign out.** Each option asks first. It removes the account(s) from this device only; nothing is deleted from the cloud. Groups that only the signed-out account(s) linked leave the device with them, and signing in again brings everything back. The active account is the most recently opened cloud account (a small **Active** tag shows on its card when several accounts are signed in). If an account has unsynced changes, Gradely pushes them first and refuses to sign out while offline so nothing is lost.
+- **Groups when you have one.** As soon as a group is on the device, **Join Group** and **Create Group** move inside the Your groups **View more** fold to save space; with no groups they stay in the heading.
+- **Auto-linking.** Sign-in (and every sync) still pulls each group listed on the account's cloud document onto Home and links it to the profile; the sign-in message now counts groups that were already on the device but newly linked. A group joined from Home with a code or name and passcode while signed in is now linked to the active account straight away, so it follows the profile to other devices.
+- **Orphan cards.** In the two-column `.g2` grid (`index.html`), a card that is alone in its last row (1 profile, 1 group, 3, 5...) spans the grid and is centered at exactly one column's width.
+- The Tracker is unchanged in this step. Service worker cache is `gradely-v37-step2`. Open the app twice on each device so the update loads.
+
+## Previous version
+### Earlier (v36 final: compact Home and tutorial fix)
+- **Tutorial buttons.** **How it works** on Home opens the original welcome tour (the carousel that ends with Meet the Creators). The Home header no longer has a Tracker tutorial button. The Tracker tutorial opens only from inside the **Tracker** tab (**Replay Tutorial**), from **Profile > Settings > Tutorial**, and by itself the first time you visit the Tracker.
+- **Meet the Creators pop-up.** On Home it is now a slim card. Tapping it opens a centered pop-up dialog with a fade and scale animation (close with the X, the Close button, a tap outside, or Escape).
+- **Compact Home.** Smaller paddings, margins and type on every Home card, panel and heading, with no dead space.
+- **Two cards per row.** Account and group cards use a two-column grid (`.g2` in `index.html`: `grid-template-columns: repeat(2, 1fr); gap: 10px`), on Home and inside a group.
+- **Slim Quick actions.** Quick actions are a separate, very slim card directly under the title card: **How it works**, **Join with code**, **Report a problem**, **Sync now** (plus **Themes** and **Install app** when available) in one horizontal, scrollable row with hidden scrollbars.
+- **Smooth transitions.** Collapsible areas (`.acc`) and the Creators dialog use `transition: all .3s ease-in-out`.
+- Service worker cache is `gradely-v36-final`. Open the app twice on each device so the update loads.
+
+## Earlier (v36, step 2: tutorial, cleanup and recovery)
+- **Interactive Tracker tutorial.** A swipeable, six-slide walkthrough built on **sample subject cards** (it never reads or writes your real account). It shows how to switch subjects (swipe, tap the arrows, or use the arrow keys), add scores (the percent and grade update as you type), open **Options** (the Subject, Grading System, Base Configuration and Forecasting bubbles) and use the **Reverse Calculator**. It opens by itself the first time you visit the Tracker (remembered per device) and can be replayed from **Profile › Settings › Tutorial** and the **Replay Tutorial** button at the top of the Tracker tab. The original welcome tour is still there as **Replay welcome tour**. The older one-off Tracker tips are retired because the tutorial covers them.
+- **Changelog cleanup.** The update dialog and its **Previous updates** list now pass every note through a filter before it is shown. Any note (or whole version) that mentions developer sign-in, developer accounts, API keys, credentials or similar internal wording is hidden, so future release notes can never expose developer details to students. The filter lives next to `RELEASE_NOTES` in `src/app.jsx` (`DEV_TRACE`). Old notes that named the developer account were also removed from the source.
+- **No hardcoded developer login.** The developer username, email and password were removed from the app, the update notes and this README. The dashboard relies strictly on a Firebase Authentication session: you sign in with the email and password of your own Firebase user (Part 4) and the header simply reads **Developer session**. Nothing in the app checks a fixed name; Firebase and your database rules decide who the developer is.
+- **Undo, Redo and Recently deleted (developer dashboard).** The dashboard has **Undo** and **Redo** buttons (also **Ctrl/Cmd+Z** and **Ctrl/Cmd+Shift+Z**, or **Ctrl+Y**; they are ignored while you type in a text box). Every change is recorded: edits, join codes, admins, members, deletes and report status. Undoing an edit only puts back the fields you changed, so it never overwrites grades a student saved meanwhile. **Recently deleted** keeps deleted groups, accounts, members, join codes and reports (latest 30, up to 30 days) with a one-tap **Restore**. The copy is saved in your database under `devtrash` and `devtrashidx` (only the developer can read them; the existing developer rule already covers it, so no new rules are needed). If that save fails, the item is kept in **session memory** and marked "this session only", and Undo/Redo keep working locally. Signing out clears session memory.
+- Service worker cache is `gradely-v36`. Open the app twice on each device so the update loads.
+
+### Earlier (v36, step 1: Home redesign)
+- **Home header.** The flush app bar is now a standalone, curved card that matches the rest of the app. The logo is gone from Home; a large, centered **Gradely** title leads, followed by a short intro ("Track, forecast, and ace your grades effortlessly...") and a small sync status chip. **How it works**, **Join with code** and **Report a problem** (plus **Sync now**, **Themes** and **Install app** when available) now sit inside a collapsible **Quick actions** menu in the card. It scrolls with the page instead of staying fixed.
+- **Profiles first.** Home now opens with a **Profiles** panel (subtitle plus **Sign In** and **Create Account** in its heading), a divider, then a **Your groups** panel (subtitle plus **Join Group** and **Create Group** in its heading). The old "Add a group or account" block, the **How this app works** link and the bottom **Report a Problem** button are gone, because the header and the panel headings already hold them. Account and group cards sit two per row on phones. The **Profiles** and **Your groups** descriptions show in full when no account is on this device; once you are signed in they fold away behind a small **View more** toggle. Headings, cards and empty states are centered with more whitespace.
+- **Groups follow your account.** Sign In now works straight from Home (no group needed). Each cloud account document stores the list of groups it belongs to (a small `g` field next to `t`, `d`, `n`, `e`, `p`, `b`), so signing in on any device adds all of them to **Your groups** automatically. Devices that already have the account pick up groups added elsewhere the next time they sync. It only ever adds groups; nothing is removed from another device. **The Firebase rules do not need to change** (the existing `$other` rule already allows the new field), and older accounts gain the field the next time they join or leave a group.
+- Panel styles (`.panel`, `.panel-hd`) live in `index.html`. Service worker cache was `gradely-v36-step1`.
+
+### Earlier (v31)
+- **Home header redesign.** The pill is replaced by a flush, full-width Material-style app bar (soft translucency, slight tint, elevation, no glow). It is large at the top of the page (big icon, divider, **Gradely** and the tagline) and condenses as you scroll, swapping the tagline for your sync status. A quick-action row holds **How it works** (tutorial), **Join with code**, **Install app** (when not installed) and **Report a problem**; Refresh and Theme are icon buttons. It keeps clear of the notch and Dynamic Island. Service worker cache is `gradely-v31`.
+
+### Earlier (v29)
+- **New home header.** The top of the home screen is now a floating glass pill: tiger icon, a hairline divider, **Gradely** and the tagline "Track, Forecast, and Ace your Sem". It sticks below the status bar and respects the notch and Dynamic Island (safe-area inset, with a 3rem minimum when installed on a phone).
+- Service worker cache is `gradely-v29`.
+
+### Earlier (v28)
+- **Cloud only.** The "local only" account and group options are gone. Every new group and account is created in your Firebase database. Older accounts and groups that were saved only on a device still open; edit them on the home screen and use **Move to the cloud** to keep them.
+- **Join with a code.** Every new group gets a short 6-character code (for example `K7M-Q2X`). Tap **Join Group** on the home screen and type it to join instantly. The group screen shows the code with **Copy code** and **Copy invite link** (the link opens the join box with the code filled in). Admins can make a new code from Edit group. Older groups show **Generate join code** to admins.
+- **Creator = admin.** Creating a group also creates (or reuses) your account and makes it the group admin. There is no separate admin account to set up.
+- **Themes.** **Yellow Dark** is the default for new installs (devices that already picked a theme keep it). Red is now a deeper **Maroon**. **Pink**, **Lavender** and **Mint** are new, each with a Light and a Dark version. The theme picker groups them by colour.
+- **Report a Problem.** A button on the home screen sends a bug report to `reports/` in your database.
+- **Developer dashboard.** Sign in from the small **Developer sign-in** link with your Firebase developer user. The dashboard lists bug reports (status, notes, delete), groups (rename, join code, members, admins, delete) and accounts (name, bio, raw data, delete). See **Part 4**. **You must publish the new rules in Part 1 and do Part 4 for it to work.**
+- **UI.** **Hide Prelim Grades** now appears only in the report card export. **Meet the Creators** on the home screen is a large collapsible card. The Tracker has a small **Replay Tutorial** button.
+- Service worker cache is `gradely-v28`. Open the app twice on each device so the update loads.
+
+### Earlier (v23)
+- **No more lock screen media controls.** The sound engine is removed completely: no hidden `<audio>` element (the silent-WAV trick), no `navigator.audioSession`, no Web Audio context, and no media session. iOS no longer sees the app as an audio source. The "Sound effects" switch and "Play test sound" button are gone from Settings; haptics (vibration) and confetti stay.
+- **Home button in the Tracker header.** A 40x40 house icon sits beside the year/semester pill and returns to the Overview tab. The pill truncates long names, and on screens under 360px the side buttons shrink slightly so nothing squeezes.
+- Release notes and update dialog list both changes. Service worker cache is `gtf-v23`. Calculation logic is unchanged.
+
+### Earlier (v22)
+- **Base check.** The Base value and the At the end / Per term switch were audited end to end (input, saved subject, semestral math, breakdown, Report, forecaster). With valid scores and a Base the formulas run correctly in both modes (for example Prelim 80, Final 90, 40/60, Base 50 gives 93).
+- **Per term is now visible.** In Per term mode the Tracker's Prelims and Finals cards show each period grade after Base (80 shows as 90, with "After Base · raw 80"). Both modes still reach the same semestral grade because the formula is linear and weights are scaled to 100%.
+- "Fixed Base grade calculation" added to the release notes. Service worker cache is `gtf-v22`.
+
+### Earlier (v21)
+- **Tracker blank-screen fix.** The v20 edit accidentally removed three Tracker functions (`Options`, `Reverse`, `PeriodBlock`), so opening the Tracker crashed. They are restored, and the whole file was scanned for any other undefined names.
+- **Safer grade math.** Same formulas, but every step now tolerates missing subjects, periods, activities and NaN values (`null` instead of a crash). A period with no scores shows a dash on the Tracker cards too.
+- **Error boundary.** Each tab (and the app as a whole) is wrapped, so a failure shows "Failed to load this section" with **Try again** and **Reload app** instead of a white screen.
+- **Required update dialog.** A new version now opens a full-screen blocking dialog (`z-[9999]`) with release notes and a single **Refresh & Update Now** button. There is no close button, and tapping outside or pressing Escape does nothing. Edit the `RELEASE_NOTES` array in `src/app.jsx` for each release.
+- Service worker cache is `gtf-v21`. The Firebase rules do not need to change.
+
+### Earlier (v20)
+- **Base application toggle (per subject).** In a subject's Options, directly beside the Base box, choose **At the end** (default) or **Per term**.
+  - *At the end:* Raw Combined = (Prelim × Prelim weight) + (Final × Final weight), then Final Semestral = (Raw Combined / 100) × (100 − Base) + Base.
+  - *Per term:* Transmuted Prelim = (Prelim / 100) × (100 − Base) + Base, the same for Finals, then Final Semestral = (Transmuted Prelim × Prelim weight) + (Transmuted Final × Final weight).
+  - The choice is saved per subject (`bmode`) and syncs with the account. Period weights are still scaled to 100%, as before. The Semestral breakdown in Options shows the working for the selected method.
+- **Blank grading periods stay blank.** A period with no scores entered at all (Prelims or Finals) now shows a dash on the Report Card and is left out of the GWA, instead of showing 5.00. Once at least one score is entered in a period, blank activity rows inside it still count as 0. The Finals (semestral) column needs every period to have at least one score.
+- Service worker cache is `gtf-v20`. The Firebase rules do not need to change.
+
+### Earlier (v18)
+- **Group admins.** The person who creates a group is its admin. Only admins see **Group passcode** (including the recovery email) and the new **Manage members** section in Profile and Settings. In Manage members an admin can make a member an admin, remove admin access, step down, or **transfer adminship** (a second "Final warning" step confirms the transfer). A group always keeps at least one admin, and the last admin cannot step down. The cloud copy of a group stores its admins at `groups/<key>/admins`, so every device agrees, and each change re-reads the newest list from the cloud first. Only admins see the cloud-wide "Delete group from the cloud too" button on the home screen.
+  - *Groups that already existed:* the first account that opens the group after this update becomes its admin (a device that joined the group never claims it). If that is the wrong person, they can transfer adminship from Manage members.
+  - *Honest limit:* the database rules in Part 1 are open (anyone with the group's link can write), so admin rights are enforced by the app, not by the database. This is fine for a classmates' group. Real server-side enforcement would need Firebase Authentication.
+- **Double confirmation for every delete.** Deleting a group, account, subject, year, semester, grading period, activity or grade-table row, clearing scores, clearing the past record and removing a picture all open a confirmation dialog first. Nothing deletes on a single tap. Cloud-wide deletes (group for everyone, account from the cloud) and adminship transfer add a second **Final warning** step. Escape or Cancel always backs out.
+- **Blank scores count as 0.** An activity that has a weight but no score is treated as a score of 0 in every grade, GWA and report, and its weight stays in the total. Activities show "blank · counts as 0". The Forecaster still treats blank scores as the open slots it solves for, so "what do I need on the rest" keeps working.
+- **Welcome tour.** A five-step Apple-style carousel (swipe, arrow keys or Next) opens once on a brand-new install. It covers groups, accounts, subjects and activities, and tracking and forecasting. Devices that already have accounts do not see it. Replay it from Profile and Settings (Replay tutorial) or from the home screen (How this app works).
+- Service worker cache is `gtf-v18`. The Firebase rules do not need to change.
+
+### Earlier (v18 part 2)
+- **Multiple groups per account.** One account can now belong to several groups at the same time. Add it to more groups from Edit account (tick the groups), from a group's "or add an existing account" link, or from the new switcher. Unlocking or signing in to an account that is already on the device from a second group adds that group instead of moving the account. Cloud group directories list the account in every cloud group it belongs to. Removing a group only removes that membership; an account keeps its other groups.
+- **Group and account switcher (no sign-out).** The button at the top right of the app now opens a sheet with your joined groups (tap one to make it the active group), the accounts in the active group (tap to switch account), an "Add" button for groups the account is not in yet, and "All groups and accounts" to go back to the home screen. The Profile tab shows the active group, and the group passcode settings follow the active group.
+- **Persistent login.** The signed-in state, the active account id and the active group id are saved in `localStorage` (`gtf-session`, plus `gtf-auth`, `gtf-active-account`, `gtf-active-group`). On every open, refresh or update the exact session is restored and the home screen is skipped. The last tab you used is restored too. The session is cleared only when you tap "All groups and accounts" (or remove the account). The app also asks the browser for persistent storage so the saved data is not evicted.
+  *Note on Firebase Auth:* this app talks to the Realtime Database over REST with passcode-hashed keys and does not load the Firebase Auth SDK, so there is no `setPersistence()` call to make. The saved session above is the equivalent of `browserLocalPersistence` (it is tagged `persistence: "browserLocalPersistence"` in the stored session).
+- **PWA auto-update.** A new service worker now installs quietly and waits. The app detects it and shows an **"Update Available! Tap to refresh"** banner. Tapping it sends `SKIP_WAITING`, the new worker calls `self.skipWaiting()`, and the page reloads once on `controllerchange` with the newest files, with your session intact. The app also checks for updates when it is reopened, when the device comes back online and every 20 minutes. The worker installs with `cache: 'reload'` so it never caches stale files. Service worker cache is `gtf-v18-part2`.
+- **One-time transition:** devices still running the old v18 part 1 worker pick this version up the usual way (open the app twice). From then on updates use the banner.
+- Grade formulas, Firebase sync, passcodes and Firebase rules are unchanged (the rules do not need to change).
+
+### Earlier (v18 part 1)
+- **Collapsible grade format (Report tab).** The Prelims and Finals switches (5-Point Scale or Percentage) now live in a slim "Grade format" row that expands on tap. Its subtitle always shows the current choice, so the top of the report card stays clean.
+- **Buttery subject swipes (Tracker).** Only the card body moves, while the subject tabs stay put. The card follows your finger, glides out and the next subject glides in using transform and opacity only (GPU accelerated, `will-change`), with an iOS-style ease-out. Edges rubber-band and bounce back, rapid taps retarget instead of stacking, and reduced-motion is respected.
+- **Manage years and semesters.** Profile and Settings, Years and semesters, now has an "Order and removal" list: move any year or semester up or down (rows glide to their new place) and delete one with a confirmation. At least one year, and one semester per year, is always kept. Deleting is undoable with Undo. A "Reorder or delete…" shortcut is also in the year and semester dropdown at the top.
+- Grade formulas, Firebase sync, passcodes, groups and rules are unchanged. Service worker cache is `gtf-v18-part1`.
+
+### Earlier (v17)
+- **Compact Overview.** Past record and Target GWA now sit inside the Cumulative All-Year GWA card as slim accordions. The greeting, All-Year card and the Prelims and Finals GWA cards fit on one phone screen, and the Prelims and Finals cards stay side by side.
+- **Compact subject cards.** Overview subject cards are one slim row each with Prelims and Finals visible immediately. In the Tracker the Prelims, Finals and Semestral cards are one row (the semestral card still leads with the grade equivalent and shows the percentage under it).
+- **Activity editor fixed on phones.** The activity name shrinks, and the weight box, the % sign and the remove button always stay on screen (tested down to 320 px wide).
+- **Report tab: independent formats.** Prelims and Finals each have their own switch: 5-Point Scale or Percentage. You can show Prelims as percentages and Finals as grades, or the other way round. The GWA totals follow each column (in Percentage mode they show the unit-weighted average percentage). The choice is remembered on the device. On a percentage-scale profile only percentages are shown.
+- **Export as Image has 4 designs:** Minimalist Light, Premium Dark, Classic Academic and Current theme (your app colours). Pick one in the export sheet and the preview updates. The export uses the same column formats and decimals as the Report tab.
+- **New default grade table** (used by every new account, group and subject, and by any account that has not edited its own table): 96 = 1, 94 = 1.25, 92 = 1.5, 89 = 1.75, 88 = 2, 84 = 2.25, 82 = 2.5, 78 = 2.75, 75 = 3. Accounts that saved their own custom table keep it. To switch an existing account to the new table: Profile and Settings, Highest possible grade, Reset to preset.
+- **GWA decimals.** Every GWA now shows 3 decimals by default (for example 1.664). Choose 2, 3 or 4 in Profile and Settings, GWA decimal places. The choice is saved with the account. Single subject grades (1.75, 2.25) still show 2 decimals.
+- Grade formulas, Firebase sync, passcodes and groups are unchanged, and the Firebase rules do not need to change.
+
+### Earlier (v16)
+Soft glass look, centred homepage, Report tab, Forecast tab removed, Overview holds all GWA metrics, collapsible Profile and Settings.
+
+**Important:** (this note is from an older version) the Firebase rules above do not need to change. Changing an account or group passcode moves its cloud copy to a new key, so other devices must remove that account (or rejoin that group) and unlock it again with the new passcode.
+
+## Part 1: Create the free database (about 5 minutes)
+1. Go to **console.firebase.google.com**, click **Create a project**, turn Google Analytics off.
+2. **Build → Realtime Database → Create Database** (pick **Singapore**), start in **locked mode**.
+3. Open the **Rules** tab, replace everything with this, and click **Publish**. Replace `PASTE_YOUR_DEVELOPER_UID` with the **User UID** of your developer user from Part 4 (skip Part 4 for now and the two developer lines simply match nobody). If you published the older rules that matched an email address, they keep working; switch to the UID version whenever it suits you (**v28 adds `codes`, `reports` and the two developer lines at the top**, so republish even if you already have older rules):
+
+```json
+{
+  "rules": {
+    ".read": "auth != null && auth.uid == 'PASTE_YOUR_DEVELOPER_UID'",
+    ".write": "auth != null && auth.uid == 'PASTE_YOUR_DEVELOPER_UID'",
+    "sync": {
+      "$key": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$key.length == 64 && newData.hasChildren(['t','d'])",
+        "t": { ".validate": "newData.isNumber()" },
+        "d": { ".validate": "newData.isString() && newData.val().length < 900000" },
+        "$other": { ".validate": true }
+      }
+    },
+    "groups": {
+      "$key": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$key.length == 64"
+      }
+    },
+    "codes": {
+      "$code": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$code.length == 6 && newData.hasChildren(['k'])"
+      }
+    },
+    "reports": {
+      "$id": {
+        ".write": "!data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['t','m']) && newData.child('m').isString() && newData.child('m').val().length < 2000"
+      }
+    }
+  }
+}
+```
+
+**What these rules do:** students can only reach a group, account or join code if they know its key or code, exactly as before. The two new top rules let only the developer user (Part 4) list and change everything. Anyone can *send* a bug report, but only the developer can read, change or delete reports. (`codes` is open like `groups`, so a person who knows a code can use it. Admin rights are enforced by the app, not the database, as noted in v18.)
+
+4. On the **Data** tab copy the database URL (like `https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app`).
+
+## Part 2: Put the URL in the project
+Open `config.js`, replace the placeholder URL (keep the quotes), then upload **every file in this folder** to your GitHub repository (replace the old ones, keep `icons` and `src`). Wait about a minute, then open the app twice on each device so the new version loads.
+
+## Part 3: Use groups and accounts
+- **Create a group:** home screen → **Create Group** → name, icon or picture, a **group passcode**, and your own name and **account passcode** (or pick an account already on the device). You become the admin automatically, and the group gets a **join code**.
+- **Join a group:** home screen → **Join Group** → type the 6-character code (or open an invite link). Its accounts appear as 🔒 cards; tap one and enter that account's passcode to unlock it, or use **New Account** to add yours. No code? Use the group name and passcode link in the same box.
+- **Create an account:** open the group → **＋ New Account** → name, bio, picture and an **account passcode**. It is saved to the cloud.
+- **Privacy:** a group only lists cards (name, bio, picture, sync name). Account grades stay behind each account's own passcode. Use long passcodes.
+
+## Part 4: Developer dashboard (one-time setup)
+The dashboard needs Firebase Authentication so only the developer can read every group and account. No developer name, email or password is stored in the app: Firebase checks the sign-in, and your database rules decide who counts as the developer.
+1. Firebase console → **Build → Authentication → Get started → Sign-in method** → turn on **Email/Password**.
+2. **Users → Add user**: use an email address you own and a strong password of your choice. Copy the user's **User UID** from the Users table.
+3. Back in **Realtime Database → Rules**, paste that UID in place of `PASTE_YOUR_DEVELOPER_UID` (Part 1) and **Publish**.
+4. **Project settings → General** → copy the **Web API key** and paste it between the quotes after `apiKey` in `config.js`.
+5. Optional but recommended: **Authentication → Settings → User actions** → turn off **Enable create (sign-up)**, so nobody else can register users. In Google Cloud, you can also restrict the API key to your website address.
+6. Open the app → **Developer sign-in** (bottom of the home screen) → enter your developer email and password. The session is remembered on that device until you tap **Sign out**, and the dashboard header shows **Developer session**.
+
+**Undo and recovery.** The dashboard toolbar has **Undo**, **Redo** and **Recently deleted** (see "What's new" above). Restoring a deleted account puts its cloud copy back; a device that already removed it can get it again by signing in with its passcode.
+
+Deleting an account from the dashboard leaves a small marker so other devices drop the account instead of uploading it again.
+
+## Tiger logo and home-screen icon
+Files (already in `icons/`): `tiger.svg` (vector), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` (180), `favicon-32.png`.
+
+**To change or refresh the icon:**
+1. Replace the PNG files in `icons/` with your new artwork using the **same file names and sizes** (192, 512, 512 with ~20% padding for *maskable*, and 180 with no transparency for `apple-touch-icon.png`). To re-export from the SVG: `npx sharp-cli -i icons/tiger.svg -o icons/icon-512.png resize 512` or any editor.
+2. `manifest.json` already points to them, so no edit is needed unless you rename a file. If you do, update the `src` entries in the `icons` array and the matching `<link rel="apple-touch-icon">` / `<link rel="icon">` lines in `index.html`. Colours: `background_color` is `#FFFFFF`, `theme_color` is `#FACC15`.
+3. In `sw.js` raise the cache number (for example `const CACHE = 'gtf-v18'` to `'gtf-v19'`) so devices download the new icons.
+4. Upload, then on each device **delete the old Home Screen icon and add it again** (iPhone/iPad: Share → Add to Home Screen; Android: Install app). iOS keeps the old icon until you re-add it.
+
+**Inline SVG for the UI** (this is the `TigerLogo` component in `src/app.jsx`; paste this anywhere in HTML and size it with CSS):
+
+```html
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tiger paw and open book"><defs><linearGradient id="bg" x1="0.15" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#FFE27A"/><stop offset="1" stop-color="#F59E0B"/></linearGradient><clipPath id="tile"><rect width="512" height="512" rx="116"/></clipPath></defs><rect width="512" height="512" rx="116" fill="url(#bg)"/><g clip-path="url(#tile)"><g fill="#2A1A05">
+  <path d="M-10 96C64 100 120 124 160 168C108 148 46 142 -10 146Z"/>
+  <path d="M-10 214C38 216 76 230 100 256C70 246 30 244 -10 248Z"/>
+  <path d="M-10 330C34 334 62 348 80 372C54 364 24 362 -10 366Z"/>
+  <path d="M522 96C448 100 392 124 352 168C404 148 466 142 522 146Z"/>
+  <path d="M522 214C474 216 436 230 412 256C442 246 482 244 522 248Z"/>
+  <path d="M522 330C478 334 450 348 432 372C458 364 488 362 522 366Z"/>
+</g></g>
+  <g transform="translate(0,-14)">
+    <!-- toe pads -->
+    <g fill="#2A1A05">
+      <ellipse cx="126" cy="254" rx="30" ry="41" transform="rotate(-26 126 254)"/>
+      <ellipse cx="204" cy="188" rx="33" ry="46" transform="rotate(-8 204 188)"/>
+      <ellipse cx="308" cy="188" rx="33" ry="46" transform="rotate(8 308 188)"/>
+      <ellipse cx="386" cy="254" rx="30" ry="41" transform="rotate(26 386 254)"/>
+    </g>
+    <!-- main pad = open book -->
+    <g transform="translate(256 366) scale(1.1) translate(-256 -366)"><g fill="#FFF8E1" stroke="#FFF8E1" stroke-width="18" stroke-linejoin="round">
+      <path d="M248 332C224 312 190 306 154 312V394C190 388 224 394 248 414Z"/>
+      <path d="M264 332C288 312 322 306 358 312V394C322 388 288 394 264 414Z"/>
+    </g>
+    <g fill="none" stroke="#2A1A05" stroke-width="9" stroke-linecap="round">
+      <path d="M176 340C196 337 218 340 234 350"/><path d="M176 364C196 361 218 364 234 374"/>
+      <path d="M336 340C316 337 294 340 278 350"/><path d="M336 364C316 361 294 364 278 374"/>
+    </g></g>
+  </g></svg>
+```
+
+(The mark is an original design: a tiger paw whose main pad is an open book, framed by tiger stripes.)
+
+## Update the app yourself
+1. Edit `src/app.jsx`, then run `npm install esbuild react react-dom` and
+   `npx esbuild src/app.jsx --bundle --minify --loader:.jsx=jsx --define:process.env.NODE_ENV='"production"' --target=es2018 --outfile=app.js` (or just `npm run build` with the included `package.json`)
+2. Raise the `CACHE` number in `sw.js`, upload the changed files. Devices that already run the app show the "Update Available! Tap to refresh" banner; tap it to load the new version.
+
+## Install
+iPhone/iPad (Safari): Share → **Add to Home Screen**. Android (Chrome): menu → **Install app**. Mac: Safari File → **Add to Dock**.
